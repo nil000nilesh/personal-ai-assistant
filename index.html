@@ -20,7 +20,6 @@
         }
         .recording { animation: pulse-red 1.5s infinite; background-color: #ef4444 !important; color: white !important; }
         
-        /* Smooth scroll inside client cards */
         .client-updates-scroll::-webkit-scrollbar { width: 4px; }
         .client-updates-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
     </style>
@@ -59,7 +58,7 @@
             </div>
             <div class="flex-1 py-4 flex flex-col gap-1 px-3">
                 <button id="tab-chat-desk" class="tab-btn active px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg> Chat
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg Chat
                 </button>
                 <button id="tab-notes-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> Client Cases
@@ -111,7 +110,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // IMPORT 'where' TO FILTER CHATS
+        import { getFirestore, collection, addDoc, query, orderBy, where, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAeu14r8EACZ7U3eRszsNQmTYTFt5FndcU",
@@ -134,6 +134,9 @@
         let allSavedNotes = []; 
         let isPinVerified = false;
         let DYNAMIC_OPENAI_KEY = "";
+        
+        // NAYA VARIABLE: Ye app khulne ka time save karega
+        let sessionStartTime;
 
         const ui = {
             login: document.getElementById('login-screen'),
@@ -204,6 +207,9 @@
                 const keyDoc = await getDoc(doc(db, "system_settings", "api_config"));
                 if (keyDoc.exists() && keyDoc.data().openai_key) {
                     DYNAMIC_OPENAI_KEY = keyDoc.data().openai_key;
+                    // JAISE HI APP LOAD HOGA, CURRENT TIME SAVE HO JAYEGA
+                    sessionStartTime = new Date().toISOString(); 
+                    
                     ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
                     loadChatAndNotes();
                 } else { ui.apiKey.classList.remove('hidden'); ui.apiKey.classList.add('flex'); }
@@ -216,13 +222,19 @@
             try {
                 await setDoc(doc(db, "system_settings", "api_config"), { openai_key: newKey });
                 DYNAMIC_OPENAI_KEY = newKey;
+                // KEY DALNE KE BAAD BHI CURRENT TIME SAVE HOGA
+                sessionStartTime = new Date().toISOString();
+                
                 ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
                 ui.apiKey.classList.add('hidden'); loadChatAndNotes();
             } catch (error) { alert("Failed to save key."); }
         });
 
         function loadChatAndNotes() {
-            onSnapshot(query(collection(db, "chats"), orderBy("timestamp", "asc")), (snapshot) => {
+            // YAHAN HUMNE FILTER LAGA DIYA HAI: Sirf wahi chat dikhegi jo app khulne ke baad aayi hai
+            const chatQuery = query(collection(db, "chats"), where("timestamp", ">=", sessionStartTime), orderBy("timestamp", "asc"));
+            
+            onSnapshot(chatQuery, (snapshot) => {
                 chatHistory = []; ui.chatBox.innerHTML = ""; 
                 snapshot.forEach((docData) => {
                     const msg = docData.data();
@@ -232,11 +244,10 @@
                 ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
             });
 
-            // 🚀 MAGIC 2: GROUP NOTES BY CLIENT (STENO VIEW)
             onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "asc")), (snapshot) => {
                 ui.notesGrid.innerHTML = "";
                 allSavedNotes = []; 
-                let groupedNotes = {}; // To group Kunal Patidar's 5 updates into 1 card
+                let groupedNotes = {}; 
 
                 snapshot.forEach((docData) => {
                     const note = docData.data();
@@ -249,10 +260,8 @@
                     groupedNotes[normalizedTitle].updates.push(note);
                 });
 
-                // Render each group as a single Client File
                 for (const key in groupedNotes) {
                     const group = groupedNotes[key];
-                    // Reverse so newest update is on top inside the card
                     const sortedUpdates = group.updates.reverse(); 
 
                     const card = document.createElement('div');
@@ -315,7 +324,6 @@
             ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
         } else { ui.micBtn.style.display = 'none'; }
 
-        // 🚀 MAGIC 1: SMART STENO AI BRAIN
         async function sendMessage() {
             const text = ui.userInput.value.trim();
             if (!text || !DYNAMIC_OPENAI_KEY) return;
@@ -333,22 +341,19 @@
             ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
             try {
-                // Pass memory so AI knows past details
                 let aiMemoryContext = allSavedNotes.map(note => `[Client: ${note.title} | Past Detail: ${note.content}]`).join("  ");
 
                 const systemPrompt = {
                     role: "system",
-                    content: `You are an expert Stenographer and Credit Case Manager for Nilesh, a Credit Manager at Bank of Baroda.
+                    content: `You are an expert Stenographer and Credit Case Manager for Nilesh.
                     
                     DATABASE MEMORY RECALL (Past client updates):
                     ${aiMemoryContext}
                     
                     YOUR STRICT RULES:
-                    1. When Nilesh mentions a client or task (like "Kunal Patidar ka loan Tejas portal pe post-sanction maker par hai"), FIRST check the MEMORY RECALL. 
-                    2. DO NOT just repeat what he said. Reply like a smart human assistant in Hinglish. Acknowledge the exact update, connect it to past details if they exist in memory, and ask a logical next step. 
-                       Example: "Ji, maine Kunal Patidar ki file update kar di hai. Inka loan ab Tejas me post-sanction maker stage par hai. Pichli baar aapne civil check ka bataya tha. Kya ab next checker stage ke liye proceed karna hai?"
+                    1. When Nilesh mentions a client or task, FIRST check the MEMORY RECALL. 
+                    2. Reply like a smart human assistant in Hinglish. Acknowledge the exact update, connect it to past details if they exist in memory, and ask a logical next step. 
                     3. STENO LOGGING: To update a client's file, you MUST append this exact tag at the very end of your response: [CASE: Client Name || Specific Exact Update]. 
-                       Example: [CASE: Kunal Patidar || Loan moved to post-sanction maker stage in Tejas]
                     4. ALWAYS explicitly say "Maine file me note kar liya hai" or "Update saved" in your chat response.`
                 };
 
@@ -366,7 +371,6 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                // Extract [CASE: ...] tag
                 const noteRegex = /\[(?:CASE|NOTE):\s*(.*?)\s*\|\|\s*(.*?)\]/gi;
                 let match;
                 while ((match = noteRegex.exec(aiReply)) !== null) {
