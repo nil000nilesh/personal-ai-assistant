@@ -19,14 +19,18 @@
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
         .recording { animation: pulse-red 1.5s infinite; background-color: #ef4444 !important; color: white !important; }
+        
+        /* Smooth scroll inside client cards */
+        .client-updates-scroll::-webkit-scrollbar { width: 4px; }
+        .client-updates-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans h-[100dvh] overflow-hidden flex flex-col">
 
     <div id="login-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
         <div class="p-8 bg-white rounded-2xl shadow-2xl text-center max-w-sm w-full border border-gray-100">
-            <h1 class="text-3xl font-extrabold mb-2 text-slate-800">My AI</h1>
-            <p class="text-gray-500 mb-8 text-sm">Your Personal Assistant</p>
+            <h1 class="text-3xl font-extrabold mb-2 text-slate-800">My AI Steno</h1>
+            <p class="text-gray-500 mb-8 text-sm">Your Smart Case Manager</p>
             <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
                 Sign in with Google
@@ -42,7 +46,7 @@
 
     <div id="api-key-screen" class="hidden absolute inset-0 z-50 flex-col items-center justify-center bg-white px-4">
         <h2 class="text-2xl mb-2 font-bold text-slate-800">API Key Setup</h2>
-        <p class="text-gray-500 mb-6 text-center max-w-sm text-sm">Please provide your OpenAI API Key once to securely save it in the database.</p>
+        <p class="text-gray-500 mb-6 text-center max-w-sm text-sm">Please provide your OpenAI API Key securely.</p>
         <input type="password" id="api-key-input" class="border-2 border-gray-300 p-3 rounded-xl mb-4 w-full max-w-md outline-none focus:border-blue-500" placeholder="sk-proj-..." />
         <button id="save-key-btn" class="bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl font-medium w-full max-w-md transition-all">Save Securely</button>
     </div>
@@ -51,14 +55,14 @@
         
         <nav class="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 shadow-2xl z-20">
             <div class="p-6 border-b border-slate-800">
-                <h1 class="text-2xl font-bold text-white tracking-wide">My AI</h1>
+                <h1 class="text-2xl font-bold text-white tracking-wide">My AI Steno</h1>
             </div>
             <div class="flex-1 py-4 flex flex-col gap-1 px-3">
                 <button id="tab-chat-desk" class="tab-btn active px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg> Assistant
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg> Chat
                 </button>
                 <button id="tab-notes-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> Notebook
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> Client Cases
                 </button>
             </div>
             <div class="p-4 border-t border-slate-800">
@@ -68,7 +72,7 @@
 
         <main class="flex-1 relative bg-gray-50 flex flex-col h-full overflow-hidden">
             <header class="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center shadow-md z-10">
-                <h1 class="text-lg font-bold">My AI</h1>
+                <h1 class="text-lg font-bold">My AI Steno</h1>
                 <button id="logout-btn-mob" class="text-xs bg-slate-800 px-3 py-1.5 rounded text-slate-300">Logout</button>
             </header>
 
@@ -79,7 +83,7 @@
                         <button id="mic-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 md:p-4 rounded-xl transition-all outline-none" title="Click to Speak">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                         </button>
-                        <input type="text" id="user-input" class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-3 md:p-4 rounded-xl text-black outline-none transition-all" placeholder="Type or speak your message..." />
+                        <input type="text" id="user-input" class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-3 md:p-4 rounded-xl text-black outline-none transition-all" placeholder="Update a client file or ask a question..." />
                         <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-md transition-transform active:scale-95">Send</button>
                     </div>
                 </div>
@@ -87,9 +91,9 @@
 
             <div id="view-notes" class="hidden absolute inset-0 md:top-0 top-[60px] md:bottom-0 bottom-[60px] flex-col bg-gray-50 p-4 md:p-8 overflow-y-auto">
                 <div class="max-w-6xl mx-auto w-full">
-                    <h2 class="text-3xl font-bold mb-2 text-slate-800">Notebook</h2>
-                    <p class="text-gray-500 mb-8 text-sm">Short notes for your quick reference. AI automatically writes and saves these based on your chat.</p>
-                    <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                    <h2 class="text-3xl font-bold mb-2 text-slate-800">Client Cases & Notes</h2>
+                    <p class="text-gray-500 mb-8 text-sm">Organized history of all your clients and tasks.</p>
+                    <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
                 </div>
             </div>
         </main>
@@ -99,14 +103,14 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg> Chat
             </button>
             <button id="tab-notes-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-xs">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> Notes
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> Cases
             </button>
         </nav>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -145,10 +149,8 @@
         };
 
         function hideAllStates() {
-            ui.login.classList.add('hidden');
-            ui.pin.classList.add('hidden');
-            ui.apiKey.classList.add('hidden');
-            ui.appLayout.classList.add('hidden');
+            ui.login.classList.add('hidden'); ui.pin.classList.add('hidden');
+            ui.apiKey.classList.add('hidden'); ui.appLayout.classList.add('hidden');
         }
 
         function switchView(view) {
@@ -171,27 +173,18 @@
         document.getElementById('tab-chat-mob').addEventListener('click', () => switchView('chat'));
         document.getElementById('tab-notes-mob').addEventListener('click', () => switchView('notes'));
 
-        // --- NEW STRONG LOGIN FUNCTION ---
-        document.getElementById('login-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('login-btn');
-            const originalContent = btn.innerHTML;
-            btn.innerHTML = "Opening Google...";
-            
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                alert("Login Error: " + error.message + "\n\nIf you are using WhatsApp browser, please open this link in Chrome/Safari.");
-                btn.innerHTML = originalContent;
-            }
+        document.getElementById('login-btn').addEventListener('click', () => {
+            document.getElementById('login-btn').innerText = "Redirecting to Google...";
+            signInWithRedirect(auth, provider);
         });
 
         onAuthStateChanged(auth, (user) => {
             hideAllStates();
-            if (user && user.email === ALLOWED_EMAIL) {
-                if (!isPinVerified) { ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex'); } 
-                else { checkAndLoadApp(); }
-            } else if (user) {
-                alert("Unauthorized access! Logging out."); signOut(auth);
+            if (user) {
+                if (user.email === ALLOWED_EMAIL) {
+                    if (!isPinVerified) { ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex'); } 
+                    else { checkAndLoadApp(); }
+                } else { alert("Unauthorized access! Logging out."); signOut(auth); }
             } else { ui.login.classList.remove('hidden'); }
         });
 
@@ -213,22 +206,19 @@
                     DYNAMIC_OPENAI_KEY = keyDoc.data().openai_key;
                     ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
                     loadChatAndNotes();
-                } else {
-                    ui.apiKey.classList.remove('hidden'); ui.apiKey.classList.add('flex');
-                }
-            } catch (error) { alert("Database connection failed. Check permissions."); }
+                } else { ui.apiKey.classList.remove('hidden'); ui.apiKey.classList.add('flex'); }
+            } catch (error) { alert("Database connection failed."); }
         }
 
         document.getElementById('save-key-btn').addEventListener('click', async () => {
             const newKey = document.getElementById('api-key-input').value.trim();
-            if (!newKey.startsWith("sk-")) return alert("Invalid API key format.");
+            if (!newKey.startsWith("sk-")) return alert("Invalid API key.");
             try {
                 await setDoc(doc(db, "system_settings", "api_config"), { openai_key: newKey });
                 DYNAMIC_OPENAI_KEY = newKey;
                 ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
-                ui.apiKey.classList.add('hidden');
-                loadChatAndNotes();
-            } catch (error) { alert("Failed to save key. Check Firestore rules."); }
+                ui.apiKey.classList.add('hidden'); loadChatAndNotes();
+            } catch (error) { alert("Failed to save key."); }
         });
 
         function loadChatAndNotes() {
@@ -242,22 +232,52 @@
                 ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
             });
 
-            onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "desc")), (snapshot) => {
+            // 🚀 MAGIC 2: GROUP NOTES BY CLIENT (STENO VIEW)
+            onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "asc")), (snapshot) => {
                 ui.notesGrid.innerHTML = "";
                 allSavedNotes = []; 
+                let groupedNotes = {}; // To group Kunal Patidar's 5 updates into 1 card
+
                 snapshot.forEach((docData) => {
                     const note = docData.data();
                     allSavedNotes.push(note); 
+                    
+                    const normalizedTitle = note.title.toUpperCase();
+                    if(!groupedNotes[normalizedTitle]) {
+                        groupedNotes[normalizedTitle] = { displayTitle: note.title, updates: [] };
+                    }
+                    groupedNotes[normalizedTitle].updates.push(note);
+                });
+
+                // Render each group as a single Client File
+                for (const key in groupedNotes) {
+                    const group = groupedNotes[key];
+                    // Reverse so newest update is on top inside the card
+                    const sortedUpdates = group.updates.reverse(); 
+
                     const card = document.createElement('div');
-                    card.className = "bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 hover:shadow-md transition-shadow relative overflow-hidden group";
+                    card.className = "bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col hover:shadow-md transition-shadow relative overflow-hidden h-64";
+                    
+                    let updatesHTML = sortedUpdates.map(u => `
+                        <div class="border-l-2 border-blue-400 pl-3 py-2 relative">
+                            <div class="absolute w-2 h-2 bg-blue-400 rounded-full -left-[5px] top-3.5"></div>
+                            <p class="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">${u.content}</p>
+                            <span class="text-[10px] text-gray-400 font-medium">${new Date(u.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                        </div>
+                    `).join("");
+
                     card.innerHTML = `
-                        <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                        <h3 class="font-bold text-slate-800 text-lg border-b border-gray-100 pb-2">${note.title}</h3>
-                        <p class="text-gray-600 text-sm flex-1 whitespace-pre-wrap leading-relaxed">${note.content}</p>
-                        <span class="text-xs text-gray-400 mt-2 font-medium">${new Date(note.timestamp).toLocaleDateString()}</span>
+                        <div class="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>
+                        <h3 class="font-bold text-slate-800 text-lg border-b border-gray-100 pb-3 flex justify-between items-center">
+                            ${group.displayTitle}
+                            <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">${group.updates.length} Updates</span>
+                        </h3>
+                        <div class="flex flex-col gap-1 mt-3 overflow-y-auto client-updates-scroll pr-2 flex-1">
+                            ${updatesHTML}
+                        </div>
                     `;
                     ui.notesGrid.appendChild(card);
-                });
+                }
             });
         }
 
@@ -291,10 +311,11 @@
                     else interimTranscript += event.results[i][0].transcript;
                 }
             };
-            recognition.onend = () => { isRecording = false; ui.micBtn.classList.remove('recording'); ui.userInput.placeholder = "Type or speak your message..."; };
+            recognition.onend = () => { isRecording = false; ui.micBtn.classList.remove('recording'); ui.userInput.placeholder = "Update a client file..."; };
             ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
         } else { ui.micBtn.style.display = 'none'; }
 
+        // 🚀 MAGIC 1: SMART STENO AI BRAIN
         async function sendMessage() {
             const text = ui.userInput.value.trim();
             if (!text || !DYNAMIC_OPENAI_KEY) return;
@@ -307,24 +328,28 @@
             const loadingDiv = document.createElement('div');
             loadingDiv.id = loadingId;
             loadingDiv.className = "text-blue-500 text-sm ml-2 font-medium animate-pulse";
-            loadingDiv.textContent = "AI is thinking...";
+            loadingDiv.textContent = "Checking files and typing...";
             ui.chatBox.appendChild(loadingDiv);
             ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
             try {
-                let aiMemoryContext = allSavedNotes.map(note => `[Note Title: ${note.title} | Note Details: ${note.content}]`).join("  ");
+                // Pass memory so AI knows past details
+                let aiMemoryContext = allSavedNotes.map(note => `[Client: ${note.title} | Past Detail: ${note.content}]`).join("  ");
 
                 const systemPrompt = {
                     role: "system",
-                    content: `You are an intelligent personal AI assistant. You help the user with daily tasks, bank proposals, and learning.
+                    content: `You are an expert Stenographer and Credit Case Manager for Nilesh, a Credit Manager at Bank of Baroda.
                     
-                    DATABASE MEMORY RECALL:
-                    Here are the short notes you have saved in your database so far: ${aiMemoryContext}
+                    DATABASE MEMORY RECALL (Past client updates):
+                    ${aiMemoryContext}
                     
-                    INSTRUCTIONS:
-                    1. RECALL: When the user asks you to remember or recall something, search the DATABASE MEMORY RECALL and the recent chat history. Give a precise answer based on what you find.
-                    2. CREATE SHORT NOTES: If the user shares a plan, task, detail, or important information, you MUST save a short readable note for them. To save a note, append this exact tag at the very end of your final response: [NOTE: Title || Short Content].
-                    3. EXPLICIT ACKNOWLEDGMENT: If you create a note using the [NOTE: ...] tag, you MUST explicitly tell the user in your conversational reply that you noted it. Say something like: "Aapki is baat ko maine note kar liya hai" or "Maine is jankari ko aapke notes me save kar diya hai."`
+                    YOUR STRICT RULES:
+                    1. When Nilesh mentions a client or task (like "Kunal Patidar ka loan Tejas portal pe post-sanction maker par hai"), FIRST check the MEMORY RECALL. 
+                    2. DO NOT just repeat what he said. Reply like a smart human assistant in Hinglish. Acknowledge the exact update, connect it to past details if they exist in memory, and ask a logical next step. 
+                       Example: "Ji, maine Kunal Patidar ki file update kar di hai. Inka loan ab Tejas me post-sanction maker stage par hai. Pichli baar aapne civil check ka bataya tha. Kya ab next checker stage ke liye proceed karna hai?"
+                    3. STENO LOGGING: To update a client's file, you MUST append this exact tag at the very end of your response: [CASE: Client Name || Specific Exact Update]. 
+                       Example: [CASE: Kunal Patidar || Loan moved to post-sanction maker stage in Tejas]
+                    4. ALWAYS explicitly say "Maine file me note kar liya hai" or "Update saved" in your chat response.`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
@@ -341,7 +366,8 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                const noteRegex = /\[NOTE:\s*(.*?)\s*\|\|\s*(.*?)\]/g;
+                // Extract [CASE: ...] tag
+                const noteRegex = /\[(?:CASE|NOTE):\s*(.*?)\s*\|\|\s*(.*?)\]/gi;
                 let match;
                 while ((match = noteRegex.exec(aiReply)) !== null) {
                     await addDoc(collection(db, "notes"), { title: match[1].trim(), content: match[2].trim(), timestamp: new Date().toISOString() });
