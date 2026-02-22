@@ -415,22 +415,25 @@
                        - ONLY if the answer is completely missing, say: "Ye information meri memory me nahi hai."
                        
                     3. IF NILESH IS PROVIDING NEW INFO / TASKS (AUTO-SAVE MODE):
-                       - DO NOT say "meri memory me nahi hai". 
                        - Acknowledge the new info naturally (e.g., "Ji Nilesh, maine note kar liya hai.") and AUTOMATICALLY extract and save the data using the tags below.
                        - Always create a NOTEBOOK draft if the input contains detailed client info, actions, or meeting summaries.
                        
-                       TAG FORMATS (Always use exactly ONE pipe '|'. If no status/time is provided, use a default like 'Pending'):
-                       - [CASE: Client Name | Single detail update]
-                       - [TASK: Task Name | Pending]
-                       - [REMINDER: Title | Time or Date]
-                       - [NOTEBOOK: Title | Professional detailed draft with bullet points using markdown]
+                    4. MULTIPLE ACTIONS IN ONE MESSAGE (CRITICAL):
+                       - If Nilesh gives a complex update (e.g., details + a task + a reminder all in one sentence), you MUST generate MULTIPLE tags in the same response.
+                       - Put EACH tag on a NEW LINE. Do not skip any requested action.
                        
-                    EXAMPLE SCENARIO:
-                    Nilesh: "Kunal Patidar ka loan 487000 hai, Monday ko disburse karna hai. SMAX me beneficiary issue hai."
-                    Your Reply: "Ji Nilesh, maine Kunal Patidar ki details Client Cases, Tasks aur Notebook me save kar li hain."
-                    [CASE: Kunal Patidar | Mobile: 9302467283, Loan: 487000, SMAX complain: beneficiary issue.]
-                    [TASK: Disburse Kunal Patidar loan | Monday]
-                    [NOTEBOOK: Kunal Patidar - Loan Processing | **Client Details**: Mr. Kunal Patidar\n**Loan Amount**: ₹4,87,000\n**Action Items**:\n- Check SMAX beneficiary issue.\n- Prepare for Monday disbursement.]
+                    TAG FORMATS (Use exactly ONE pipe '|'. If no status/time is provided, leave it blank or use a default):
+                    - [CASE: Client Name | Single detail update]
+                    - [TASK: Task Name | Pending]
+                    - [REMINDER: Title | Time or Date]
+                    - [NOTEBOOK: Title | Professional detailed draft with bullet points using markdown]
+                       
+                    EXAMPLE OF MULTIPLE ACTIONS:
+                    Nilesh: "Rahul Verma ka 25 lakh ka loan sanction hua. Kal 4 baje ka reminder lagao aur CIBIL check karne ka task add karo."
+                    Your Reply: "Ji Nilesh, maine Rahul ki details, reminder aur task save kar liye hain."
+                    [CASE: Rahul Verma | 25 lakh home loan sanctioned.]
+                    [REMINDER: Rahul Verma visit | Kal shaam 4 baje]
+                    [TASK: Verify Rahul Verma CIBIL | Pending]
                     
                     Always reply in polite Hinglish.`
                 };
@@ -449,12 +452,12 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                // SUPER-FORGIVING REGEX: Ab agar AI status ya pipe (|) bhool bhi jaye, to code "Pending" maan kar save kar lega
+                // Bulletproof Regex: Ensures multiple tags in a single message are processed flawlessly
                 const regexes = [
-                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2] ? m[2].trim() : "Updated." }) },
-                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2] ? m[2].trim() : "Pending" }) },
-                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2] ? m[2].trim() : "Anytime" }) },
-                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2] ? m[2].trim() : "" }) }
+                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
+                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
+                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: (m[2] && m[2].trim()) ? m[2].trim() : "Anytime" }) },
+                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "" }) }
                 ];
 
                 for (let r of regexes) {
