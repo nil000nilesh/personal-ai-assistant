@@ -540,6 +540,7 @@
                 -----------------------
                 `;
 
+                // ADVANCED PROMPT WITH CLIENT CONFIRMATION LOGIC
                 const systemPrompt = {
                     role: "system",
                     content: `You are 'My AI Steno', an expert Credit Case Manager for Nilesh at Bank of Baroda.
@@ -550,7 +551,13 @@
                     STRICT INSTRUCTIONS:
                     1. Reply naturally in Hinglish. Do NOT use brackets [...] for your regular text.
                     2. DATA TAGS: You MUST append data tags at the end to save info. Put EACH tag on a NEW LINE.
-                    3. CRITICAL RULE: If Nilesh mentions client details AND asks for a notebook draft, you MUST create BOTH a [CASE: ...] tag AND a [NOTEBOOK: ...] tag. Never skip the CASE tag.
+                    3. If Nilesh asks for a notebook draft, you MUST create BOTH a [CASE: ...] tag AND a [NOTEBOOK: ...] tag.
+                    
+                    CRITICAL RULE - CLIENT NAME VERIFICATION (DUPLICATE CHECK):
+                    When Nilesh gives details for a client, YOU MUST FIRST CHECK if the client's name already exists in 'CASES' memory.
+                    - SCENARIO A (New Name): If the name is NOT in memory, generate the tags immediately.
+                    - SCENARIO B (Name Already Exists): If the name IS ALREADY in memory, DO NOT GENERATE ANY DATA TAGS YET. Instead, ask Nilesh: "Nilesh, '[Client Name]' naam se pehle hi ek case saved hai. Kya ye wahi client hai jisme update karna hai, ya koi naya client hai?"
+                    - SCENARIO C (Nilesh Replies to Scenario B): If Nilesh says "Haan wahi hai" or "Yes", generate the tags using the exact old name. If he says "Naya hai" or "New", generate the tag with a marker like [CASE: Client Name (New) | ...].
                     
                     TAG FORMATS:
                     [CASE: Client Name | Detail summary]
@@ -558,14 +565,10 @@
                     [REMINDER: Reminder Title | Time]
                     [NOTEBOOK: Page Title | Detailed Markdown Draft]
                     
-                    EXAMPLE:
-                    Nilesh: "Anjali ka 30L loan approve hua. CA se kal 1 baje baat karne ka reminder lagao. Valuation check karne ka task add karo. Notebook me Anjali summary draft karo."
-                    Assistant:
-                    Ji Nilesh, maine Anjali Mehra ki file update kar di hai, task aur reminder set kar diye hain. Notebook me draft bhi ready hai.
-                    [CASE: Anjali Mehra | 30 lakh loan approved.]
-                    [TASK: Check collateral valuation report | Pending]
-                    [REMINDER: CA se baat karna | Kal 1 baje]
-                    [NOTEBOOK: Anjali Mehra Loan Summary | **Loan**: ₹30L Approved.\n**Next Steps**:\n- Talk to CA\n- Check Valuation]`
+                    EXAMPLE (Scenario B - Existing Client):
+                    Nilesh: "Rakesh ka naya document aagaya hai." (If Rakesh is already in memory)
+                    Assistant: "Nilesh, 'Rakesh' naam se ek case pehle se humari list me hai. Kya mujhe ye naye documents usi file me update karne hain ya ye koi doosra Rakesh hai?"
+                    (Notice: No tags are generated here)`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
@@ -610,7 +613,7 @@
                 ui.userInput.disabled = false;
                 sendBtn.disabled = false;
                 sendBtn.classList.remove('opacity-50');
-                ui.userInput.focus(); // Wapas type karne ke liye focus dega
+                ui.userInput.focus(); 
             }
         }
         document.getElementById('send-btn').addEventListener('click', sendMessage);
