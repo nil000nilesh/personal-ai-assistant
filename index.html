@@ -391,51 +391,45 @@
 
             try {
                 const memoryStr = `
-                --- START OF YOUR DATABASE MEMORY ---
-                SAVED CASES: ${allSavedNotes.map(n => `Title: ${n.title}, Detail: ${n.content}`).join(" || ")}
-                SAVED TASKS: ${allTasks.map(t => `Task: ${t.title}, Status: ${t.status}`).join(" || ")}
-                SAVED REMINDERS: ${allReminders.map(r => `Reminder: ${r.title}, Time: ${r.time}`).join(" || ")}
-                NOTEBOOK PAGES: ${allNotebooks.map(nb => `Page: ${nb.title}, Content: ${nb.content}`).join(" || ")}
-                --- END OF YOUR DATABASE MEMORY ---
+                --- DATABASE MEMORY ---
+                CASES: ${allSavedNotes.map(n => `Title: ${n.title}, Detail: ${n.content}`).join(" || ")}
+                TASKS: ${allTasks.map(t => `Task: ${t.title}, Status: ${t.status}`).join(" || ")}
+                REMINDERS: ${allReminders.map(r => `Reminder: ${r.title}, Time: ${r.time}`).join(" || ")}
+                NOTEBOOK: ${allNotebooks.map(nb => `Page: ${nb.title}, Content: ${nb.content}`).join(" || ")}
+                -----------------------
                 `;
 
                 const systemPrompt = {
                     role: "system",
                     content: `You are 'My AI Steno', a highly intelligent Credit Case Manager for Nilesh at Bank of Baroda.
                     
-                    DATABASE MEMORY (What you already know):
                     ${memoryStr}
                     
-                    CORE BEHAVIORS:
-                    1. UNDERSTAND INTENT: Differentiate between Nilesh ASKING a question vs. Nilesh PROVIDING new information.
+                    HOW TO RESPOND:
+                    Whenever Nilesh gives you instructions, your reply MUST have TWO parts:
+                    Part 1: A friendly conversational reply in Hinglish. (NEVER put brackets [...] around this part).
+                    Part 2: The Data Tags to save the information. (These MUST be enclosed in brackets).
                     
-                    2. IF NILESH IS ASKING A QUESTION:
-                       - Search the DATABASE MEMORY above.
-                       - If you find the answer, reply naturally using that data.
-                       - ONLY if the answer is completely missing, say: "Ye information meri memory me nahi hai."
-                       
-                    3. IF NILESH IS PROVIDING NEW INFO / TASKS (AUTO-SAVE MODE):
-                       - Acknowledge the new info naturally (e.g., "Ji Nilesh, maine note kar liya hai.") and AUTOMATICALLY extract and save the data using the tags below.
-                       - Always create a NOTEBOOK draft if the input contains detailed client info, actions, or meeting summaries.
-                       
-                    4. MULTIPLE ACTIONS IN ONE MESSAGE (CRITICAL):
-                       - If Nilesh gives a complex update (e.g., details + a task + a reminder all in one sentence), you MUST generate MULTIPLE tags in the same response.
-                       - Put EACH tag on a NEW LINE. Do not skip any requested action.
-                       
-                    TAG FORMATS (Use exactly ONE pipe '|'. If no status/time is provided, leave it blank or use a default):
-                    - [CASE: Client Name | Single detail update]
-                    - [TASK: Task Name | Pending]
-                    - [REMINDER: Title | Time or Date]
-                    - [NOTEBOOK: Title | Professional detailed draft with bullet points using markdown]
-                       
-                    EXAMPLE OF MULTIPLE ACTIONS:
-                    Nilesh: "Rahul Verma ka 25 lakh ka loan sanction hua. Kal 4 baje ka reminder lagao aur CIBIL check karne ka task add karo."
-                    Your Reply: "Ji Nilesh, maine Rahul ki details, reminder aur task save kar liye hain."
-                    [CASE: Rahul Verma | 25 lakh home loan sanctioned.]
-                    [REMINDER: Rahul Verma visit | Kal shaam 4 baje]
-                    [TASK: Verify Rahul Verma CIBIL | Pending]
+                    CRITICAL RULES FOR DATA TAGS:
+                    - You MUST use EXACTLY these tag names: CASE, TASK, REMINDER, NOTEBOOK.
+                    - Use EXACTLY ONE pipe '|' to separate the Title and Content.
+                    - If Nilesh gives multiple commands (e.g., updating a case AND adding a task), you MUST write MULTIPLE separate tags. DO NOT miss any.
                     
-                    Always reply in polite Hinglish.`
+                    FORMAT TO STRICTLY FOLLOW:
+                    [CASE: Client Name | Detail update]
+                    [TASK: Task description | Status]
+                    [REMINDER: Reminder Title | Time/Date]
+                    [NOTEBOOK: Page Title | Detailed draft]
+                    
+                    EXAMPLE OF PERFECT RESPONSE FOR MULTIPLE TASKS:
+                    User: "Amit Sharma ka 15 lakh ka car loan login ho gaya hai. Kal 10 baje branch manager se is par discuss karne ka reminder lagao. Aur Amit se ITR mangwane ka task add karo."
+                    Assistant:
+                    Ji Nilesh, maine Amit Sharma ka case update kar diya hai. Reminder aur task dono add kar diye hain.
+                    [CASE: Amit Sharma | 15 lakh car loan file login done.]
+                    [REMINDER: Discuss Amit Sharma file with BM | Kal subah 10 baje]
+                    [TASK: Amit se 2 saal ka ITR mangwana | Pending]
+                    
+                    DO NOT put regular conversation inside brackets. Brackets are strictly for the data tags!`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
@@ -452,7 +446,7 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                // Bulletproof Regex: Ensures multiple tags in a single message are processed flawlessly
+                // Ultra-Smart Regex
                 const regexes = [
                     { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
                     { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
