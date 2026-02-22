@@ -537,14 +537,18 @@
 
     try {
 
-        // -------- CLIENT DETECT --------
-        const clientMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
-        const clientName = clientMatch ? clientMatch[0].trim() : "General";
+        // ---------- SMART CLIENT DETECT ----------
+        function detectClient(text) {
+            let cleaned = text.replace(/^Aaj\s+/i, "");
+            const match = cleaned.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\sPvt\sLtd)?)/);
+            return match ? match[1].trim() : "General";
+        }
+        const clientName = detectClient(text);
 
         let action = { notebook:false, client:false, task:false, reminder:false };
 
-        // -------- SMART NOTEBOOK DRAFT --------
-        function generateNotebookDraft(text, client) {
+        // ---------- NOTEBOOK DRAFT ----------
+        function generateNotebook(text, client) {
             const bullets = [];
 
             if(/LC|letter of credit/i.test(text))
@@ -554,57 +558,58 @@
             if(dateMatch)
                 bullets.push("Shipment deadline: " + dateMatch[0]);
 
-            if(/invoice/i.test(text)) bullets.push("BL & Invoice ready");
+            if(/invoice/i.test(text))
+                bullets.push("BL & Invoice ready");
 
             if(/insurance/i.test(text))
                 bullets.push("Insurance pending (CIF 110% required)");
 
             if(/submit/i.test(text))
-                bullets.push("Client advised to submit documents by tomorrow");
+                bullets.push("Client advised to submit documents");
 
             if(/delay|discrepancy/i.test(text))
-                bullets.push("Risk: Discrepancy & payment delay if late");
+                bullets.push("Risk: Discrepancy & payment delay");
 
             if(bullets.length === 0)
                 bullets.push(text);
 
-            return `LC Status Update – ${client}\n\n• ` + bullets.join("\n• ");
+            return `LC Status – ${client}\n\n• ` + bullets.join("\n• ");
         }
 
-        // -------- TASK EXTRACTOR --------
+        // ---------- TASK ----------
         function extractTask(text) {
             if(/insurance/i.test(text))
                 return "Submit Insurance document for LC";
 
-            if(/submit document/i.test(text))
+            if(/submit/i.test(text))
                 return "Submit LC documents";
 
             return null;
         }
 
-        // -------- REMINDER EXTRACTOR --------
+        // ---------- REMINDER ----------
         function extractReminder(text) {
             if(/tomorrow|kal/i.test(text))
-                return "Follow up for Insurance submission – Tomorrow";
+                return "Follow up for document submission – Tomorrow";
 
             return null;
         }
 
-        // -------- SAVE NOTEBOOK --------
-        const notebookDraft = generateNotebookDraft(text, clientName);
+        // ---------- SAVE NOTEBOOK ----------
+        const notebookContent = generateNotebook(text, clientName);
 
         await addDoc(collection(db, "notebooks"), {
-            title: clientName + " Update",
-            content: notebookDraft,
+            title: clientName,
+            content: notebookContent,
             client: clientName,
             timestamp: new Date().toISOString()
         });
 
         action.notebook = true;
 
-        // -------- CLIENT CREATE IF NEW --------
+        // ---------- CREATE CLIENT IF NEW ----------
         const existingClient = allSavedNotes.find(
-            n => n.title.toUpperCase() === clientName.toUpperCase()
+            n => n.title?.toUpperCase() === clientName.toUpperCase()
         );
 
         if (!existingClient) {
@@ -617,11 +622,11 @@
             action.client = true;
         }
 
-        // -------- TASK --------
+        // ---------- TASK SAVE ----------
         const taskLine = extractTask(text);
         if (taskLine) {
             await addDoc(collection(db, "tasks"), {
-                title: taskLine,
+                title: clientName + " – " + taskLine,
                 status: "Pending",
                 client: clientName,
                 timestamp: new Date().toISOString()
@@ -629,11 +634,11 @@
             action.task = true;
         }
 
-        // -------- REMINDER --------
+        // ---------- REMINDER SAVE ----------
         const reminderLine = extractReminder(text);
         if (reminderLine) {
             await addDoc(collection(db, "reminders"), {
-                title: reminderLine,
+                title: clientName + " – " + reminderLine,
                 time: "Auto",
                 client: clientName,
                 timestamp: new Date().toISOString()
@@ -641,20 +646,20 @@
             action.reminder = true;
         }
 
-        // -------- SHORT RESPONSE --------
-        let responseText = "Maine information process kar li.<br>";
+        // ---------- RESPONSE ----------
+        let responseText = "Process complete:\n";
 
         if(action.notebook)
-            responseText += `<u style="color:red">Notebook</u> update ho gaya.<br>`;
+            responseText += "Notebook ✔\n";
 
         if(action.client)
-            responseText += `<u style="color:red">Client</u> add ho gaya.<br>`;
+            responseText += "Client ✔\n";
 
         if(action.task)
-            responseText += `<u style="color:red">Task</u> create ho gayi.<br>`;
+            responseText += "Task ✔\n";
 
         if(action.reminder)
-            responseText += `<u style="color:red">Reminder</u> set ho gaya.<br>`;
+            responseText += "Reminder ✔\n";
 
         await addDoc(collection(db, "chats"), {
             role: "assistant",
