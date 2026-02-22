@@ -506,9 +506,20 @@
             ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
         } else { ui.micBtn.style.display = 'none'; }
 
+        let isProcessing = false; // Prevents Double Clicking Duplication
+
         async function sendMessage() {
+            if (isProcessing) return; // Agar already process ho raha hai, toh stop kar do
+            
             const text = ui.userInput.value.trim();
             if (!text || !DYNAMIC_OPENAI_KEY) return;
+
+            // Lock Input and Button
+            isProcessing = true;
+            ui.userInput.disabled = true;
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = true;
+            sendBtn.classList.add('opacity-50');
 
             ui.userInput.value = "";
             await addDoc(collection(db, "chats"), { role: "user", content: text, timestamp: new Date().toISOString() });
@@ -531,30 +542,30 @@
 
                 const systemPrompt = {
                     role: "system",
-                    content: `You are 'My AI Steno', Nilesh's smart Credit Case Manager at Bank of Baroda.
+                    content: `You are 'My AI Steno', an expert Credit Case Manager for Nilesh at Bank of Baroda.
                     
                     MEMORY:
                     ${memoryStr}
                     
-                    INSTRUCTIONS:
-                    1. Read Nilesh's message. Reply politely in Hinglish.
-                    2. IF Nilesh gives new info, tasks, or reminders, YOU MUST APPEND DATA TAGS at the very end of your reply to save the data.
-                    3. Output MULTIPLE tags if Nilesh gives multiple instructions. DO NOT SKIP ANY.
+                    STRICT INSTRUCTIONS:
+                    1. Reply naturally in Hinglish. Do NOT use brackets [...] for your regular text.
+                    2. DATA TAGS: You MUST append data tags at the end to save info. Put EACH tag on a NEW LINE.
+                    3. CRITICAL RULE: If Nilesh mentions client details AND asks for a notebook draft, you MUST create BOTH a [CASE: ...] tag AND a [NOTEBOOK: ...] tag. Never skip the CASE tag.
                     
-                    TAG FORMATS (Strictly use ONE pipe '|' inside brackets '[]'):
-                    [CASE: Client Name | Details]
-                    [TASK: Task Name | Status]
-                    [REMINDER: Reminder | Time or Date]
-                    [NOTEBOOK: Page Title | Professional draft]
+                    TAG FORMATS:
+                    [CASE: Client Name | Detail summary]
+                    [TASK: Task description | Status]
+                    [REMINDER: Reminder Title | Time]
+                    [NOTEBOOK: Page Title | Detailed Markdown Draft]
                     
                     EXAMPLE:
-                    Nilesh: "Vikas Singh ka credit card form fill ho gaya hai. Kal 2 baje card team se baat karne ka reminder set karo. Aur Vikas ka address verify karna task banakar add karo. Notebook me Retail meeting ka draft banao."
+                    Nilesh: "Anjali ka 30L loan approve hua. CA se kal 1 baje baat karne ka reminder lagao. Valuation check karne ka task add karo. Notebook me Anjali summary draft karo."
                     Assistant:
-                    Ji Nilesh, maine saari details save kar li hain.
-                    [CASE: Vikas Singh | Credit card form fill ho gaya hai.]
-                    [REMINDER: Card dispatch team se baat | Kal dopahar 2 baje]
-                    [TASK: Vikas Singh ka address verify karna | Pending]
-                    [NOTEBOOK: Retail Meeting | - Vikas Singh credit card form filled.\n- Address verification pending.]`
+                    Ji Nilesh, maine Anjali Mehra ki file update kar di hai, task aur reminder set kar diye hain. Notebook me draft bhi ready hai.
+                    [CASE: Anjali Mehra | 30 lakh loan approved.]
+                    [TASK: Check collateral valuation report | Pending]
+                    [REMINDER: CA se baat karna | Kal 1 baje]
+                    [NOTEBOOK: Anjali Mehra Loan Summary | **Loan**: ₹30L Approved.\n**Next Steps**:\n- Talk to CA\n- Check Valuation]`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
@@ -572,10 +583,10 @@
                 let aiReply = data.choices[0].message.content;
 
                 const regexes = [
-                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
-                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
-                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: (m[2] && m[2].trim()) ? m[2].trim() : "Anytime" }) },
-                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "" }) }
+                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
+                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
+                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: (m[2] && m[2].trim()) ? m[2].trim() : "Anytime" }) },
+                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "" }) }
                 ];
 
                 for (let r of regexes) {
@@ -589,10 +600,19 @@
 
                 await addDoc(collection(db, "chats"), { role: "assistant", content: aiReply, timestamp: new Date().toISOString() });
 
-            } catch (error) { alert("Error: " + error.message); } 
-            finally { document.getElementById(loadingId)?.remove(); }
+            } catch (error) { 
+                alert("Error: " + error.message); 
+            } finally { 
+                document.getElementById(loadingId)?.remove(); 
+                
+                // Unlock Input and Button after processing
+                isProcessing = false;
+                ui.userInput.disabled = false;
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50');
+                ui.userInput.focus(); // Wapas type karne ke liye focus dega
+            }
         }
-
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     </script>
