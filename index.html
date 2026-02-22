@@ -109,7 +109,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInWithRedirect, signInWithPopup, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         // IMPORT 'where' TO FILTER CHATS
         import { getFirestore, collection, addDoc, query, orderBy, where, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -176,9 +176,34 @@
         document.getElementById('tab-chat-mob').addEventListener('click', () => switchView('chat'));
         document.getElementById('tab-notes-mob').addEventListener('click', () => switchView('notes'));
 
-        document.getElementById('login-btn').addEventListener('click', () => {
-            document.getElementById('login-btn').innerText = "Redirecting to Google...";
-            signInWithRedirect(auth, provider);
+        async function handleLogin() {
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.innerText = "Signing in...";
+
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                const shouldFallbackToRedirect = ["auth/popup-blocked", "auth/cancelled-popup-request", "auth/popup-closed-by-user"].includes(error.code);
+
+                if (shouldFallbackToRedirect) {
+                    loginBtn.innerText = "Redirecting to Google...";
+                    await signInWithRedirect(auth, provider);
+                    return;
+                }
+
+                console.error("Google login failed:", error);
+                alert(`Login failed: ${error.message}`);
+            } finally {
+                loginBtn.innerText = "Sign in with Google";
+            }
+        }
+
+        document.getElementById('login-btn').addEventListener('click', handleLogin);
+
+        getRedirectResult(auth).catch((error) => {
+            console.error("Redirect login failed:", error);
+            alert(`Google login error: ${error.message}`);
+            document.getElementById('login-btn').innerText = "Sign in with Google";
         });
 
         onAuthStateChanged(auth, (user) => {
