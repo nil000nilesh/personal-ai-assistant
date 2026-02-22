@@ -23,7 +23,6 @@
         .client-updates-scroll::-webkit-scrollbar { width: 4px; }
         .client-updates-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
 
-        /* Naya CSS - Notebook page ko real diary jaisa look dene ke liye */
         .notebook-page {
             background-image: repeating-linear-gradient(transparent, transparent 27px, #e5e7eb 27px, #e5e7eb 28px);
             line-height: 28px;
@@ -38,6 +37,7 @@
             <h1 class="text-3xl font-extrabold mb-2 text-slate-800">My AI Steno</h1>
             <p class="text-gray-500 mb-8 text-sm">Your Smart Case Manager</p>
             <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
                 Sign in with Google
             </button>
         </div>
@@ -57,7 +57,6 @@
     </div>
 
     <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full h-full bg-white relative">
-        
         <nav class="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 shadow-2xl z-20">
             <div class="p-6 border-b border-slate-800">
                 <h1 class="text-2xl font-bold text-white tracking-wide">My AI Steno</h1>
@@ -85,7 +84,7 @@
                 <div class="p-3 md:p-4 bg-white border-t border-gray-200 shadow-[0_-4px_15px_rgba(0,0,0,0.02)] z-10">
                     <div class="max-w-4xl mx-auto flex gap-2 items-center">
                         <button id="mic-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 md:p-4 rounded-xl transition-all outline-none" title="Click to Speak">🎤</button>
-                        <input type="text" id="user-input" class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-3 md:p-4 rounded-xl text-black outline-none transition-all" placeholder="Ask AI, add a task, reminder, or draft a note..." />
+                        <input type="text" id="user-input" class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-3 md:p-4 rounded-xl text-black outline-none transition-all" placeholder="Tell AI new info, or ask a question..." />
                         <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-md transition-transform active:scale-95">Send</button>
                     </div>
                 </div>
@@ -196,7 +195,6 @@
                 const deskBtn = document.getElementById(`tab-${v}-desk`);
                 const mobBtn = document.getElementById(`tab-${v}-mob`);
                 const viewEl = document.getElementById(`view-${v}`);
-                
                 if(v === targetView) {
                     viewEl.classList.remove('hidden'); viewEl.classList.add('flex');
                     if(deskBtn) deskBtn.classList.add('active');
@@ -223,11 +221,9 @@
 
         onAuthStateChanged(auth, (user) => {
             hideAllStates();
-            if (user) {
-                if (user.email === ALLOWED_EMAIL) {
-                    if (!isPinVerified) { ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex'); } 
-                    else { checkAndLoadApp(); }
-                } else { alert("Unauthorized access!"); signOut(auth); }
+            if (user && user.email === ALLOWED_EMAIL) {
+                if (!isPinVerified) { ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex'); } 
+                else { checkAndLoadApp(); }
             } else { ui.login.classList.remove('hidden'); }
         });
 
@@ -286,7 +282,6 @@
                     if(!groupedNotes[normalizedTitle]) groupedNotes[normalizedTitle] = { displayTitle: note.title, updates: [] };
                     groupedNotes[normalizedTitle].updates.push(note);
                 });
-
                 for (const key in groupedNotes) {
                     const group = groupedNotes[key];
                     const card = document.createElement('div');
@@ -327,28 +322,20 @@
                 });
             });
 
-            // UPDATED NOTEBOOK LISTENER - Beautiful Human-like Format
             onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
                 ui.notebookGrid.innerHTML = ""; allNotebooks = [];
                 snapshot.forEach((docData) => {
                     const page = docData.data(); allNotebooks.push(page);
-                    
-                    // Format date nicely
                     const dateObj = new Date(page.timestamp);
                     const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-
                     const card = document.createElement('div');
-                    // Real Notebook Diary CSS styling
                     card.className = "bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 border-l-8 border-l-yellow-400 relative";
-                    
                     card.innerHTML = `
                         <div class="border-b-2 border-gray-200 pb-3 mb-4 flex justify-between items-end">
                             <h3 class="font-bold text-gray-800 text-xl tracking-wide">${page.title}</h3>
                             <span class="text-[11px] text-gray-400 font-semibold tracking-wider uppercase">${formattedDate}</span>
                         </div>
-                        <div class="text-gray-700 text-[15px] notebook-page whitespace-pre-wrap">
-                            ${page.content}
-                        </div>
+                        <div class="text-gray-700 text-[15px] notebook-page whitespace-pre-wrap">${page.content}</div>
                     `;
                     ui.notebookGrid.appendChild(card);
                 });
@@ -389,7 +376,6 @@
             ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
         } else { ui.micBtn.style.display = 'none'; }
 
-
         async function sendMessage() {
             const text = ui.userInput.value.trim();
             if (!text || !DYNAMIC_OPENAI_KEY) return;
@@ -404,50 +390,50 @@
             ui.chatBox.appendChild(loadingDiv); ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
             try {
+                // Formatting memory string carefully so AI reads it as facts
                 const memoryStr = `
-                CASES: ${allSavedNotes.map(n => `[Client: ${n.title} | Detail: ${n.content}]`).join(" ")}
-                TASKS: ${allTasks.map(t => `[Task: ${t.title} | Status: ${t.status}]`).join(" ")}
-                REMINDERS: ${allReminders.map(r => `[Reminder: ${r.title} | Time: ${r.time}]`).join(" ")}
-                NOTEBOOK: ${allNotebooks.map(nb => `[Page: ${nb.title} | Content: ${nb.content}]`).join(" ")}
+                --- START OF YOUR DATABASE MEMORY ---
+                SAVED CASES: ${allSavedNotes.map(n => `Title: ${n.title}, Detail: ${n.content}`).join(" || ")}
+                SAVED TASKS: ${allTasks.map(t => `Task: ${t.title}, Status: ${t.status}`).join(" || ")}
+                SAVED REMINDERS: ${allReminders.map(r => `Reminder: ${r.title}, Time: ${r.time}`).join(" || ")}
+                NOTEBOOK PAGES: ${allNotebooks.map(nb => `Page: ${nb.title}, Content: ${nb.content}`).join(" || ")}
+                --- END OF YOUR DATABASE MEMORY ---
                 `;
 
-                // UPDATED SYSTEM PROMPT FOR HUMAN-LIKE DRAFTING
                 const systemPrompt = {
                     role: "system",
-                    content: `You are an expert AI Assistant and Professional Credit Case Manager for Nilesh at Bank of Baroda.
+                    content: `You are 'My AI Steno', a highly intelligent Credit Case Manager for Nilesh at Bank of Baroda.
                     
-                    DATABASE MEMORY:
+                    DATABASE MEMORY (What you already know):
                     ${memoryStr}
                     
-                    YOUR STRICT RULES:
-                    1. MEMORY SEARCH FIRST: When asked a question, SEARCH the DATABASE MEMORY above. 
-                       - If found, reply based ONLY on that data.
-                       - If NOT found, explicitly say: "Ye information meri memory me nahi hai." Do not guess outside your memory.
-                       
-                    2. SAVING DATA (CRITICAL FORMAT): To save new information, append EXACT tags at the very end of your reply. Use exactly ONE pipe '|' to separate the Title and Content.
-                       - Client Note -> [CASE: Client Name | Single sentence update]
-                       - Task -> [TASK: Task Name | Status]
-                       - Reminder -> [REMINDER: Reminder Title | Time or Date]
-                       
-                       IMPORTANT - FOR NOTEBOOK:
-                       - Notebook Page -> [NOTEBOOK: Page Title | Professional Draft]
-                       - When saving to NOTEBOOK, act like a professional human secretary. Draft the content properly using bullet points, paragraphs, and structured format. Expand on the user's raw input to make it read like a clear, formal meeting note or memo. Use markdown-style bullet points (-) if needed.
-                       
-                    EXAMPLES OF SAVING DATA:
-                    Correct Case: [CASE: Kunal Patidar | Mobile: 9302467283, Loan: 487000. SMAX complain: beneficiary issue.]
-                    Correct Task: [TASK: Disburse Kunal Patidar loan via Tejas | Pending]
+                    CORE BEHAVIORS:
+                    1. UNDERSTAND INTENT: Differentiate between Nilesh ASKING a question vs. Nilesh PROVIDING new information.
                     
-                    Correct Notebook: [NOTEBOOK: Kunal Patidar Loan Draft | 
-                    Client overview and pending tasks drafted for record:
-                    - **Client Details**: Mr. Kunal Patidar.
-                    - **Contact Info**: Mobile Number 9302467283.
-                    - **Loan Amount**: ₹4,87,000 to be disbursed on Monday.
-                    - **Action Items**: 
-                      1. Check SMAX complaint status (Beneficiary issue). 
-                      2. Download loan documents from Tejas portal. 
-                      3. Open account using RMenu in Finacle.]
+                    2. IF NILESH IS ASKING A QUESTION:
+                       - Search the DATABASE MEMORY above.
+                       - If you find the answer, reply naturally using that data.
+                       - ONLY if the answer is completely missing, say: "Ye information meri memory me nahi hai."
+                       
+                    3. IF NILESH IS PROVIDING NEW INFO / TASKS (AUTO-SAVE MODE):
+                       - DO NOT say "meri memory me nahi hai". 
+                       - Acknowledge the new info naturally (e.g., "Ji Nilesh, maine note kar liya hai.") and AUTOMATICALLY extract and save the data using the tags below.
+                       - Always create a NOTEBOOK draft if the input contains detailed client info, actions, or meeting summaries.
+                       
+                       TAG FORMATS (Use exactly ONE pipe '|'):
+                       - [CASE: Client Name | Single detail update]
+                       - [TASK: Task Name | Status]
+                       - [REMINDER: Title | Time or Date]
+                       - [NOTEBOOK: Title | Professional detailed draft with bullet points using markdown]
+                       
+                    EXAMPLE SCENARIO:
+                    Nilesh: "Kunal Patidar ka loan 487000 hai, Monday ko disburse karna hai. SMAX me beneficiary issue hai."
+                    Your Reply: "Ji Nilesh, maine Kunal Patidar ki details Client Cases, Tasks aur Notebook me save kar li hain."
+                    [CASE: Kunal Patidar | Mobile: 9302467283, Loan: 487000, SMAX complain: beneficiary issue.]
+                    [TASK: Disburse Kunal Patidar loan | Monday]
+                    [NOTEBOOK: Kunal Patidar - Loan Processing | **Client Details**: Mr. Kunal Patidar\n**Loan Amount**: ₹4,87,000\n**Action Items**:\n- Check SMAX beneficiary issue.\n- Prepare for Monday disbursement.]
                     
-                    3. Always reply in friendly Hinglish.`
+                    Always reply in polite Hinglish.`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
