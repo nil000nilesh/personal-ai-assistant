@@ -226,13 +226,11 @@
             if(targetView === 'chat') ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
         }
 
-        // Setup Navigation Listeners
         views.forEach(v => {
             document.getElementById(`tab-${v}-desk`)?.addEventListener('click', () => switchView(v));
             document.getElementById(`tab-${v}-mob`)?.addEventListener('click', () => switchView(v));
         });
 
-        // Authentication Logic
         document.getElementById('login-btn').addEventListener('click', async () => {
             document.getElementById('login-btn').innerText = "Signing in...";
             try { await signInWithPopup(auth, provider); } 
@@ -285,7 +283,6 @@
         });
 
         function loadAppListeners() {
-            // 1. CHATS
             const chatQuery = query(collection(db, "chats"), where("timestamp", ">=", sessionStartTime), orderBy("timestamp", "asc"));
             onSnapshot(chatQuery, (snapshot) => {
                 chatHistory = []; ui.chatBox.innerHTML = ""; 
@@ -297,7 +294,6 @@
                 ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
             });
 
-            // 2. NOTES (Client Cases)
             onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "asc")), (snapshot) => {
                 ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {}; 
                 snapshot.forEach((docData) => {
@@ -322,7 +318,6 @@
                 }
             });
 
-            // 3. TASKS
             onSnapshot(query(collection(db, "tasks"), orderBy("timestamp", "desc")), (snapshot) => {
                 ui.tasksList.innerHTML = ""; allTasks = [];
                 snapshot.forEach((docData) => {
@@ -336,7 +331,6 @@
                 });
             });
 
-            // 4. REMINDERS
             onSnapshot(query(collection(db, "reminders"), orderBy("timestamp", "desc")), (snapshot) => {
                 ui.remindersList.innerHTML = ""; allReminders = [];
                 snapshot.forEach((docData) => {
@@ -349,7 +343,6 @@
                 });
             });
 
-            // 5. NOTEBOOK
             onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
                 ui.notebookGrid.innerHTML = ""; allNotebooks = [];
                 snapshot.forEach((docData) => {
@@ -389,7 +382,6 @@
             ui.chatBox.appendChild(loadingDiv); ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
             try {
-                // Combine all data for AI to Search
                 const memoryStr = `
                 CASES: ${allSavedNotes.map(n => `[Client: ${n.title} | Detail: ${n.content}]`).join(" ")}
                 TASKS: ${allTasks.map(t => `[Task: ${t.title} | Status: ${t.status}]`).join(" ")}
@@ -399,21 +391,29 @@
 
                 const systemPrompt = {
                     role: "system",
-                    content: `You are an expert AI Assistant and Case Manager for Nilesh.
+                    content: `You are an expert AI Assistant and Credit Case Manager for Nilesh at Bank of Baroda.
                     
                     DATABASE MEMORY:
                     ${memoryStr}
                     
                     YOUR STRICT RULES:
-                    1. MEMORY SEARCH FIRST: When Nilesh asks a question, SEARCH the DATABASE MEMORY above. 
-                       - If you find the answer, reply based ONLY on that data.
-                       - If the answer is NOT in the database memory, explicitly say: "Ye information meri memory (saved data) me nahi hai." Do not guess outside your memory for his personal data.
-                    2. SAVING DATA: To save new information, append the corresponding tag at the END of your reply.
-                       - Client Note: [CASE: Client Name || Detail]
-                       - Task: [TASK: Task Name || Pending]
-                       - Reminder: [REMINDER: Reminder Title || Time/Date]
-                       - Notebook Page: [NOTEBOOK: Page Title || Full Content]
-                    3. Always reply in friendly Hinglish and confirm what you saved/searched.`
+                    1. MEMORY SEARCH FIRST: When asked a question, SEARCH the DATABASE MEMORY above. 
+                       - If found, reply based ONLY on that data.
+                       - If NOT found, explicitly say: "Ye information meri memory me nahi hai." Do not guess outside your memory.
+                       
+                    2. SAVING DATA (CRITICAL FORMAT): To save new information, append EXACT tags at the very end of your reply. Use exactly ONE pipe '|' to separate the Title and Content. DO NOT put multiple pipes inside the brackets.
+                       - To save a Client Note -> [CASE: Client Name | Detailed Note]
+                       - To save a Task -> [TASK: Task Name | Status]
+                       - To save a Reminder -> [REMINDER: Reminder Title | Time or Date]
+                       - To save a Notebook Page -> [NOTEBOOK: Page Title | Full Content]
+                       
+                    EXAMPLES OF SAVING DATA (MIMIC THIS EXACTLY):
+                    Correct Case: [CASE: Kunal Patidar | Mobile: 9302467283, Loan: 487000. SMAX complain status: beneficiary issue. Open account with RMenu in Finacle.]
+                    Correct Task: [TASK: Disburse Kunal Patidar loan via Tejas | Pending]
+                    Correct Reminder: [REMINDER: Check Tejas Portal | Monday Morning]
+                    Correct Notebook: [NOTEBOOK: Loan Process | RMenu is required in Finacle...]
+                    
+                    3. Always reply in friendly Hinglish.`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
@@ -430,12 +430,12 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                // Extraction Logic using Regex for all 4 Types
+                // Forgiving Regex: catches [CASE: Title | Content] or [CASE: Title || Content] with extra spaces
                 const regexes = [
-                    { re: /\[CASE:\s*(.*?)\s*\|\|\s*(.*?)\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2].trim() }) },
-                    { re: /\[TASK:\s*(.*?)\s*\|\|\s*(.*?)\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2].trim() }) },
-                    { re: /\[REMINDER:\s*(.*?)\s*\|\|\s*(.*?)\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2].trim() }) },
-                    { re: /\[NOTEBOOK:\s*(.*?)\s*\|\|\s*(.*?)\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2].trim() }) }
+                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2].trim() }) },
+                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2].trim() }) },
+                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2].trim() }) },
+                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2].trim() }) }
                 ];
 
                 for (let r of regexes) {
@@ -444,7 +444,7 @@
                         const payload = { ...r.map(match), timestamp: new Date().toISOString() };
                         await addDoc(collection(db, r.col), payload);
                     }
-                    aiReply = aiReply.replace(r.re, '').trim(); // Clean reply
+                    aiReply = aiReply.replace(r.re, '').trim(); 
                 }
 
                 await addDoc(collection(db, "chats"), { role: "assistant", content: aiReply, timestamp: new Date().toISOString() });
