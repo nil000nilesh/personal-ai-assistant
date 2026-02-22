@@ -399,37 +399,33 @@
                 -----------------------
                 `;
 
+                // SHORT AND POWERFUL PROMPT
                 const systemPrompt = {
                     role: "system",
-                    content: `You are 'My AI Steno', a highly intelligent Credit Case Manager for Nilesh at Bank of Baroda.
+                    content: `You are 'My AI Steno', Nilesh's smart Credit Case Manager at Bank of Baroda.
                     
+                    MEMORY:
                     ${memoryStr}
                     
-                    HOW TO RESPOND:
-                    Whenever Nilesh gives you instructions, your reply MUST have TWO parts:
-                    Part 1: A friendly conversational reply in Hinglish. (NEVER put brackets [...] around this part).
-                    Part 2: The Data Tags to save the information. (These MUST be enclosed in brackets).
+                    INSTRUCTIONS:
+                    1. Read Nilesh's message. Reply politely in Hinglish.
+                    2. IF Nilesh gives new info, tasks, or reminders, YOU MUST APPEND DATA TAGS at the very end of your reply to save the data.
+                    3. Output MULTIPLE tags if Nilesh gives multiple instructions. DO NOT SKIP ANY.
                     
-                    CRITICAL RULES FOR DATA TAGS:
-                    - You MUST use EXACTLY these tag names: CASE, TASK, REMINDER, NOTEBOOK.
-                    - Use EXACTLY ONE pipe '|' to separate the Title and Content.
-                    - If Nilesh gives multiple commands (e.g., updating a case AND adding a task), you MUST write MULTIPLE separate tags. DO NOT miss any.
+                    TAG FORMATS (Strictly use ONE pipe '|' inside brackets '[]'):
+                    [CASE: Client Name | Details]
+                    [TASK: Task Name | Status]
+                    [REMINDER: Reminder | Time or Date]
+                    [NOTEBOOK: Page Title | Professional draft]
                     
-                    FORMAT TO STRICTLY FOLLOW:
-                    [CASE: Client Name | Detail update]
-                    [TASK: Task description | Status]
-                    [REMINDER: Reminder Title | Time/Date]
-                    [NOTEBOOK: Page Title | Detailed draft]
-                    
-                    EXAMPLE OF PERFECT RESPONSE FOR MULTIPLE TASKS:
-                    User: "Amit Sharma ka 15 lakh ka car loan login ho gaya hai. Kal 10 baje branch manager se is par discuss karne ka reminder lagao. Aur Amit se ITR mangwane ka task add karo."
+                    EXAMPLE:
+                    Nilesh: "Vikas Singh ka credit card form fill ho gaya hai. Kal 2 baje card team se baat karne ka reminder set karo. Aur Vikas ka address verify karna task banakar add karo. Notebook me Retail meeting ka draft banao."
                     Assistant:
-                    Ji Nilesh, maine Amit Sharma ka case update kar diya hai. Reminder aur task dono add kar diye hain.
-                    [CASE: Amit Sharma | 15 lakh car loan file login done.]
-                    [REMINDER: Discuss Amit Sharma file with BM | Kal subah 10 baje]
-                    [TASK: Amit se 2 saal ka ITR mangwana | Pending]
-                    
-                    DO NOT put regular conversation inside brackets. Brackets are strictly for the data tags!`
+                    Ji Nilesh, maine saari details save kar li hain.
+                    [CASE: Vikas Singh | Credit card form fill ho gaya hai.]
+                    [REMINDER: Card dispatch team se baat | Kal dopahar 2 baje]
+                    [TASK: Vikas Singh ka address verify karna | Pending]
+                    [NOTEBOOK: Retail Meeting | - Vikas Singh credit card form filled.\n- Address verification pending.]`
                 };
 
                 const recentHistory = chatHistory.slice(-15);
@@ -446,12 +442,12 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                // Ultra-Smart Regex
+                // Forgiving Regex for all 4 Tabs
                 const regexes = [
-                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
-                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
-                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: (m[2] && m[2].trim()) ? m[2].trim() : "Anytime" }) },
-                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "" }) }
+                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
+                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
+                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: (m[2] && m[2].trim()) ? m[2].trim() : "Anytime" }) },
+                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "" }) }
                 ];
 
                 for (let r of regexes) {
@@ -468,7 +464,6 @@
             } catch (error) { alert("Error: " + error.message); } 
             finally { document.getElementById(loadingId)?.remove(); }
         }
-
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     </script>
