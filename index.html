@@ -376,7 +376,7 @@
             ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
         } else { ui.micBtn.style.display = 'none'; }
 
-        async function sendMessage() {
+       async function sendMessage() {
             const text = ui.userInput.value.trim();
             if (!text || !DYNAMIC_OPENAI_KEY) return;
 
@@ -390,7 +390,6 @@
             ui.chatBox.appendChild(loadingDiv); ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
             try {
-                // Formatting memory string carefully so AI reads it as facts
                 const memoryStr = `
                 --- START OF YOUR DATABASE MEMORY ---
                 SAVED CASES: ${allSavedNotes.map(n => `Title: ${n.title}, Detail: ${n.content}`).join(" || ")}
@@ -420,9 +419,9 @@
                        - Acknowledge the new info naturally (e.g., "Ji Nilesh, maine note kar liya hai.") and AUTOMATICALLY extract and save the data using the tags below.
                        - Always create a NOTEBOOK draft if the input contains detailed client info, actions, or meeting summaries.
                        
-                       TAG FORMATS (Use exactly ONE pipe '|'):
+                       TAG FORMATS (Always use exactly ONE pipe '|'. If no status/time is provided, use a default like 'Pending'):
                        - [CASE: Client Name | Single detail update]
-                       - [TASK: Task Name | Status]
+                       - [TASK: Task Name | Pending]
                        - [REMINDER: Title | Time or Date]
                        - [NOTEBOOK: Title | Professional detailed draft with bullet points using markdown]
                        
@@ -450,11 +449,12 @@
 
                 let aiReply = data.choices[0].message.content;
 
+                // SUPER-FORGIVING REGEX: Ab agar AI status ya pipe (|) bhool bhi jaye, to code "Pending" maan kar save kar lega
                 const regexes = [
-                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2].trim() }) },
-                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2].trim() }) },
-                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2].trim() }) },
-                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2].trim() }) }
+                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2] ? m[2].trim() : "Updated." }) },
+                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2] ? m[2].trim() : "Pending" }) },
+                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2] ? m[2].trim() : "Anytime" }) },
+                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([\s\S]*?))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2] ? m[2].trim() : "" }) }
                 ];
 
                 for (let r of regexes) {
