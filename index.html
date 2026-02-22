@@ -509,113 +509,144 @@
         let isProcessing = false; // Prevents Double Clicking Duplication
 
         async function sendMessage() {
-            if (isProcessing) return; // Agar already process ho raha hai, toh stop kar do
-            
-            const text = ui.userInput.value.trim();
-            if (!text || !DYNAMIC_OPENAI_KEY) return;
+    if (isProcessing) return;
 
-            // Lock Input and Button
-            isProcessing = true;
-            ui.userInput.disabled = true;
-            const sendBtn = document.getElementById('send-btn');
-            sendBtn.disabled = true;
-            sendBtn.classList.add('opacity-50');
+    const text = ui.userInput.value.trim();
+    if (!text || !DYNAMIC_OPENAI_KEY) return;
 
-            ui.userInput.value = "";
-            await addDoc(collection(db, "chats"), { role: "user", content: text, timestamp: new Date().toISOString() });
+    isProcessing = true;
+    ui.userInput.disabled = true;
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.disabled = true;
+    sendBtn.classList.add('opacity-50');
 
-            const loadingId = "loading-" + Date.now();
-            const loadingDiv = document.createElement('div'); loadingDiv.id = loadingId;
-            loadingDiv.className = "text-blue-500 text-sm ml-2 font-bold animate-pulse py-2";
-            loadingDiv.textContent = "AI is thinking and saving data...";
-            ui.chatBox.appendChild(loadingDiv); ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
+    ui.userInput.value = "";
+    await addDoc(collection(db, "chats"), {
+        role: "user",
+        content: text,
+        timestamp: new Date().toISOString()
+    });
 
-            try {
-                const memoryStr = `
-                --- DATABASE MEMORY ---
-                CASES: ${allSavedNotes.map(n => `Title: ${n.title}, Detail: ${n.content}`).join(" || ")}
-                TASKS: ${allTasks.map(t => `Task: ${t.title}, Status: ${t.status}`).join(" || ")}
-                REMINDERS: ${allReminders.map(r => `Reminder: ${r.title}, Time: ${r.time}`).join(" || ")}
-                NOTEBOOK: ${allNotebooks.map(nb => `Page: ${nb.title}, Content: ${nb.content}`).join(" || ")}
-                -----------------------
-                `;
+    const loadingId = "loading-" + Date.now();
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = loadingId;
+    loadingDiv.className = "text-blue-500 text-sm ml-2 font-bold animate-pulse py-2";
+    loadingDiv.textContent = "AI is thinking...";
+    ui.chatBox.appendChild(loadingDiv);
 
-                // ADVANCED PROMPT WITH CLIENT CONFIRMATION LOGIC
-                const systemPrompt = {
-                    role: "system",
-                    content: `You are 'My AI Steno', an expert Credit Case Manager for Nilesh at Bank of Baroda.
-                    
-                    MEMORY:
-                    ${memoryStr}
-                    
-                    STRICT INSTRUCTIONS:
-                    1. Reply naturally in Hinglish. Do NOT use brackets [...] for your regular text.
-                    2. DATA TAGS: You MUST append data tags at the end to save info. Put EACH tag on a NEW LINE.
-                    3. If Nilesh asks for a notebook draft, you MUST create BOTH a [CASE: ...] tag AND a [NOTEBOOK: ...] tag.
-                    
-                    CRITICAL RULE - CLIENT NAME VERIFICATION (DUPLICATE CHECK):
-                    When Nilesh gives details for a client, YOU MUST FIRST CHECK if the client's name already exists in 'CASES' memory.
-                    - SCENARIO A (New Name): If the name is NOT in memory, generate the tags immediately.
-                    - SCENARIO B (Name Already Exists): If the name IS ALREADY in memory, DO NOT GENERATE ANY DATA TAGS YET. Instead, ask Nilesh: "Nilesh, '[Client Name]' naam se pehle hi ek case saved hai. Kya ye wahi client hai jisme update karna hai, ya koi naya client hai?"
-                    - SCENARIO C (Nilesh Replies to Scenario B): If Nilesh says "Haan wahi hai" or "Yes", generate the tags using the exact old name. If he says "Naya hai" or "New", generate the tag with a marker like [CASE: Client Name (New) | ...].
-                    
-                    TAG FORMATS:
-                    [CASE: Client Name | Detail summary]
-                    [TASK: Task description | Status]
-                    [REMINDER: Reminder Title | Time]
-                    [NOTEBOOK: Page Title | Detailed Markdown Draft]
-                    
-                    EXAMPLE (Scenario B - Existing Client):
-                    Nilesh: "Rakesh ka naya document aagaya hai." (If Rakesh is already in memory)
-                    Assistant: "Nilesh, 'Rakesh' naam se ek case pehle se humari list me hai. Kya mujhe ye naye documents usi file me update karne hain ya ye koi doosra Rakesh hai?"
-                    (Notice: No tags are generated here)`
-                };
+    try {
 
-                const recentHistory = chatHistory.slice(-15);
-                const apiMessages = [systemPrompt, ...recentHistory, { role: "user", content: text }];
+        // ---------- FRONTEND DUPLICATE CHECK ----------
+        const extractedName = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
+        let existingClient = null;
 
-                const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${DYNAMIC_OPENAI_KEY}` },
-                    body: JSON.stringify({ model: "gpt-3.5-turbo", messages: apiMessages })
+        if (extractedName) {
+            const name = extractedName[0].toUpperCase();
+            existingClient = allSavedNotes.find(n =>
+                n.title.toUpperCase() === name
+            );
+        }
+
+        // ---------- MEMORY STRING ----------
+        const memoryStr = `
+        CASES: ${allSavedNotes.map(n => `${n.title}`).join(", ") || "None"}
+        TASKS: ${allTasks.map(t => t.title).join(", ") || "None"}
+        REMINDERS: ${allReminders.map(r => r.title).join(", ") || "None"}
+        NOTEBOOK: ${allNotebooks.map(nb => nb.title).join(", ") || "None"}
+        `;
+
+        const systemPrompt = {
+            role: "system",
+            content: `
+            You are AI Steno Assistant.
+            If information not in memory, say clearly:
+            "Meri memory me ye information available nahi hai."
+
+            MEMORY:
+            ${memoryStr}
+
+            Always use data tags:
+            [CASE: name | detail]
+            [TASK: title | status]
+            [REMINDER: title | time]
+            [NOTEBOOK: title | content]
+            `
+        };
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${DYNAMIC_OPENAI_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [systemPrompt, { role: "user", content: text }]
+            })
+        });
+
+        const data = await response.json();
+        let aiReply = data.choices[0].message.content;
+
+        // ---------- STRONG TAG PARSER ----------
+        const tagRegex = /\[(CASE|TASK|REMINDER|NOTEBOOK):\s*(.*?)\|(.*?)\]/gi;
+
+        let match;
+        while ((match = tagRegex.exec(aiReply)) !== null) {
+
+            const type = match[1].trim();
+            const title = match[2].trim();
+            const content = match[3].trim();
+
+            const payload = {
+                title: title,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+
+            if (type === "CASE") {
+                await addDoc(collection(db, "notes"), payload);
+            }
+
+            if (type === "TASK") {
+                await addDoc(collection(db, "tasks"), {
+                    title: title,
+                    status: content,
+                    timestamp: new Date().toISOString()
                 });
+            }
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
+            if (type === "REMINDER") {
+                await addDoc(collection(db, "reminders"), {
+                    title: title,
+                    time: content,
+                    timestamp: new Date().toISOString()
+                });
+            }
 
-                let aiReply = data.choices[0].message.content;
-
-                const regexes = [
-                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "Updated." }) },
-                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: (m[2] && m[2].trim()) ? m[2].trim() : "Pending" }) },
-                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: (m[2] && m[2].trim()) ? m[2].trim() : "Anytime" }) },
-                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?\s*([^\]]*))?\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: (m[2] && m[2].trim()) ? m[2].trim() : "" }) }
-                ];
-
-                for (let r of regexes) {
-                    let match;
-                    while ((match = r.re.exec(aiReply)) !== null) {
-                        const payload = { ...r.map(match), timestamp: new Date().toISOString() };
-                        await addDoc(collection(db, r.col), payload);
-                    }
-                    aiReply = aiReply.replace(r.re, '').trim(); 
-                }
-
-                await addDoc(collection(db, "chats"), { role: "assistant", content: aiReply, timestamp: new Date().toISOString() });
-
-            } catch (error) { 
-                alert("Error: " + error.message); 
-            } finally { 
-                document.getElementById(loadingId)?.remove(); 
-                
-                // Unlock Input and Button after processing
-                isProcessing = false;
-                ui.userInput.disabled = false;
-                sendBtn.disabled = false;
-                sendBtn.classList.remove('opacity-50');
-                ui.userInput.focus(); 
+            if (type === "NOTEBOOK") {
+                await addDoc(collection(db, "notebooks"), payload);
             }
         }
+
+        aiReply = aiReply.replace(tagRegex, '').trim();
+
+        await addDoc(collection(db, "chats"), {
+            role: "assistant",
+            content: aiReply,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        document.getElementById(loadingId)?.remove();
+        isProcessing = false;
+        ui.userInput.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('opacity-50');
+    }
+}
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     </script>
