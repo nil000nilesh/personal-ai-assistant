@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal AI Assistant</title>
+    <title>My AI Steno - Bank of Baroda</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -57,23 +57,13 @@
                 <h1 class="text-2xl font-bold text-white tracking-wide">My AI Steno</h1>
             </div>
             <div class="flex-1 py-4 flex flex-col gap-1 px-3">
-                <button id="tab-chat-desk" class="tab-btn active px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    💬 Chat
-                </button>
-                <button id="tab-notes-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    📂 Client Cases
-                </button>
-                <button id="tab-tasks-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    ✅ Tasks
-                </button>
-                <button id="tab-reminders-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    ⏰ Reminders
-                </button>
-                <button id="tab-notebook-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">
-                    📓 Notebook
-                </button>
+                <button id="tab-chat-desk" class="tab-btn active px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">💬 Chat</button>
+                <button id="tab-notes-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">📂 Client Cases</button>
+                <button id="tab-tasks-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">✅ Tasks</button>
+                <button id="tab-reminders-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">⏰ Reminders</button>
+                <button id="tab-notebook-desk" class="tab-btn px-4 py-3 rounded-lg text-left font-medium transition-all flex items-center gap-3">📓 Notebook</button>
             </div>
-            <div class="p-4 border-t border-slate-800">
+            <div class="p-4 border-t border-slate-800 flex flex-col gap-2">
                 <button id="logout-btn-desk" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 px-4 py-2 rounded-lg font-medium transition-colors text-sm">Log Out</button>
             </div>
         </nav>
@@ -88,9 +78,7 @@
                 <div id="chat-box" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col scroll-smooth"></div>
                 <div class="p-3 md:p-4 bg-white border-t border-gray-200 shadow-[0_-4px_15px_rgba(0,0,0,0.02)] z-10">
                     <div class="max-w-4xl mx-auto flex gap-2 items-center">
-                        <button id="mic-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 md:p-4 rounded-xl transition-all outline-none" title="Click to Speak">
-                            🎤
-                        </button>
+                        <button id="mic-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 md:p-4 rounded-xl transition-all outline-none" title="Click to Speak">🎤</button>
                         <input type="text" id="user-input" class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-3 md:p-4 rounded-xl text-black outline-none transition-all" placeholder="Ask AI, add a task, reminder, or note..." />
                         <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-md transition-transform active:scale-95">Send</button>
                     </div>
@@ -132,21 +120,11 @@
         </main>
 
         <nav class="md:hidden absolute bottom-0 w-full bg-white border-t border-gray-200 flex items-center h-[60px] shadow-[0_-5px_10px_rgba(0,0,0,0.02)] z-20 overflow-x-auto whitespace-nowrap px-2">
-            <button id="tab-chat-mob" class="tab-btn-mob active min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">
-                💬 Chat
-            </button>
-            <button id="tab-notes-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">
-                📂 Cases
-            </button>
-            <button id="tab-tasks-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">
-                ✅ Tasks
-            </button>
-            <button id="tab-reminders-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">
-                ⏰ Reminds
-            </button>
-            <button id="tab-notebook-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">
-                📓 Notes
-            </button>
+            <button id="tab-chat-mob" class="tab-btn-mob active min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">💬 Chat</button>
+            <button id="tab-notes-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">📂 Cases</button>
+            <button id="tab-tasks-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">✅ Tasks</button>
+            <button id="tab-reminders-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">⏰ Reminds</button>
+            <button id="tab-notebook-mob" class="tab-btn-mob min-w-[70px] flex-1 h-full flex flex-col items-center justify-center gap-1 text-gray-500 text-[10px]">📓 Notes</button>
         </nav>
     </div>
 
@@ -178,7 +156,7 @@
         let allNotebooks = [];
 
         let isPinVerified = false;
-        let DYNAMIC_OPENAI_KEY = "";
+        let DYNAMIC_OPENAI_KEY = ""; 
         let sessionStartTime;
 
         const ui = {
@@ -260,13 +238,16 @@
         async function checkAndLoadApp() {
             hideAllStates();
             try {
+                // Firebase Database se API Key fetch kar raha hai
                 const keyDoc = await getDoc(doc(db, "system_settings", "api_config"));
                 if (keyDoc.exists() && keyDoc.data().openai_key) {
                     DYNAMIC_OPENAI_KEY = keyDoc.data().openai_key;
                     sessionStartTime = new Date().toISOString(); 
                     ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
                     loadAppListeners();
-                } else { ui.apiKey.classList.remove('hidden'); ui.apiKey.classList.add('flex'); }
+                } else { 
+                    ui.apiKey.classList.remove('hidden'); ui.apiKey.classList.add('flex'); 
+                }
             } catch (error) { alert("Database connection failed."); }
         }
 
@@ -368,6 +349,30 @@
             ui.chatBox.appendChild(div);
         }
 
+        // --- Voice Setup ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isRecording = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'hi-IN';
+
+            recognition.onstart = () => { isRecording = true; ui.micBtn.classList.add('recording'); ui.userInput.placeholder = "Listening..."; };
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) ui.userInput.value += event.results[i][0].transcript + ' ';
+                    else interimTranscript += event.results[i][0].transcript;
+                }
+            };
+            recognition.onend = () => { isRecording = false; ui.micBtn.classList.remove('recording'); ui.userInput.placeholder = "Ask AI, add a task, reminder, or note..."; };
+            ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
+        } else { ui.micBtn.style.display = 'none'; }
+
+
         async function sendMessage() {
             const text = ui.userInput.value.trim();
             if (!text || !DYNAMIC_OPENAI_KEY) return;
@@ -401,7 +406,7 @@
                        - If found, reply based ONLY on that data.
                        - If NOT found, explicitly say: "Ye information meri memory me nahi hai." Do not guess outside your memory.
                        
-                    2. SAVING DATA (CRITICAL FORMAT): To save new information, append EXACT tags at the very end of your reply. Use exactly ONE pipe '|' to separate the Title and Content. DO NOT put multiple pipes inside the brackets.
+                    2. SAVING DATA (CRITICAL FORMAT): To save new information, append EXACT tags at the very end of your reply. Use exactly ONE pipe '|' to separate the Title and Content.
                        - To save a Client Note -> [CASE: Client Name | Detailed Note]
                        - To save a Task -> [TASK: Task Name | Status]
                        - To save a Reminder -> [REMINDER: Reminder Title | Time or Date]
@@ -430,12 +435,12 @@
 
                 let aiReply = data.choices[0].message.content;
 
-                // Forgiving Regex: catches [CASE: Title | Content] or [CASE: Title || Content] with extra spaces
+                // ULTRA-SMART REGEX: Handles newlines, single/double pipes, and extra spaces
                 const regexes = [
-                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2].trim() }) },
-                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2].trim() }) },
-                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2].trim() }) },
-                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)(?:\|\|?)\s*([^\]]+)\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2].trim() }) }
+                    { re: /\[(?:CASE|CLIENT|NOTE)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "notes", map: m => ({ title: m[1].trim(), content: m[2].trim() }) },
+                    { re: /\[(?:TASK)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "tasks", map: m => ({ title: m[1].trim(), status: m[2].trim() }) },
+                    { re: /\[(?:REMINDER)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "reminders", map: m => ({ title: m[1].trim(), time: m[2].trim() }) },
+                    { re: /\[(?:NOTEBOOK|PAGE)\s*:\s*([^|\]]+)\|\|?\s*([\s\S]*?)\]/gi, col: "notebooks", map: m => ({ title: m[1].trim(), content: m[2].trim() }) }
                 ];
 
                 for (let r of regexes) {
