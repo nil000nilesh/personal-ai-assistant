@@ -537,46 +537,91 @@
 
     try {
 
-        // -------- CLIENT DETECTION --------
+        // -------- CLIENT DETECT --------
         const clientMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
         const clientName = clientMatch ? clientMatch[0].trim() : "General";
 
-        const existingClient = allSavedNotes.find(
-            n => n.title.toUpperCase() === clientName.toUpperCase()
-        );
+        let action = { notebook:false, client:false, task:false, reminder:false };
 
-        let action = {
-            notebook:false,
-            client:false,
-            task:false,
-            reminder:false
-        };
+        // -------- SMART NOTEBOOK DRAFT --------
+        function generateNotebookDraft(text, client) {
+            const bullets = [];
 
-        // -------- ALWAYS SAVE NOTEBOOK --------
+            if(/LC|letter of credit/i.test(text))
+                bullets.push("Bangladesh LC checked");
+
+            const dateMatch = text.match(/(\d{1,2}\s*[A-Za-z]+)/);
+            if(dateMatch)
+                bullets.push("Shipment deadline: " + dateMatch[0]);
+
+            if(/invoice/i.test(text)) bullets.push("BL & Invoice ready");
+
+            if(/insurance/i.test(text))
+                bullets.push("Insurance pending (CIF 110% required)");
+
+            if(/submit/i.test(text))
+                bullets.push("Client advised to submit documents by tomorrow");
+
+            if(/delay|discrepancy/i.test(text))
+                bullets.push("Risk: Discrepancy & payment delay if late");
+
+            if(bullets.length === 0)
+                bullets.push(text);
+
+            return `LC Status Update – ${client}\n\n• ` + bullets.join("\n• ");
+        }
+
+        // -------- TASK EXTRACTOR --------
+        function extractTask(text) {
+            if(/insurance/i.test(text))
+                return "Submit Insurance document for LC";
+
+            if(/submit document/i.test(text))
+                return "Submit LC documents";
+
+            return null;
+        }
+
+        // -------- REMINDER EXTRACTOR --------
+        function extractReminder(text) {
+            if(/tomorrow|kal/i.test(text))
+                return "Follow up for Insurance submission – Tomorrow";
+
+            return null;
+        }
+
+        // -------- SAVE NOTEBOOK --------
+        const notebookDraft = generateNotebookDraft(text, clientName);
+
         await addDoc(collection(db, "notebooks"), {
             title: clientName + " Update",
-            content: text,
+            content: notebookDraft,
             client: clientName,
             timestamp: new Date().toISOString()
         });
 
         action.notebook = true;
 
-        // -------- CREATE CLIENT IF NEW --------
+        // -------- CLIENT CREATE IF NEW --------
+        const existingClient = allSavedNotes.find(
+            n => n.title.toUpperCase() === clientName.toUpperCase()
+        );
+
         if (!existingClient) {
             await addDoc(collection(db, "notes"), {
                 title: clientName,
-                content: "New case created",
+                content: "Case created",
                 client: clientName,
                 timestamp: new Date().toISOString()
             });
             action.client = true;
         }
 
-        // -------- TASK DETECTION --------
-        if (/(submit|check|verify|call|send|complete|karna|bhejna)/i.test(text)) {
+        // -------- TASK --------
+        const taskLine = extractTask(text);
+        if (taskLine) {
             await addDoc(collection(db, "tasks"), {
-                title: text,
+                title: taskLine,
                 status: "Pending",
                 client: clientName,
                 timestamp: new Date().toISOString()
@@ -584,28 +629,29 @@
             action.task = true;
         }
 
-        // -------- REMINDER DETECTION --------
-        if (/(kal|tomorrow|\d{1,2}\s*(am|pm)|last date|remind)/i.test(text)) {
+        // -------- REMINDER --------
+        const reminderLine = extractReminder(text);
+        if (reminderLine) {
             await addDoc(collection(db, "reminders"), {
-                title: text,
-                time: "Auto detected",
+                title: reminderLine,
+                time: "Auto",
                 client: clientName,
                 timestamp: new Date().toISOString()
             });
             action.reminder = true;
         }
 
-        // -------- RESPONSE BUILDER --------
-        let responseText = "Maine information save kar li.<br>";
+        // -------- SHORT RESPONSE --------
+        let responseText = "Maine information process kar li.<br>";
 
         if(action.notebook)
-            responseText += `<u style="color:red">Notebook</u> me likh diya.<br>`;
+            responseText += `<u style="color:red">Notebook</u> update ho gaya.<br>`;
 
         if(action.client)
             responseText += `<u style="color:red">Client</u> add ho gaya.<br>`;
 
         if(action.task)
-            responseText += `<u style="color:red">Task</u> add ho gayi.<br>`;
+            responseText += `<u style="color:red">Task</u> create ho gayi.<br>`;
 
         if(action.reminder)
             responseText += `<u style="color:red">Reminder</u> set ho gaya.<br>`;
