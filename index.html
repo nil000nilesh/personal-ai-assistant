@@ -512,7 +512,7 @@
     if (isProcessing) return;
 
     const text = ui.userInput.value.trim();
-    if (!text || !DYNAMIC_OPENAI_KEY) return;
+    if (!text) return;
 
     isProcessing = true;
     ui.userInput.disabled = true;
@@ -521,6 +521,7 @@
     sendBtn.classList.add('opacity-50');
 
     ui.userInput.value = "";
+
     await addDoc(collection(db, "chats"), {
         role: "user",
         content: text,
@@ -531,109 +532,87 @@
     const loadingDiv = document.createElement('div');
     loadingDiv.id = loadingId;
     loadingDiv.className = "text-blue-500 text-sm ml-2 font-bold animate-pulse py-2";
-    loadingDiv.textContent = "AI is thinking...";
+    loadingDiv.textContent = "Processing...";
     ui.chatBox.appendChild(loadingDiv);
 
     try {
 
-        // ---------- FRONTEND DUPLICATE CHECK ----------
-        const extractedName = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
-        let existingClient = null;
+        // -------- CLIENT DETECTION --------
+        const clientMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
+        const clientName = clientMatch ? clientMatch[0].trim() : "General";
 
-        if (extractedName) {
-            const name = extractedName[0].toUpperCase();
-            existingClient = allSavedNotes.find(n =>
-                n.title.toUpperCase() === name
-            );
-        }
+        const existingClient = allSavedNotes.find(
+            n => n.title.toUpperCase() === clientName.toUpperCase()
+        );
 
-        // ---------- MEMORY STRING ----------
-        const memoryStr = `
-        CASES: ${allSavedNotes.map(n => `${n.title}`).join(", ") || "None"}
-        TASKS: ${allTasks.map(t => t.title).join(", ") || "None"}
-        REMINDERS: ${allReminders.map(r => r.title).join(", ") || "None"}
-        NOTEBOOK: ${allNotebooks.map(nb => nb.title).join(", ") || "None"}
-        `;
-
-        const systemPrompt = {
-            role: "system",
-            content: `
-            You are AI Steno Assistant.
-            If information not in memory, say clearly:
-            "Meri memory me ye information available nahi hai."
-
-            MEMORY:
-            ${memoryStr}
-
-            Always use data tags:
-            [CASE: name | detail]
-            [TASK: title | status]
-            [REMINDER: title | time]
-            [NOTEBOOK: title | content]
-            `
+        let action = {
+            notebook:false,
+            client:false,
+            task:false,
+            reminder:false
         };
 
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${DYNAMIC_OPENAI_KEY}`
-            },
-            body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: [systemPrompt, { role: "user", content: text }]
-            })
+        // -------- ALWAYS SAVE NOTEBOOK --------
+        await addDoc(collection(db, "notebooks"), {
+            title: clientName + " Update",
+            content: text,
+            client: clientName,
+            timestamp: new Date().toISOString()
         });
 
-        const data = await response.json();
-        let aiReply = data.choices[0].message.content;
+        action.notebook = true;
 
-        // ---------- STRONG TAG PARSER ----------
-        const tagRegex = /\[(CASE|TASK|REMINDER|NOTEBOOK):\s*(.*?)\|(.*?)\]/gi;
-
-        let match;
-        while ((match = tagRegex.exec(aiReply)) !== null) {
-
-            const type = match[1].trim();
-            const title = match[2].trim();
-            const content = match[3].trim();
-
-            const payload = {
-                title: title,
-                content: content,
+        // -------- CREATE CLIENT IF NEW --------
+        if (!existingClient) {
+            await addDoc(collection(db, "notes"), {
+                title: clientName,
+                content: "New case created",
+                client: clientName,
                 timestamp: new Date().toISOString()
-            };
-
-            if (type === "CASE") {
-                await addDoc(collection(db, "notes"), payload);
-            }
-
-            if (type === "TASK") {
-                await addDoc(collection(db, "tasks"), {
-                    title: title,
-                    status: content,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            if (type === "REMINDER") {
-                await addDoc(collection(db, "reminders"), {
-                    title: title,
-                    time: content,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            if (type === "NOTEBOOK") {
-                await addDoc(collection(db, "notebooks"), payload);
-            }
+            });
+            action.client = true;
         }
 
-        aiReply = aiReply.replace(tagRegex, '').trim();
+        // -------- TASK DETECTION --------
+        if (/(submit|check|verify|call|send|complete|karna|bhejna)/i.test(text)) {
+            await addDoc(collection(db, "tasks"), {
+                title: text,
+                status: "Pending",
+                client: clientName,
+                timestamp: new Date().toISOString()
+            });
+            action.task = true;
+        }
+
+        // -------- REMINDER DETECTION --------
+        if (/(kal|tomorrow|\d{1,2}\s*(am|pm)|last date|remind)/i.test(text)) {
+            await addDoc(collection(db, "reminders"), {
+                title: text,
+                time: "Auto detected",
+                client: clientName,
+                timestamp: new Date().toISOString()
+            });
+            action.reminder = true;
+        }
+
+        // -------- RESPONSE BUILDER --------
+        let responseText = "Maine information save kar li.<br>";
+
+        if(action.notebook)
+            responseText += `<u style="color:red">Notebook</u> me likh diya.<br>`;
+
+        if(action.client)
+            responseText += `<u style="color:red">Client</u> add ho gaya.<br>`;
+
+        if(action.task)
+            responseText += `<u style="color:red">Task</u> add ho gayi.<br>`;
+
+        if(action.reminder)
+            responseText += `<u style="color:red">Reminder</u> set ho gaya.<br>`;
 
         await addDoc(collection(db, "chats"), {
             role: "assistant",
-            content: aiReply,
+            content: responseText,
             timestamp: new Date().toISOString()
         });
 
