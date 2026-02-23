@@ -522,6 +522,7 @@
 
     ui.userInput.value = "";
 
+    // ---------- SAVE USER CHAT ----------
     await addDoc(collection(db, "chats"), {
         role: "user",
         content: text,
@@ -537,66 +538,44 @@
 
     try {
 
-        // ---------- SMART CLIENT DETECT ----------
+        // ---------- CLIENT DETECT ----------
         function detectClient(text) {
-            let cleaned = text.replace(/^Aaj\s+/i, "");
-            const match = cleaned.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\sPvt\sLtd)?)/);
+            const match = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\sPvt\sLtd)?)/);
             return match ? match[1].trim() : "General";
         }
         const clientName = detectClient(text);
 
-        let action = { notebook:false, client:false, task:false, reminder:false };
+        // ---------- NOTEBOOK DRAFT IN HINDI ----------
+        function generateNotebookHindi(text, client) {
+            const points = [];
 
-        // ---------- NOTEBOOK DRAFT ----------
-        function generateNotebook(text, client) {
-            const bullets = [];
-
-            if(/LC|letter of credit/i.test(text))
-                bullets.push("Bangladesh LC checked");
+            if(/LC|letter of credit|एलसी/i.test(text))
+                points.push("एलसी चेक किया गया");
 
             const dateMatch = text.match(/(\d{1,2}\s*[A-Za-z]+)/);
             if(dateMatch)
-                bullets.push("Shipment deadline: " + dateMatch[0]);
+                points.push("शिपमेंट अंतिम तिथि: " + dateMatch[0]);
 
-            if(/invoice/i.test(text))
-                bullets.push("BL & Invoice ready");
+            if(/invoice|इनवॉइस/i.test(text))
+                points.push("बीएल और इनवॉइस तैयार");
 
-            if(/insurance/i.test(text))
-                bullets.push("Insurance pending (CIF 110% required)");
+            if(/insurance|बीमा/i.test(text))
+                points.push("बीमा दस्तावेज लंबित");
 
-            if(/submit/i.test(text))
-                bullets.push("Client advised to submit documents");
+            if(/submit|जमा/i.test(text))
+                points.push("क्लाइंट को दस्तावेज जमा करने की सलाह दी गई");
 
-            if(/delay|discrepancy/i.test(text))
-                bullets.push("Risk: Discrepancy & payment delay");
+            if(/delay|discrepancy|देरी/i.test(text))
+                points.push("जोखिम: डिस्क्रेपेंसी / भुगतान में देरी");
 
-            if(bullets.length === 0)
-                bullets.push(text);
+            if(points.length === 0)
+                points.push(text);
 
-            return `LC Status – ${client}\n\n• ` + bullets.join("\n• ");
-        }
-
-        // ---------- TASK ----------
-        function extractTask(text) {
-            if(/insurance/i.test(text))
-                return "Submit Insurance document for LC";
-
-            if(/submit/i.test(text))
-                return "Submit LC documents";
-
-            return null;
-        }
-
-        // ---------- REMINDER ----------
-        function extractReminder(text) {
-            if(/tomorrow|kal/i.test(text))
-                return "Follow up for document submission – Tomorrow";
-
-            return null;
+            return `केस नोट्स – ${client}\n\n• ` + points.join("\n• ");
         }
 
         // ---------- SAVE NOTEBOOK ----------
-        const notebookContent = generateNotebook(text, clientName);
+        const notebookContent = generateNotebookHindi(text, clientName);
 
         await addDoc(collection(db, "notebooks"), {
             title: clientName,
@@ -605,61 +584,68 @@
             timestamp: new Date().toISOString()
         });
 
-        action.notebook = true;
+        // ---------- COMMAND DETECT (HINDI + ENGLISH) ----------
+        const lower = text.toLowerCase();
 
-        // ---------- CREATE CLIENT IF NEW ----------
-        const existingClient = allSavedNotes.find(
-            n => n.title?.toUpperCase() === clientName.toUpperCase()
-        );
+        let manualAction = null;
 
-        if (!existingClient) {
-            await addDoc(collection(db, "notes"), {
-                title: clientName,
-                content: "Case created",
-                client: clientName,
-                timestamp: new Date().toISOString()
-            });
-            action.client = true;
-        }
+        if(lower.includes("make task") || lower.includes("task banao") || lower.includes("टास्क बनाओ"))
+            manualAction = "task";
 
-        // ---------- TASK SAVE ----------
-        const taskLine = extractTask(text);
-        if (taskLine) {
-            await addDoc(collection(db, "tasks"), {
-                title: clientName + " – " + taskLine,
-                status: "Pending",
-                client: clientName,
-                timestamp: new Date().toISOString()
-            });
-            action.task = true;
-        }
+        if(lower.includes("make reminder") || lower.includes("reminder banao") || lower.includes("रिमाइंडर बनाओ"))
+            manualAction = "reminder";
 
-        // ---------- REMINDER SAVE ----------
-        const reminderLine = extractReminder(text);
-        if (reminderLine) {
-            await addDoc(collection(db, "reminders"), {
-                title: clientName + " – " + reminderLine,
-                time: "Auto",
-                client: clientName,
-                timestamp: new Date().toISOString()
-            });
-            action.reminder = true;
+        if(lower.includes("make case") || lower.includes("case banao") || lower.includes("केस बनाओ"))
+            manualAction = "case";
+
+        // ---------- MANUAL CREATE FROM CHAT HISTORY ----------
+        if(manualAction){
+
+            const lastUserMsg = chatHistory
+                .filter(m => m.role === "user")
+                .slice(-5)
+                .map(m => m.content)
+                .join(" ");
+
+            if(manualAction === "case"){
+                await addDoc(collection(db, "notes"), {
+                    title: clientName,
+                    content: lastUserMsg,
+                    client: clientName,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            if(manualAction === "task"){
+                await addDoc(collection(db, "tasks"), {
+                    title: clientName + " – कार्य लंबित",
+                    status: "Pending",
+                    client: clientName,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            if(manualAction === "reminder"){
+                await addDoc(collection(db, "reminders"), {
+                    title: clientName + " – फॉलो अप",
+                    time: "Manual",
+                    client: clientName,
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
 
         // ---------- RESPONSE ----------
-        let responseText = "Process complete:\n";
+        let responseText = "नोटबुक में सेव किया गया ✔";
 
-        if(action.notebook)
-            responseText += "Notebook ✔\n";
+        if(manualAction === "case")
+            responseText += "\nक्लाइंट केस बनाया गया ✔";
 
-        if(action.client)
-            responseText += "Client ✔\n";
+        if(manualAction === "task")
+            responseText += "\nटास्क बनाया गया ✔";
 
-        if(action.task)
-            responseText += "Task ✔\n";
-
-        if(action.reminder)
-            responseText += "Reminder ✔\n";
+        if(manualAction === "reminder")
+            responseText += "\nरिमाइंडर बनाया गया ✔";
 
         await addDoc(collection(db, "chats"), {
             role: "assistant",
