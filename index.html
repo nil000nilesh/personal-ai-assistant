@@ -16,22 +16,6 @@
         .tab-btn.active { background-color: rgba(255, 255, 255, 0.1); color: #60a5fa; border-left: 4px solid #3b82f6; font-weight: 600; }
         .tab-btn-mob.active { color: #3b82f6; font-weight: bold; }
         
-        @keyframes pulse-ring {
-            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        }
-        .recording { animation: pulse-ring 1.5s infinite; background-color: #ef4444 !important; color: white !important; }
-        
-        .client-updates-scroll::-webkit-scrollbar { width: 4px; }
-        .client-updates-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
-
-        .notebook-page {
-            background-image: repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 27px, #f1f5f9 28px);
-            line-height: 28px;
-            padding-top: 2px;
-        }
-
         .glass-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
@@ -43,164 +27,107 @@
         .modal-closed { opacity: 0; visibility: hidden; }
         .modal-content-open { transform: translateY(0) scale(1); }
         .modal-content-closed { transform: translateY(100px) scale(0.95); }
+
+        .notebook-page {
+            background-image: repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 27px, #f1f5f9 28px);
+            line-height: 28px;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-[100dvh] overflow-hidden flex flex-col selection:bg-blue-200">
 
-    <div id="login-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center">
-        <div class="absolute inset-0 bg-slate-900/40"></div>
-        <div class="glass-card p-10 rounded-[2rem] shadow-2xl text-center max-w-md w-[90%] relative z-10 transform transition-all hover:scale-[1.02]">
-            <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-blue-500/30">
+    <div id="login-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 bg-cover bg-center">
+        <div class="glass-card p-10 rounded-[2rem] shadow-2xl text-center max-w-md w-[90%] relative z-10">
+            <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg">
                 <span class="text-4xl">💼</span>
             </div>
-            <h1 class="text-4xl font-extrabold mb-3 text-slate-900 tracking-tight">Smart Steno Pro</h1>
-            <p class="text-slate-600 mb-8 text-sm leading-relaxed">Aapka personal AI assistant jo aapke cases, tasks aur meetings ko automatically manage karta hai.</p>
-            
-            <button id="login-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-6 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+            <h1 class="text-4xl font-extrabold mb-3 text-slate-900">Smart Steno Pro</h1>
+            <p class="text-slate-600 mb-8 text-sm">Aapka personal AI assistant.</p>
+            <button id="login-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-6 py-4 rounded-xl font-bold shadow-xl flex items-center justify-center gap-3">
                 Sign in with Google
             </button>
-            <p class="mt-6 text-xs text-slate-400 font-medium tracking-wide uppercase">Secured by Bank Standards</p>
         </div>
     </div>
 
-    <div id="pin-screen" class="hidden absolute inset-0 z-[100] flex-col items-center justify-center bg-slate-900 text-white bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center">
-        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
+    <div id="pin-screen" class="hidden absolute inset-0 z-[100] flex-col items-center justify-center bg-slate-900 text-white">
         <div class="relative z-10 flex flex-col items-center">
             <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6">🔒</div>
-            <h2 class="text-2xl mb-8 font-semibold tracking-wide">Enter Security PIN</h2>
-            <input type="password" id="pin-input" maxlength="4" class="bg-slate-800/50 border-2 border-slate-600 p-4 text-center text-5xl tracking-[0.5em] text-white rounded-2xl mb-8 w-64 outline-none focus:border-blue-500 transition-colors shadow-inner backdrop-blur-sm" />
-            <button id="verify-pin-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-xl shadow-lg shadow-blue-500/30 font-bold transition-all hover:-translate-y-1">Unlock Dashboard</button>
+            <h2 class="text-2xl mb-8 font-semibold">Enter Security PIN</h2>
+            <input type="password" id="pin-input" maxlength="4" class="bg-slate-800/50 border-2 border-slate-600 p-4 text-center text-5xl tracking-[0.5em] text-white rounded-2xl mb-8 w-64 outline-none focus:border-blue-500" />
+            <button id="verify-pin-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-xl shadow-lg font-bold">Unlock</button>
         </div>
     </div>
 
     <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full h-full bg-slate-50 relative">
-        
         <nav class="hidden md:flex flex-col w-72 bg-slate-900 text-slate-300 shadow-2xl z-20">
             <div class="p-8 border-b border-white/5 flex items-center gap-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-xl">💼</div>
-                <h1 class="text-xl font-bold text-white tracking-wide">Smart Steno Pro</h1>
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">💼</div>
+                <h1 class="text-xl font-bold text-white">Smart Steno Pro</h1>
             </div>
             <div class="flex-1 py-6 flex flex-col gap-2 px-4">
-                <button id="tab-notebook-desk" class="tab-btn active px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3 hover:bg-white/5">📓 Notebook</button>
-                <button id="tab-notes-desk" class="tab-btn px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3 hover:bg-white/5">📂 Client Cases</button>
-                <button id="tab-tasks-desk" class="tab-btn px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3 hover:bg-white/5">✅ Tasks</button>
-                <button id="tab-reminders-desk" class="tab-btn px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3 hover:bg-white/5">⏰ Reminders</button>
+                <button id="tab-notebook-desk" class="tab-btn active px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3">📓 Notebook</button>
+                <button id="tab-tasks-desk" class="tab-btn px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3">✅ Tasks</button>
+                <button id="tab-reminders-desk" class="tab-btn px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3">⏰ Reminders</button>
             </div>
             <div class="p-6 border-t border-white/5">
-                <button id="logout-btn-desk" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-3 rounded-xl font-medium transition-colors text-sm flex items-center justify-center gap-2">
-                    Secure Logout
-                </button>
+                <button id="logout-btn-desk" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-3 rounded-xl font-medium transition-colors">Secure Logout</button>
             </div>
         </nav>
 
         <main class="flex-1 relative flex flex-col h-full overflow-hidden">
             <header class="md:hidden bg-white border-b border-slate-200 px-5 py-4 flex justify-between items-center z-10 sticky top-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-sm shadow-md">💼</div>
-                    <h1 class="text-lg font-bold text-slate-800 tracking-tight">Smart Steno</h1>
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">Smart Steno</h1>
                 <button id="logout-btn-mob" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-medium">Logout</button>
             </header>
 
             <div id="view-notebook" class="absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex flex-col overflow-y-auto p-4 md:p-10">
-    <div class="max-w-6xl mx-auto w-full">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
-            <div>
-                <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">My Notebook</h2>
-                <p class="text-slate-500 text-sm md:text-base">Aapke sabhi important drafts aur AI notes.</p>
+                <div class="max-w-6xl mx-auto w-full">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+                        <h2 class="text-3xl font-extrabold text-slate-900">My Notebook</h2>
+                        <input type="text" id="notebook-search" placeholder="Search notes..." class="bg-white border border-slate-200 py-3 px-6 rounded-2xl w-full md:w-80 outline-none focus:border-blue-500">
+                    </div>
+                    <div id="notebook-grid" class="flex flex-col gap-10 pb-20"></div>
+                </div>
             </div>
-            <div class="relative group">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">🔍</span>
-                <input type="text" id="notebook-search" placeholder="Search by client or content..." 
-                       class="bg-white border border-slate-200 py-3 pl-12 pr-6 rounded-2xl w-full md:w-80 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm">
-            </div>
-        </div>
-        <div id="notebook-grid" class="flex flex-col gap-10 pb-20"></div>
-    </div>
-</div>
+
             <div id="view-tasks" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-y-auto p-4 md:p-10">
                 <div class="max-w-4xl mx-auto w-full">
-                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">My Tasks</h2>
-                    <p class="text-slate-500 mb-10 text-sm md:text-base">Aapki smart to-do list jo AI ne banayi hai.</p>
+                    <h2 class="text-3xl font-extrabold mb-10 text-slate-900">My Tasks</h2>
                     <div id="tasks-list" class="flex flex-col gap-4 pb-20"></div>
                 </div>
             </div>
 
             <div id="view-reminders" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-y-auto p-4 md:p-10">
                 <div class="max-w-4xl mx-auto w-full">
-                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">Reminders</h2>
-                    <p class="text-slate-500 mb-10 text-sm md:text-base">Upcoming calls, meetings aur alerts.</p>
+                    <h2 class="text-3xl font-extrabold mb-10 text-slate-900">Reminders</h2>
                     <div id="reminders-list" class="grid grid-cols-1 md:grid-cols-2 gap-5 pb-20"></div>
                 </div>
             </div>
 
-            <button id="open-chat-fab" class="fixed bottom-24 right-6 md:bottom-10 md:right-10 w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-[0_10px_25px_rgba(59,130,246,0.5)] flex flex-col items-center justify-center text-white cursor-pointer hover:scale-110 hover:shadow-[0_15px_35px_rgba(59,130,246,0.6)] transition-all z-[40]">
-                <span class="text-2xl mb-0.5">🤖</span>
+            <button id="open-chat-fab" class="fixed bottom-24 right-6 md:bottom-10 md:right-10 w-16 h-16 bg-blue-600 rounded-full shadow-lg flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-all z-[40]">
+                <span class="text-2xl">🤖</span>
             </button>
         </main>
-
-        <nav class="md:hidden fixed bottom-0 w-full bg-white border-t border-slate-200 flex items-center justify-around h-[65px] pb-1 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-[30]">
-            <button id="tab-notebook-mob" class="tab-btn-mob active flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
-                <span class="text-lg">📓</span> Notebook
-            </button>
-            <button id="tab-notes-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
-                <span class="text-lg">📂</span> Cases
-            </button>
-            <button id="tab-tasks-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
-                <span class="text-lg">✅</span> Tasks
-            </button>
-            <button id="tab-reminders-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
-                <span class="text-lg">⏰</span> Reminds
-            </button>
-        </nav>
     </div>
 
     <div id="chat-modal" class="modal-closed fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm transition-all duration-300 flex items-end md:items-center justify-center">
-        <div id="chat-modal-content" class="modal-content-closed w-full h-[90vh] md:w-[850px] md:h-[85vh] bg-slate-50 md:rounded-3xl rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out border border-white/20">
-            
-            <div class="bg-white border-b border-slate-200 p-4 md:p-5 flex justify-between items-center z-10 shadow-sm">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center relative">
-                        <span class="text-2xl">🤖</span>
-                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-                    </div>
-                    <div>
-                        <h3 class="font-extrabold text-slate-900 text-lg leading-tight">AI Steno Assistant</h3>
-                        <p class="text-xs text-slate-500 font-medium mt-0.5">Listening & saving data automatically...</p>
-                    </div>
-                </div>
-                <button id="minimise-chat-btn" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl font-semibold text-sm transition-colors">
-                    <span class="text-lg">🔽</span> <span class="hidden md:block">Minimise</span>
-                </button>
+        <div id="chat-modal-content" class="modal-content-closed w-full h-[85vh] md:w-[600px] bg-slate-50 md:rounded-3xl rounded-t-[2rem] flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-slate-200 p-5 flex justify-between items-center">
+                <h3 class="font-bold text-slate-900">AI Assistant</h3>
+                <button id="minimise-chat-btn" class="text-slate-500">Close</button>
             </div>
-            
-            <div id="chat-box" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 flex flex-col scroll-smooth">
-                <div class="flex justify-start w-full">
-                    <div class="p-4 md:p-5 rounded-2xl max-w-[85%] text-sm md:text-base leading-relaxed bg-white border border-slate-200 text-slate-700 shadow-sm rounded-tl-sm">
-                        Namaste Nilesh! Main aapka AI Assistant hoon. Aap mujhe naye Tasks, Reminders ya Client details bata sakte hain. Main automatically unhe background me update kar dunga.
-                    </div>
-                </div>
-            </div>
-            
-            <div class="p-4 md:p-6 bg-white border-t border-slate-200">
-                <div class="max-w-4xl mx-auto flex gap-3 items-center">
-                    <button id="mic-btn" class="bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 p-4 rounded-2xl transition-all outline-none border border-slate-200 hover:border-blue-200" title="Click to Speak">
-                        🎤
-                    </button>
-                    <input type="text" id="user-input" class="flex-1 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-4 rounded-2xl text-slate-800 outline-none transition-all font-medium placeholder:text-slate-400 shadow-inner" placeholder="Type a command or tap mic..." />
-                    <button id="send-btn" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-transform active:scale-95">
-                        Send
-                    </button>
-                </div>
+            <div id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+            <div class="p-4 bg-white border-t border-slate-200 flex gap-2">
+                <input type="text" id="user-input" class="flex-1 bg-slate-100 p-3 rounded-xl outline-none" placeholder="Type command...">
+                <button id="send-btn" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Send</button>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithRedirect, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, where, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, where, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAeu14r8EACZ7U3eRszsNQmTYTFt5FndcU",
@@ -218,430 +145,104 @@
         const provider = new GoogleAuthProvider();
         const db = getFirestore(app);
 
-        let chatHistory = [];
-        let allSavedNotes = []; 
-        let allTasks = [];
-        let allReminders = [];
-        let allNotebooks = [];
-
         let isPinVerified = false;
-        let DYNAMIC_OPENAI_KEY = ""; 
-        let sessionStartTime;
+        let allNotebooks = [];
 
         const ui = {
             login: document.getElementById('login-screen'),
             pin: document.getElementById('pin-screen'),
             appLayout: document.getElementById('app-layout'),
-            viewNotes: document.getElementById('view-notes'),
+            viewNotebook: document.getElementById('view-notebook'),
             viewTasks: document.getElementById('view-tasks'),
             viewReminders: document.getElementById('view-reminders'),
-            viewNotebook: document.getElementById('view-notebook'),
-            chatBox: document.getElementById('chat-box'),
-            notesGrid: document.getElementById('notes-grid'),
-            tasksList: document.getElementById('tasks-list'),
-            remindersList: document.getElementById('reminders-list'),
             notebookGrid: document.getElementById('notebook-grid'),
-            userInput: document.getElementById('user-input'),
-            micBtn: document.getElementById('mic-btn'),
             chatModal: document.getElementById('chat-modal'),
-            chatModalContent: document.getElementById('chat-modal-content')
+            chatModalContent: document.getElementById('chat-modal-content'),
+            chatBox: document.getElementById('chat-box')
         };
 
-        const views = ['notes', 'tasks', 'reminders', 'notebook'];
-
-        // ERROR FIXED HERE: Removing flex class so it hides properly
         function hideAllStates() {
             ui.login.classList.add('hidden'); ui.login.classList.remove('flex');
             ui.pin.classList.add('hidden'); ui.pin.classList.remove('flex');
             ui.appLayout.classList.add('hidden'); ui.appLayout.classList.remove('flex');
         }
 
-        function switchView(targetView) {
-            views.forEach(v => {
-                const deskBtn = document.getElementById(`tab-${v}-desk`);
-                const mobBtn = document.getElementById(`tab-${v}-mob`);
-                const viewEl = document.getElementById(`view-${v}`);
-                if(v === targetView) {
-                    viewEl.classList.remove('hidden'); viewEl.classList.add('flex');
-                    if(deskBtn) deskBtn.classList.add('active');
-                    if(mobBtn) mobBtn.classList.add('active');
-                } else {
-                    viewEl.classList.add('hidden'); viewEl.classList.remove('flex');
-                    if(deskBtn) deskBtn.classList.remove('active');
-                    if(mobBtn) mobBtn.classList.remove('active');
-                }
-            });
-        }
-
-        views.forEach(v => {
-            document.getElementById(`tab-${v}-desk`)?.addEventListener('click', () => switchView(v));
-            document.getElementById(`tab-${v}-mob`)?.addEventListener('click', () => switchView(v));
-        });
-
-        const openChatFab = document.getElementById('open-chat-fab');
-        const minimiseChatBtn = document.getElementById('minimise-chat-btn');
-
-        function openChatModal() {
-            ui.chatModal.classList.remove('modal-closed');
-            ui.chatModal.classList.add('modal-open');
-            setTimeout(() => {
-                ui.chatModalContent.classList.remove('modal-content-closed');
-                ui.chatModalContent.classList.add('modal-content-open');
-                ui.userInput.focus();
-                ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
-            }, 10);
-        }
-
-        function closeChatModal() {
-            ui.chatModalContent.classList.remove('modal-content-open');
-            ui.chatModalContent.classList.add('modal-content-closed');
-            setTimeout(() => {
-                ui.chatModal.classList.remove('modal-open');
-                ui.chatModal.classList.add('modal-closed');
-            }, 300);
-        }
-
-        openChatFab.addEventListener('click', openChatModal);
-        minimiseChatBtn.addEventListener('click', closeChatModal);
-        ui.chatModal.addEventListener('click', (e) => {
-            if (e.target === ui.chatModal) closeChatModal();
-        });
-
-        document.getElementById('login-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('login-btn');
-            const originalHTML = btn.innerHTML;
-            btn.innerText = "Signing in...";
-            try { 
-                await signInWithPopup(auth, provider); 
-            } catch (error) { 
-                if(error.code === 'auth/popup-blocked') {
-                    await signInWithRedirect(auth, provider);
-                } else {
-                    btn.innerHTML = originalHTML;
-                }
-            }
-        });
-
         onAuthStateChanged(auth, (user) => {
             hideAllStates();
             if (user) {
                 if (user.email === ALLOWED_EMAIL) {
-                    if (!isPinVerified) { 
-                        ui.pin.classList.remove('hidden'); 
-                        ui.pin.classList.add('flex'); 
-                    } else { 
-                        checkAndLoadApp(); 
+                    if (!isPinVerified) {
+                        ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex');
+                    } else {
+                        ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
+                        loadAppData();
                     }
-                } else { 
-                    alert("Unauthorized Email!"); 
-                    signOut(auth); 
+                } else {
+                    alert("Unauthorized Email!");
+                    signOut(auth);
                 }
-            } else { 
-                ui.login.classList.remove('hidden'); 
-                ui.login.classList.add('flex'); 
+            } else {
+                ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
             }
         });
 
-        const doLogout = () => { isPinVerified = false; DYNAMIC_OPENAI_KEY = ""; signOut(auth); };
-        document.getElementById('logout-btn-desk').addEventListener('click', doLogout);
-        document.getElementById('logout-btn-mob').addEventListener('click', doLogout);
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            try { await signInWithPopup(auth, provider); } catch (e) { console.error(e); }
+        });
 
         document.getElementById('verify-pin-btn').addEventListener('click', () => {
             if (document.getElementById('pin-input').value === SECRET_PIN) {
-                isPinVerified = true; 
-                checkAndLoadApp();
-            } else { 
-                alert("Incorrect PIN"); 
-                document.getElementById('pin-input').value = ""; 
-            }
+                isPinVerified = true;
+                ui.pin.classList.add('hidden'); ui.pin.classList.remove('flex');
+                ui.appLayout.classList.remove('hidden'); ui.appLayout.classList.add('flex');
+                loadAppData();
+            } else { alert("Wrong PIN"); }
         });
 
-        async function checkAndLoadApp() {
-            hideAllStates();
-            try {
-                const keyDoc = await getDoc(doc(db, "system_settings", "api_config"));
-                if (keyDoc.exists() && keyDoc.data().openai_key) {
-                    DYNAMIC_OPENAI_KEY = keyDoc.data().openai_key;
-                    sessionStartTime = new Date().toISOString(); 
-                    
-                    ui.appLayout.classList.remove('hidden'); 
-                    ui.appLayout.classList.add('flex');
-                    
-                    switchView('notebook');
-                    loadAppListeners();
-                } else { 
-                    alert("API Key missing in Database!");
-                    ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
-                    signOut(auth);
-                }
-            } catch (error) { 
-                alert("Database connection failed."); 
-                console.error(error);
-            }
-        }
-
-        function loadAppListeners() {
-            const chatQuery = query(collection(db, "chats"), where("timestamp", ">=", sessionStartTime), orderBy("timestamp", "asc"));
-            onSnapshot(chatQuery, (snapshot) => {
-                const welcomeMsg = ui.chatBox.firstElementChild;
-                ui.chatBox.innerHTML = ""; 
-                if(welcomeMsg) ui.chatBox.appendChild(welcomeMsg);
-                
-                chatHistory = []; 
-                snapshot.forEach((docData) => {
-                    const msg = docData.data();
-                    chatHistory.push({ role: msg.role, content: msg.content });
-                    renderMessage(msg.role, msg.content);
-                });
-                ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
-            });
-
-            onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "asc")), (snapshot) => {
-                ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {}; 
-                snapshot.forEach((docData) => {
-                    const note = docData.data(); allSavedNotes.push(note); 
-                    const normalizedTitle = note.title.toUpperCase();
-                    if(!groupedNotes[normalizedTitle]) groupedNotes[normalizedTitle] = { displayTitle: note.title, updates: [] };
-                    groupedNotes[normalizedTitle].updates.push(note);
-                });
-                for (const key in groupedNotes) {
-                    const group = groupedNotes[key];
-                    const card = document.createElement('div');
-                    card.className = "bg-white p-6 rounded-[1.5rem] shadow-sm hover:shadow-lg border border-slate-100 flex flex-col transition-all h-[280px] relative group overflow-hidden";
-                    let updatesHTML = group.updates.reverse().map(u => `
-                        <div class="border-l-[3px] border-blue-400 pl-4 py-3 relative bg-slate-50/50 mb-2 rounded-r-xl">
-                            <div class="absolute w-2.5 h-2.5 bg-blue-500 rounded-full -left-[6px] top-4 border-2 border-white shadow-sm"></div>
-                            <p class="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">${u.content}</p>
-                        </div>
-                    `).join("");
-                    card.innerHTML = `
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        <h3 class="font-extrabold text-slate-800 text-xl border-b border-slate-100 pb-4 mb-3">${group.displayTitle}</h3>
-                        <div class="overflow-y-auto client-updates-scroll flex-1 pr-1">${updatesHTML}</div>`;
-                    ui.notesGrid.appendChild(card);
-                }
-            });
-
-            onSnapshot(query(collection(db, "tasks"), orderBy("timestamp", "desc")), (snapshot) => {
-                ui.tasksList.innerHTML = ""; allTasks = [];
-                snapshot.forEach((docData) => {
-                    const task = docData.data(); allTasks.push(task);
-                    const div = document.createElement('div');
-                    div.className = "bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md flex items-center gap-5 transition-shadow";
-                    div.innerHTML = `
-                        <input type="checkbox" class="w-6 h-6 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer transition-colors hover:bg-blue-50">
-                        <span class="flex-1 text-slate-800 font-semibold text-lg">${task.title}</span>
-                        <span class="text-[11px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full uppercase tracking-wider">${task.status}</span>`;
-                    ui.tasksList.appendChild(div);
-                });
-            });
-
-            onSnapshot(query(collection(db, "reminders"), orderBy("timestamp", "desc")), (snapshot) => {
-                ui.remindersList.innerHTML = ""; allReminders = [];
-                snapshot.forEach((docData) => {
-                    const rem = docData.data(); allReminders.push(rem);
-                    const div = document.createElement('div');
-                    div.className = "bg-gradient-to-br from-orange-50 to-red-50 border border-orange-100 p-6 rounded-[1.5rem] shadow-sm flex flex-col gap-2 relative overflow-hidden";
-                    div.innerHTML = `
-                        <div class="absolute -right-4 -top-4 text-6xl opacity-10">⏰</div>
-                        <span class="text-red-600 font-extrabold text-sm tracking-wide uppercase flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> ${rem.time}</span>
-                        <span class="text-slate-800 font-semibold text-lg leading-snug">${rem.title}</span>`;
-                    ui.remindersList.appendChild(div);
-                });
-            });
-
+        function loadAppData() {
             onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
-                ui.notebookGrid.innerHTML = ""; allNotebooks = [];
-                // --- UPGRADED NOTEBOOK LOGIC WITH SEARCH & DATE GROUPING ---
-const notebookSearch = document.getElementById('notebook-search');
-
-onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
-    allNotebooks = [];
-    snapshot.forEach((docData) => {
-        allNotebooks.push({ id: docData.id, ...docData.data() });
-    });
-    renderNotebooks(allNotebooks);
-});
-
-// Search functionality
-if (notebookSearch) {
-    notebookSearch.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const filtered = allNotebooks.filter(n => 
-            n.title.toLowerCase().includes(term) || 
-            n.content.toLowerCase().includes(term)
-        );
-        renderNotebooks(filtered);
-    });
-}
-
-function renderNotebooks(notes) {
-    ui.notebookGrid.innerHTML = "";
-    if (notes.length === 0) {
-        ui.notebookGrid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 italic font-medium">Koi notes nahi mile...</div>`;
-        return;
-    }
-
-    // Grouping by Date
-    const groups = {};
-    notes.forEach(note => {
-        const date = new Date(note.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
-        if (!groups[date]) groups[date] = [];
-        groups[date].push(note);
-    });
-
-    for (const date in groups) {
-        const section = document.createElement('div');
-        section.className = "col-span-full mb-4";
-        section.innerHTML = `
-            <div class="flex items-center gap-4 mb-8 mt-4">
-                <div class="h-[1px] flex-1 bg-slate-200"></div>
-                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">${date}</span>
-                <div class="h-[1px] flex-1 bg-slate-200"></div>
-            </div>
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                ${groups[date].map(note => `
-                    <div class="bg-white p-8 md:p-10 rounded-[2rem] shadow-sm hover:shadow-xl border border-slate-200 border-l-[12px] border-l-yellow-400 relative transition-all duration-300 transform hover:-translate-y-1">
-                        <div class="border-b-2 border-slate-100 pb-4 mb-6 flex justify-between items-end">
-                            <h3 class="font-black text-slate-900 text-2xl tracking-tight">${note.title}</h3>
-                            <span class="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 px-3 py-1 rounded-lg">
-                                ${new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                        </div>
-                        <div class="text-slate-700 text-[16px] notebook-page whitespace-pre-wrap font-medium">${note.content}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        ui.notebookGrid.appendChild(section);
-    }
-}
-        function renderMessage(role, content) {
-            const div = document.createElement('div');
-            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} w-full`;
-            const bubble = document.createElement('div');
-            if(role === 'user') {
-                bubble.className = "p-4 md:p-5 rounded-2xl max-w-[85%] text-sm md:text-base leading-relaxed bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md rounded-tr-sm";
-            } else {
-                bubble.className = "p-4 md:p-5 rounded-2xl max-w-[85%] text-sm md:text-base leading-relaxed bg-white border border-slate-200 text-slate-700 shadow-sm rounded-tl-sm";
-            }
-            bubble.textContent = content;
-            div.appendChild(bubble);
-            ui.chatBox.appendChild(div);
+                allNotebooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderNotebooks(allNotebooks);
+            });
+            // Add listeners for tasks/reminders here if needed
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-        let isRecording = false;
-
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = 'hi-IN';
-
-            recognition.onstart = () => { isRecording = true; ui.micBtn.classList.add('recording'); ui.userInput.placeholder = "Listening..."; };
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) ui.userInput.value += event.results[i][0].transcript + ' ';
-                    else interimTranscript += event.results[i][0].transcript;
-                }
-            };
-            recognition.onend = () => { isRecording = false; ui.micBtn.classList.remove('recording'); ui.userInput.placeholder = "Type a command or tap mic..."; };
-            ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
-        } else { ui.micBtn.style.display = 'none'; }
-
-        let isProcessing = false; // Prevents Double Clicking Duplication
-
-     async function sendMessage() {
-            if (isProcessing) return;
-
-            const text = ui.userInput.value.trim();
-            if (!text) return;
-
-            isProcessing = true;
-            ui.userInput.disabled = true;
-            const sendBtn = document.getElementById('send-btn');
-            sendBtn.disabled = true;
-            sendBtn.classList.add('opacity-50');
-
-            ui.userInput.value = "";
-
-            // 1. SAVE USER CHAT
-            await addDoc(collection(db, "chats"), {
-                role: "user",
-                content: text,
-                timestamp: new Date().toISOString()
+        function renderNotebooks(notes) {
+            ui.notebookGrid.innerHTML = "";
+            const groups = {};
+            notes.forEach(note => {
+                const date = new Date(note.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+                if (!groups[date]) groups[date] = [];
+                groups[date].push(note);
             });
 
-            const loadingId = "loading-" + Date.now();
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = loadingId;
-            loadingDiv.className = "text-blue-500 text-sm ml-2 font-bold animate-pulse py-2";
-            loadingDiv.textContent = "AI is thinking...";
-            ui.chatBox.appendChild(loadingDiv);
-
-            try {
-                const lowerText = text.toLowerCase();
-
-                // 2. RECALL LOGIC (Purani information yaad karna)
-                // Agar aap puchenge "Nilesh ka kya tha?" ya "Recall Sharma"
-                if (lowerText.includes("yaad hai") || lowerText.includes("recall") || lowerText.includes("batao")) {
-                    const searchKey = text.split(" ").pop().toLowerCase();
-                    const matches = allNotebooks.filter(n => 
-                        n.title.toLowerCase().includes(searchKey) || 
-                        n.content.toLowerCase().includes(searchKey)
-                    );
-
-                    let recallResponse = matches.length > 0 
-                        ? `Haan, mujhe yaad hai. ${searchKey} ke baare mein ye mila:\n\n` + matches.map(m => `• ${m.title}: ${m.content}`).join("\n")
-                        : "Maaf kijiyega, mujhe is baare mein koi record nahi mila.";
-
-                    await addDoc(collection(db, "chats"), {
-                        role: "assistant",
-                        content: recallResponse,
-                        timestamp: new Date().toISOString()
-                    });
-                } 
-                
-                // 3. SECOND BRAIN LOGIC (Redrafting and Saving)
-                else {
-                    // Title detect karne ki koshish (Pehla 2-3 words ya Client name)
-                    const titleMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
-                    const noteTitle = titleMatch ? titleMatch[0] : "New Update";
-
-                    // Raw information ko redraft karna (Human-like processing)
-                    const redraftedContent = `📍 Summary: ${text}\n\n📝 AI Insights:\n• Date: ${new Date().toLocaleDateString('en-IN')}\n• Details: Information captured and sorted for ${noteTitle}.\n• Status: Saved to Second Brain.`;
-
-                    // Notebook collection mein save karna
-                    await addDoc(collection(db, "notebooks"), {
-                        title: noteTitle,
-                        content: redraftedContent,
-                        timestamp: new Date().toISOString()
-                    });
-
-                    await addDoc(collection(db, "chats"), {
-                        role: "assistant",
-                        content: `Maine "${noteTitle}" ke liye information redraft karke Notebook mein save kar di hai. ✔`,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-
-            } catch (err) {
-                console.error("Error:", err);
-                alert("Processing error. Check Console.");
-            } finally {
-                document.getElementById(loadingId)?.remove();
-                isProcessing = false;
-                ui.userInput.disabled = false;
-                sendBtn.disabled = false;
-                sendBtn.classList.remove('opacity-50');
-                ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
+            for (const date in groups) {
+                const section = document.createElement('div');
+                section.innerHTML = `<h3 class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest text-center">${date}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${groups[date].map(n => `
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-yellow-400">
+                            <h4 class="font-bold text-lg mb-2">${n.title}</h4>
+                            <div class="text-slate-600 whitespace-pre-wrap">${n.content}</div>
+                        </div>
+                    `).join('')}
+                </div>`;
+                ui.notebookGrid.appendChild(section);
             }
         }
-        document.getElementById('send-btn').addEventListener('click', sendMessage);
-        ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+        document.getElementById('open-chat-fab').addEventListener('click', () => {
+            ui.chatModal.classList.remove('modal-closed'); ui.chatModal.classList.add('modal-open');
+            ui.chatModalContent.classList.remove('modal-content-closed'); ui.chatModalContent.classList.add('modal-content-open');
+        });
+
+        document.getElementById('minimise-chat-btn').addEventListener('click', () => {
+            ui.chatModal.classList.add('modal-closed'); ui.chatModal.classList.remove('modal-open');
+        });
+
+        document.getElementById('logout-btn-desk').addEventListener('click', () => { isPinVerified = false; signOut(auth); });
+        document.getElementById('logout-btn-mob').addEventListener('click', () => { isPinVerified = false; signOut(auth); });
+
     </script>
 </body>
 </html>
