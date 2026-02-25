@@ -508,161 +508,92 @@
 
         let isProcessing = false; // Prevents Double Clicking Duplication
 
-        async function sendMessage() {
-    if (isProcessing) return;
+     async function sendMessage() {
+            if (isProcessing) return;
 
-    const text = ui.userInput.value.trim();
-    if (!text) return;
+            const text = ui.userInput.value.trim();
+            if (!text) return;
 
-    isProcessing = true;
-    ui.userInput.disabled = true;
-    const sendBtn = document.getElementById('send-btn');
-    sendBtn.disabled = true;
-    sendBtn.classList.add('opacity-50');
+            isProcessing = true;
+            ui.userInput.disabled = true;
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = true;
+            sendBtn.classList.add('opacity-50');
 
-    ui.userInput.value = "";
+            ui.userInput.value = "";
 
-    // ---------- SAVE USER CHAT ----------
-    await addDoc(collection(db, "chats"), {
-        role: "user",
-        content: text,
-        timestamp: new Date().toISOString()
-    });
+            // 1. SAVE USER CHAT
+            await addDoc(collection(db, "chats"), {
+                role: "user",
+                content: text,
+                timestamp: new Date().toISOString()
+            });
 
-    const loadingId = "loading-" + Date.now();
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = loadingId;
-    loadingDiv.className = "text-blue-500 text-sm ml-2 font-bold animate-pulse py-2";
-    loadingDiv.textContent = "Processing...";
-    ui.chatBox.appendChild(loadingDiv);
+            const loadingId = "loading-" + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadingId;
+            loadingDiv.className = "text-blue-500 text-sm ml-2 font-bold animate-pulse py-2";
+            loadingDiv.textContent = "AI is thinking...";
+            ui.chatBox.appendChild(loadingDiv);
 
-    try {
+            try {
+                const lowerText = text.toLowerCase();
 
-        // ---------- CLIENT DETECT ----------
-        function detectClient(text) {
-            const match = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\sPvt\sLtd)?)/);
-            return match ? match[1].trim() : "General";
-        }
-        const clientName = detectClient(text);
+                // 2. RECALL LOGIC (Purani information yaad karna)
+                // Agar aap puchenge "Nilesh ka kya tha?" ya "Recall Sharma"
+                if (lowerText.includes("yaad hai") || lowerText.includes("recall") || lowerText.includes("batao")) {
+                    const searchKey = text.split(" ").pop().toLowerCase();
+                    const matches = allNotebooks.filter(n => 
+                        n.title.toLowerCase().includes(searchKey) || 
+                        n.content.toLowerCase().includes(searchKey)
+                    );
 
-        // ---------- NOTEBOOK DRAFT IN HINDI ----------
-        function generateNotebookHindi(text, client) {
-            const points = [];
+                    let recallResponse = matches.length > 0 
+                        ? `Haan, mujhe yaad hai. ${searchKey} ke baare mein ye mila:\n\n` + matches.map(m => `• ${m.title}: ${m.content}`).join("\n")
+                        : "Maaf kijiyega, mujhe is baare mein koi record nahi mila.";
 
-            if(/LC|letter of credit|एलसी/i.test(text))
-                points.push("एलसी चेक किया गया");
+                    await addDoc(collection(db, "chats"), {
+                        role: "assistant",
+                        content: recallResponse,
+                        timestamp: new Date().toISOString()
+                    });
+                } 
+                
+                // 3. SECOND BRAIN LOGIC (Redrafting and Saving)
+                else {
+                    // Title detect karne ki koshish (Pehla 2-3 words ya Client name)
+                    const titleMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/);
+                    const noteTitle = titleMatch ? titleMatch[0] : "New Update";
 
-            const dateMatch = text.match(/(\d{1,2}\s*[A-Za-z]+)/);
-            if(dateMatch)
-                points.push("शिपमेंट अंतिम तिथि: " + dateMatch[0]);
+                    // Raw information ko redraft karna (Human-like processing)
+                    const redraftedContent = `📍 Summary: ${text}\n\n📝 AI Insights:\n• Date: ${new Date().toLocaleDateString('en-IN')}\n• Details: Information captured and sorted for ${noteTitle}.\n• Status: Saved to Second Brain.`;
 
-            if(/invoice|इनवॉइस/i.test(text))
-                points.push("बीएल और इनवॉइस तैयार");
+                    // Notebook collection mein save karna
+                    await addDoc(collection(db, "notebooks"), {
+                        title: noteTitle,
+                        content: redraftedContent,
+                        timestamp: new Date().toISOString()
+                    });
 
-            if(/insurance|बीमा/i.test(text))
-                points.push("बीमा दस्तावेज लंबित");
+                    await addDoc(collection(db, "chats"), {
+                        role: "assistant",
+                        content: `Maine "${noteTitle}" ke liye information redraft karke Notebook mein save kar di hai. ✔`,
+                        timestamp: new Date().toISOString()
+                    });
+                }
 
-            if(/submit|जमा/i.test(text))
-                points.push("क्लाइंट को दस्तावेज जमा करने की सलाह दी गई");
-
-            if(/delay|discrepancy|देरी/i.test(text))
-                points.push("जोखिम: डिस्क्रेपेंसी / भुगतान में देरी");
-
-            if(points.length === 0)
-                points.push(text);
-
-            return `केस नोट्स – ${client}\n\n• ` + points.join("\n• ");
-        }
-
-        // ---------- SAVE NOTEBOOK ----------
-        const notebookContent = generateNotebookHindi(text, clientName);
-
-        await addDoc(collection(db, "notebooks"), {
-            title: clientName,
-            content: notebookContent,
-            client: clientName,
-            timestamp: new Date().toISOString()
-        });
-
-        // ---------- COMMAND DETECT (HINDI + ENGLISH) ----------
-        const lower = text.toLowerCase();
-
-        let manualAction = null;
-
-        if(lower.includes("make task") || lower.includes("task banao") || lower.includes("टास्क बनाओ"))
-            manualAction = "task";
-
-        if(lower.includes("make reminder") || lower.includes("reminder banao") || lower.includes("रिमाइंडर बनाओ"))
-            manualAction = "reminder";
-
-        if(lower.includes("make case") || lower.includes("case banao") || lower.includes("केस बनाओ"))
-            manualAction = "case";
-
-        // ---------- MANUAL CREATE FROM CHAT HISTORY ----------
-        if(manualAction){
-
-            const lastUserMsg = chatHistory
-                .filter(m => m.role === "user")
-                .slice(-5)
-                .map(m => m.content)
-                .join(" ");
-
-            if(manualAction === "case"){
-                await addDoc(collection(db, "notes"), {
-                    title: clientName,
-                    content: lastUserMsg,
-                    client: clientName,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            if(manualAction === "task"){
-                await addDoc(collection(db, "tasks"), {
-                    title: clientName + " – कार्य लंबित",
-                    status: "Pending",
-                    client: clientName,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            if(manualAction === "reminder"){
-                await addDoc(collection(db, "reminders"), {
-                    title: clientName + " – फॉलो अप",
-                    time: "Manual",
-                    client: clientName,
-                    timestamp: new Date().toISOString()
-                });
+            } catch (err) {
+                console.error("Error:", err);
+                alert("Processing error. Check Console.");
+            } finally {
+                document.getElementById(loadingId)?.remove();
+                isProcessing = false;
+                ui.userInput.disabled = false;
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50');
+                ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
             }
         }
-
-        // ---------- RESPONSE ----------
-        let responseText = "नोटबुक में सेव किया गया ✔";
-
-        if(manualAction === "case")
-            responseText += "\nक्लाइंट केस बनाया गया ✔";
-
-        if(manualAction === "task")
-            responseText += "\nटास्क बनाया गया ✔";
-
-        if(manualAction === "reminder")
-            responseText += "\nरिमाइंडर बनाया गया ✔";
-
-        await addDoc(collection(db, "chats"), {
-            role: "assistant",
-            content: responseText,
-            timestamp: new Date().toISOString()
-        });
-
-    } catch (err) {
-        alert(err.message);
-    } finally {
-        document.getElementById(loadingId)?.remove();
-        isProcessing = false;
-        ui.userInput.disabled = false;
-        sendBtn.disabled = false;
-        sendBtn.classList.remove('opacity-50');
-    }
-}
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     </script>
