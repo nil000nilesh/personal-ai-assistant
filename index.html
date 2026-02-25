@@ -452,24 +452,70 @@
 
             onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
                 ui.notebookGrid.innerHTML = ""; allNotebooks = [];
-                snapshot.forEach((docData) => {
-                    const page = docData.data(); allNotebooks.push(page);
-                    const dateObj = new Date(page.timestamp);
-                    const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                    const card = document.createElement('div');
-                    card.className = "bg-white p-8 md:p-10 rounded-[2rem] shadow-sm hover:shadow-xl border border-slate-200 border-l-[12px] border-l-yellow-400 relative transition-all duration-300 transform hover:-translate-y-1";
-                    card.innerHTML = `
-                        <div class="border-b-2 border-slate-100 pb-4 mb-6 flex justify-between items-end">
-                            <h3 class="font-black text-slate-900 text-2xl tracking-tight">${page.title}</h3>
-                            <span class="text-xs text-slate-400 font-bold tracking-widest uppercase bg-slate-50 px-3 py-1 rounded-lg">${formattedDate}</span>
-                        </div>
-                        <div class="text-slate-700 text-[16px] notebook-page whitespace-pre-wrap font-medium">${page.content}</div>
-                    `;
-                    ui.notebookGrid.appendChild(card);
-                });
-            });
-        }
+                // --- UPGRADED NOTEBOOK LOGIC WITH SEARCH & DATE GROUPING ---
+const notebookSearch = document.getElementById('notebook-search');
 
+onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
+    allNotebooks = [];
+    snapshot.forEach((docData) => {
+        allNotebooks.push({ id: docData.id, ...docData.data() });
+    });
+    renderNotebooks(allNotebooks);
+});
+
+// Search functionality
+if (notebookSearch) {
+    notebookSearch.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = allNotebooks.filter(n => 
+            n.title.toLowerCase().includes(term) || 
+            n.content.toLowerCase().includes(term)
+        );
+        renderNotebooks(filtered);
+    });
+}
+
+function renderNotebooks(notes) {
+    ui.notebookGrid.innerHTML = "";
+    if (notes.length === 0) {
+        ui.notebookGrid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 italic font-medium">Koi notes nahi mile...</div>`;
+        return;
+    }
+
+    // Grouping by Date
+    const groups = {};
+    notes.forEach(note => {
+        const date = new Date(note.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(note);
+    });
+
+    for (const date in groups) {
+        const section = document.createElement('div');
+        section.className = "col-span-full mb-4";
+        section.innerHTML = `
+            <div class="flex items-center gap-4 mb-8 mt-4">
+                <div class="h-[1px] flex-1 bg-slate-200"></div>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">${date}</span>
+                <div class="h-[1px] flex-1 bg-slate-200"></div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                ${groups[date].map(note => `
+                    <div class="bg-white p-8 md:p-10 rounded-[2rem] shadow-sm hover:shadow-xl border border-slate-200 border-l-[12px] border-l-yellow-400 relative transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="border-b-2 border-slate-100 pb-4 mb-6 flex justify-between items-end">
+                            <h3 class="font-black text-slate-900 text-2xl tracking-tight">${note.title}</h3>
+                            <span class="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 px-3 py-1 rounded-lg">
+                                ${new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                        </div>
+                        <div class="text-slate-700 text-[16px] notebook-page whitespace-pre-wrap font-medium">${note.content}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        ui.notebookGrid.appendChild(section);
+    }
+}
         function renderMessage(role, content) {
             const div = document.createElement('div');
             div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} w-full`;
