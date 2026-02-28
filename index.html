@@ -48,28 +48,73 @@
 </head>
 <body class="bg-slate-50 text-slate-800 h-[100dvh] overflow-hidden flex flex-col selection:bg-blue-200">
 
-    <div id="login-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center">
-        <div class="absolute inset-0 bg-slate-900/40"></div>
-        <div class="glass-card p-10 rounded-[2rem] shadow-2xl text-center max-w-md w-[90%] relative z-10 transform transition-all hover:scale-[1.02]">
-            <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <span class="text-4xl">💼</span>
+    <div id="login-screen" class="absolute inset-0 z-[100] flex overflow-hidden">
+        <!-- Left panel — branding -->
+        <div class="hidden md:flex flex-col justify-between w-1/2 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-12 relative overflow-hidden">
+            <!-- Decorative circles -->
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <!-- Logo + name -->
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-16">
+                    <div class="w-11 h-11 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <span class="text-white font-black text-xl tracking-tight">CaseDesk <span class="text-blue-400">AI</span></span>
+                </div>
+                <h2 class="text-5xl font-black text-white leading-tight mb-4">Your AI-Powered<br/><span class="text-blue-400">Case Manager</span></h2>
+                <p class="text-slate-400 text-base leading-relaxed max-w-sm">Banking cases, tasks aur reminders — sab kuch ek jagah. AI se boliye, automatically ho jata hai.</p>
             </div>
-            <h1 class="text-4xl font-extrabold mb-3 text-slate-900 tracking-tight">Smart Steno Pro</h1>
-            <p class="text-slate-600 mb-8 text-sm leading-relaxed">Aapka personal AI assistant jo aapke cases, tasks aur meetings ko automatically manage karta hai.</p>
-            
-            <button id="login-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-6 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-                Sign in with Google
-            </button>
-            <p class="mt-6 text-xs text-slate-400 font-medium tracking-wide uppercase">Secured by Bank Standards</p>
+            <!-- Feature list -->
+            <div class="relative z-10 space-y-4">
+                <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">📋</div> Smart case notes — Hindi mein, auto-draft</div>
+                <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">⏰</div> Smart reminders with overdue alerts</div>
+                <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">🤖</div> GPT-4.1 powered AI assistant</div>
+            </div>
+        </div>
+        <!-- Right panel — login form -->
+        <div class="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-16">
+            <!-- Mobile logo -->
+            <div class="md:hidden flex items-center gap-2 mb-10">
+                <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <span class="font-black text-xl text-slate-900 tracking-tight">CaseDesk <span class="text-blue-500">AI</span></span>
+            </div>
+            <div class="w-full max-w-sm">
+                <h3 class="text-3xl font-black text-slate-900 mb-2">Welcome back</h3>
+                <p class="text-slate-500 text-sm mb-10">Sign in to access your dashboard</p>
+                <button id="login-btn" class="w-full bg-white border-2 border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 px-6 py-4 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-3 text-sm group">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Continue with Google
+                    <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 ml-auto transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <div class="mt-8 flex items-center gap-3 text-xs text-slate-400">
+                    <div class="flex-1 h-px bg-slate-100"></div>
+                    <span>Private & Secure</span>
+                    <div class="flex-1 h-px bg-slate-100"></div>
+                </div>
+                <div class="mt-6 grid grid-cols-3 gap-3 text-center text-[11px] text-slate-500">
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-lg mb-1">🔒</div>Encrypted</div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-lg mb-1">☁️</div>Cloud Sync</div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-lg mb-1">🤖</div>AI Powered</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div id="pin-screen" class="hidden absolute inset-0 z-[100] flex-col items-center justify-center bg-slate-900 text-white bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center">
         <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
         <div class="relative z-10 flex flex-col items-center">
-            <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6">🔒</div>
-            <h2 class="text-2xl mb-8 font-semibold tracking-wide">Enter Security PIN</h2>
+            <div class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <span class="font-black text-xl text-white">CaseDesk <span class="text-blue-400">AI</span></span>
+            </div>
+            <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 border border-white/10">🔐</div>
+            <h2 class="text-xl mb-2 font-bold tracking-wide text-white">Enter Security PIN</h2>
+            <p class="text-slate-400 text-sm mb-8">Your dashboard is protected</p>
             <input type="password" id="pin-input" maxlength="4" class="bg-slate-800/50 border-2 border-slate-600 p-4 text-center text-5xl tracking-[0.5em] text-white rounded-2xl mb-8 w-64 outline-none focus:border-blue-500 transition-colors shadow-inner backdrop-blur-sm" />
             <button id="verify-pin-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-xl shadow-lg shadow-blue-500/30 font-bold transition-all hover:-translate-y-1">Unlock Dashboard</button>
         </div>
@@ -78,9 +123,11 @@
     <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full h-full bg-slate-50 relative">
         
         <nav class="hidden md:flex flex-col w-72 bg-slate-900 text-slate-300 shadow-2xl z-20">
-            <div class="p-8 border-b border-white/5 flex items-center gap-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-xl">💼</div>
-                <h1 class="text-xl font-bold text-white tracking-wide">Smart Steno Pro</h1>
+            <div class="p-6 border-b border-white/5 flex items-center gap-3">
+                <div class="w-9 h-9 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div><h1 class="text-base font-black text-white tracking-tight">CaseDesk <span class="text-blue-400">AI</span></h1><p class="text-[10px] text-slate-500 font-semibold">Powered by GPT-4.1</p></div>
             </div>
             <div class="flex-1 py-6 flex flex-col gap-2 px-4">
                 <button id="tab-notebook-desk" class="tab-btn active px-4 py-3.5 rounded-xl text-left font-medium transition-all flex items-center gap-3 hover:bg-white/5">📓 Notebook</button>
@@ -97,9 +144,11 @@
 
         <main class="flex-1 relative flex flex-col h-full overflow-hidden">
             <header class="md:hidden bg-white border-b border-slate-200 px-5 py-4 flex justify-between items-center z-10 sticky top-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-sm shadow-md">💼</div>
-                    <h1 class="text-lg font-bold text-slate-800 tracking-tight">Smart Steno</h1>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <h1 class="text-base font-black text-slate-900 tracking-tight">CaseDesk <span class="text-blue-500">AI</span></h1>
                 </div>
                 <button id="logout-btn-mob" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-medium">Logout</button>
             </header>
@@ -499,18 +548,25 @@ Namaste 🙏 — AI Steno Assistant at your service. Powered by GPT-4.1. Aap apn
                 for (const key in groupedNotes) {
                     const group = groupedNotes[key];
                     const card = document.createElement('div');
-                    card.className = "bg-white rounded-[1.5rem] shadow-sm hover:shadow-lg border border-slate-100 relative group overflow-hidden transition-all";
+                    card.className = "bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 relative overflow-hidden transition-all duration-300 group";
 
                     const latestUpdate = group.updates[group.updates.length - 1];
                     const latestContent = (latestUpdate?.content || "").toLowerCase();
                     let statusBadge = "🔵 Active";
                     let statusColor = "bg-blue-50 text-blue-700 border-blue-200";
-                    if(/disburs|वितरण/.test(latestContent))    { statusBadge = "✅ Disbursed";  statusColor = "bg-green-50 text-green-700 border-green-200"; }
-                    else if(/sanction|स्वीकृत/.test(latestContent)) { statusBadge = "✔️ Sanctioned"; statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
-                    else if(/reject|अस्वीकृत/.test(latestContent))  { statusBadge = "❌ Rejected";   statusColor = "bg-red-50 text-red-700 border-red-200"; }
-                    else if(/pending|लंबित/.test(latestContent))     { statusBadge = "⏳ Pending";    statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200"; }
-                    else if(/mortgage|मॉर्गेज/.test(latestContent))  { statusBadge = "📑 Mortgage";   statusColor = "bg-purple-50 text-purple-700 border-purple-200"; }
-                    else if(/processing|प्रोसेसिंग/.test(latestContent)){ statusBadge = "🔄 Processing"; statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200"; }
+                    // STRICT matching — avoid false positives like "disbursement suunishchit"
+                    if(/disburse ho gaya|disbursed|वितरण हो गया|वितरण पूर्ण/.test(latestContent))
+                        { statusBadge = "✅ Disbursed";  statusColor = "bg-green-50 text-green-700 border-green-200"; }
+                    else if(/rejected|अस्वीकृत/.test(latestContent))
+                        { statusBadge = "❌ Rejected";   statusColor = "bg-red-50 text-red-700 border-red-200"; }
+                    else if(/sanctioned|sanction ho gaya|स्वीकृत हो गया|ऋण स्वीकृत/.test(latestContent))
+                        { statusBadge = "✔️ Sanctioned"; statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
+                    else if(/mortgage|मॉर्गेज/.test(latestContent))
+                        { statusBadge = "📑 Mortgage";   statusColor = "bg-purple-50 text-purple-700 border-purple-200"; }
+                    else if(/processing start|processing ho|प्रोसेसिंग/.test(latestContent))
+                        { statusBadge = "🔄 Processing"; statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200"; }
+                    else if(/pending|लंबित/.test(latestContent))
+                        { statusBadge = "⏳ Pending";    statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200"; }
 
                     function fmtDate(ts) {
                         const d = new Date(ts);
@@ -521,19 +577,37 @@ Namaste 🙏 — AI Steno Assistant at your service. Powered by GPT-4.1. Aap apn
                     }
                     function fmtDateTime(ts) { return fmtDate(ts) + ' — ' + fmtTime(ts); }
 
+                    // Dynamic gradient per status
+                    let headerGrad = "from-blue-600 to-indigo-700";
+                    if(statusBadge.includes("Disbursed"))    headerGrad = "from-emerald-600 to-green-700";
+                    else if(statusBadge.includes("Sanctioned")) headerGrad = "from-teal-600 to-emerald-700";
+                    else if(statusBadge.includes("Rejected"))   headerGrad = "from-red-600 to-rose-700";
+                    else if(statusBadge.includes("Mortgage"))   headerGrad = "from-purple-600 to-violet-700";
+                    else if(statusBadge.includes("Processing")) headerGrad = "from-indigo-500 to-blue-700";
+                    else if(statusBadge.includes("Pending"))    headerGrad = "from-amber-500 to-orange-600";
+
+                    const mobNo = group.mobile ? '<span class="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 text-white/70">📱 ' + group.mobile + '</span>' : '';
+                    const updCnt = group.updates.length;
+                    const lastTime = fmtDateTime(latestUpdate.timestamp);
+
                     const headerHTML = `
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        <div class="p-5 pb-3 border-b border-slate-100">
-                            <div class="flex items-start justify-between gap-2 mb-2">
-                                <h3 class="font-extrabold text-slate-800 text-xl leading-tight">${group.displayTitle}</h3>
-                                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${statusColor}">${statusBadge}</span>
+                        <div class="bg-gradient-to-br ${headerGrad} p-5 relative overflow-hidden">
+                            <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/5 rounded-full pointer-events-none"></div>
+                            <div class="absolute right-2 -bottom-5 w-16 h-16 bg-white/5 rounded-full pointer-events-none"></div>
+                            <div class="flex items-start justify-between gap-2 mb-3 relative">
+                                <div>
+                                    <p class="text-white/50 text-[9px] font-black uppercase tracking-widest mb-1">📁 Client Case</p>
+                                    <h3 class="font-black text-white text-xl leading-tight tracking-tight">${group.displayTitle}</h3>
+                                </div>
+                                <span class="text-[10px] font-black px-3 py-1.5 rounded-full shrink-0 bg-white/20 text-white border border-white/20">${statusBadge}</span>
                             </div>
-                            <div class="flex flex-wrap gap-3 text-[11px] text-slate-500 font-semibold mt-1">
-                                ${group.mobile ? `<span class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">📱 ${group.mobile}</span>` : ""}
-                                <span class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">📋 ${group.updates.length} Update${group.updates.length>1?'s':''}</span>
-                                <span class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">🕐 ${fmtDateTime(latestUpdate.timestamp)}</span>
+                            <div class="flex flex-wrap gap-1.5 text-[10px] font-bold relative">
+                                ${mobNo}
+                                <span class="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 text-white/70">📋 ${updCnt} Update${updCnt>1?'s':''}</span>
+                                <span class="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 text-white/70">🕐 ${lastTime}</span>
                             </div>
                         </div>`;
+
 
                     const sortedUpdates = [...group.updates].reverse();
                     const updatesHTML = sortedUpdates.map((u, idx) => {
@@ -877,7 +951,7 @@ Namaste 🙏 — AI Steno Assistant at your service. Powered by GPT-4.1. Aap apn
                             <div class="flex items-center gap-2 mb-2 flex-wrap">
                                 <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${isLatest ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-500'}">📅 ${fmtDate(page.timestamp)}</span>
                                 <span class="text-[10px] font-bold text-slate-400">⏰ ${fmtTime(page.timestamp)}</span>
-                                ${isLatest ? '<span class="text-[9px] font-black bg-yellow-400 text-slate-900 px-2 py-0.5 rounded-full">#${group.updates.length}</span>' : `<span class="text-[9px] text-slate-300 font-bold">#${group.updates.length - idx}</span>`}
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full " + (isLatest ? "bg-yellow-400 text-slate-900" : "text-slate-300") + ">#" + (group.updates.length - idx) + "</span>
                             </div>
                             <div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap">${displayContent}</div>
                         </div>`;
