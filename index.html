@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CaseDesk AI — Powered by GPT-4.1</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='11' fill='%236366f1'/><rect x='10' y='8' width='20' height='26' rx='4' fill='white' fill-opacity='0.25' stroke='white' stroke-width='1.5'/><path d='M14 16h12M14 21h12M14 26h8' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>" type="image/svg+xml"><rect width='100' height='100' rx='22' fill='%234f46e5'/><rect x='20' y='35' width='60' height='42' rx='14' fill='white'/><circle cx='37' cy='56' r='7' fill='%234f46e5'/><circle cx='63' cy='56' r='7' fill='%234f46e5'/><rect x='42' y='64' width='16' height='4' rx='2' fill='%234f46e5'/><rect x='33' y='20' width='7' height='15' rx='3.5' fill='white'/><rect x='60' y='20' width='7' height='15' rx='3.5' fill='white'/><circle cx='36.5' cy='18' r='5' fill='white'/><circle cx='63.5' cy='18' r='5' fill='white'/></svg>" type="image/svg+xml">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='11' fill='%236366f1'/><rect x='10' y='8' width='20' height='26' rx='4' fill='white' fill-opacity='0.25' stroke='white' stroke-width='1.5'/><path d='M14 16h12M14 21h12M14 26h8' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -211,7 +211,7 @@
         </div>
     </div>
 
-    <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full h-full relative">
+    <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full relative overflow-hidden" style="height:100dvh;">
         
         <!-- COLLAPSIBLE SIDEBAR -->
         <nav id="sidebar" class="hidden md:flex flex-col bg-slate-900 text-slate-300 shadow-2xl z-20 relative"
@@ -433,7 +433,6 @@
         overflow:hidden;
         border:1px solid rgba(255,255,255,0.8);
         background:#f8faff;
-        display:none;
         flex-direction:column;
         transition:opacity 0.2s,transform 0.2s;
         min-width:320px;min-height:400px;
