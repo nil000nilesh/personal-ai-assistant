@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Steno Pro - Case Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .devanagari { font-family: 'Noto Sans Devanagari', sans-serif; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -107,7 +108,7 @@
                 <div class="max-w-6xl mx-auto w-full">
                     <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">My Notebook</h2>
                     <p class="text-slate-500 mb-10 text-sm md:text-base">Aapke sabhi important drafts aur meeting notes yahan automatically save hote hain.</p>
-                    <div id="notebook-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-8 pb-20"></div>
+                    <div id="notebook-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-8 pb-20 items-start"></div>
                 </div>
             </div>
 
@@ -452,21 +453,65 @@
 
             onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
                 ui.notebookGrid.innerHTML = ""; allNotebooks = [];
+
+                // Group notebooks by client name
+                let groupedNotebooks = {};
                 snapshot.forEach((docData) => {
                     const page = docData.data(); allNotebooks.push(page);
-                    const dateObj = new Date(page.timestamp);
-                    const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                    const card = document.createElement('div');
-                    card.className = "bg-white p-8 md:p-10 rounded-[2rem] shadow-sm hover:shadow-xl border border-slate-200 border-l-[12px] border-l-yellow-400 relative transition-all duration-300 transform hover:-translate-y-1";
-                    card.innerHTML = `
-                        <div class="border-b-2 border-slate-100 pb-4 mb-6 flex justify-between items-end">
-                            <h3 class="font-black text-slate-900 text-2xl tracking-tight">${page.title}</h3>
-                            <span class="text-xs text-slate-400 font-bold tracking-widest uppercase bg-slate-50 px-3 py-1 rounded-lg">${formattedDate}</span>
-                        </div>
-                        <div class="text-slate-700 text-[16px] notebook-page whitespace-pre-wrap font-medium">${page.content}</div>
-                    `;
-                    ui.notebookGrid.appendChild(card);
+                    const key = (page.client || page.title || "सामान्य").toUpperCase();
+                    if (!groupedNotebooks[key]) {
+                        groupedNotebooks[key] = { displayName: page.client || page.title || "सामान्य", updates: [] };
+                    }
+                    groupedNotebooks[key].updates.push(page);
                 });
+
+                for (const key in groupedNotebooks) {
+                    const group = groupedNotebooks[key];
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-[2rem] shadow-sm hover:shadow-xl border border-slate-200 border-l-[12px] border-l-yellow-400 relative transition-all duration-300 transform hover:-translate-y-1 overflow-hidden";
+
+                    // Build client header
+                    let headerHTML = `
+                        <div class="bg-slate-900 text-white px-8 py-5 flex items-center justify-between">
+                            <div>
+                                <div class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1">📋 क्लाइंट नोट</div>
+                                <h3 class="font-black text-2xl tracking-tight">${group.displayName}</h3>
+                            </div>
+                            <div class="text-right text-xs text-slate-300 font-semibold">
+                                कुल अपडेट: <span class="text-yellow-400 text-lg font-black">${group.updates.length}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    // Build each update entry
+                    let updatesHTML = group.updates.map((page, idx) => {
+                        const dateObj = new Date(page.timestamp);
+                        const formattedDate = dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                        const formattedTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+                        // Clean content — remove AI Insights section if present
+                        let cleanContent = page.content || "";
+                        cleanContent = cleanContent.replace(/📋\s*AI Insights[\s\S]*?(Status:.*?(Brain|मस्तिष्क)[^\n]*)/gi, "").trim();
+                        cleanContent = cleanContent.replace(/AI Insights:[\s\S]*/gi, "").trim();
+                        cleanContent = cleanContent.replace(/•\s*Date:.*\n?/gi, "").trim();
+                        cleanContent = cleanContent.replace(/•\s*Details:.*\n?/gi, "").trim();
+                        cleanContent = cleanContent.replace(/•\s*Status:.*\n?/gi, "").trim();
+                        cleanContent = cleanContent.replace(/Summary:/gi, "").trim();
+
+                        return `
+                        <div class="px-8 py-5 border-b border-slate-100 last:border-b-0">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="bg-yellow-50 border border-yellow-200 text-yellow-800 text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wide">📅 ${formattedDate}</span>
+                                <span class="text-slate-400 text-[11px] font-bold">⏰ ${formattedTime}</span>
+                                <span class="text-slate-300 text-[10px] ml-auto">#${group.updates.length - idx}</span>
+                            </div>
+                            <div class="text-slate-800 text-[15px] whitespace-pre-wrap font-medium leading-relaxed devanagari">${cleanContent}</div>
+                        </div>`;
+                    }).join("");
+
+                    card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50">${updatesHTML}</div>`;
+                    ui.notebookGrid.appendChild(card);
+                }
             });
         }
 
@@ -538,40 +583,81 @@
 
     try {
 
-        // ---------- CLIENT DETECT ----------
+        // ---------- CLIENT DETECT (Hindi + English, any case) ----------
         function detectClient(text) {
-            const match = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\sPvt\sLtd)?)/);
-            return match ? match[1].trim() : "General";
+            // Known name keywords pattern: first last name (2-3 words)
+            // Try explicit "ka" pattern like "sumit rathod ka..."
+            const kaMatch = text.match(/([a-zA-Z\u0900-\u097F]+(?:\s[a-zA-Z\u0900-\u097F]+){1,2})\s+ka\b/i);
+            if (kaMatch) return toTitleCase(kaMatch[1].trim());
+
+            // Try Capitalized names
+            const capMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2}(?:\sPvt\.?\sLtd\.?)?)/);
+            if (capMatch) return capMatch[1].trim();
+
+            // Try 2-word lowercase names at start
+            const lowerMatch = text.match(/^([a-z]+\s[a-z]+)/i);
+            if (lowerMatch) return toTitleCase(lowerMatch[1].trim());
+
+            return "सामान्य";
         }
+
+        function toTitleCase(str) {
+            return str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+        }
+
         const clientName = detectClient(text);
 
-        // ---------- NOTEBOOK DRAFT IN HINDI ----------
+        // ---------- NOTEBOOK DRAFT IN OFFICIAL HINDI (DEVANAGARI) ----------
         function generateNotebookHindi(text, client) {
             const points = [];
+            const lower = text.toLowerCase();
 
-            if(/LC|letter of credit|एलसी/i.test(text))
-                points.push("एलसी चेक किया गया");
+            // --- LOAN & BANKING ---
+            if(/home loan|होम लोन/i.test(text))       points.push("🏠 होम लोन प्रकरण संबंधित कार्यवाही की गई।");
+            if(/personal loan|पर्सनल लोन/i.test(text)) points.push("💳 पर्सनल लोन हेतु प्रक्रिया प्रारंभ की गई।");
+            if(/business loan|बिजनेस लोन/i.test(text)) points.push("🏢 व्यवसायिक ऋण प्रकरण पर कार्य किया गया।");
+            if(/auto loan|car loan|ऑटो लोन/i.test(text)) points.push("🚗 वाहन ऋण संबंधित प्रक्रिया की गई।");
+            if(/mortgage|मॉर्गेज/i.test(text))         points.push("📑 मॉर्गेज दस्तावेज़ीकरण कार्य किया गया।");
+            if(/disburse|disbursal|डिस्बर्स/i.test(text)) points.push("✅ ऋण वितरण (डिस्बर्समेंट) की प्रक्रिया की गई।");
+            if(/sanction|sanctioned|स्वीकृत/i.test(text)) points.push("✔️ ऋण स्वीकृति संबंधित कार्यवाही की गई।");
 
-            const dateMatch = text.match(/(\d{1,2}\s*[A-Za-z]+)/);
-            if(dateMatch)
-                points.push("शिपमेंट अंतिम तिथि: " + dateMatch[0]);
+            // --- DOCUMENTS ---
+            if(/LC|letter of credit|एलसी/i.test(text))    points.push("🔖 एलसी (लेटर ऑफ क्रेडिट) की जाँच की गई।");
+            if(/invoice|इनवॉइस/i.test(text))              points.push("🧾 इनवॉइस तैयार कर क्लाइंट को प्रेषित किया गया।");
+            if(/insurance|बीमा/i.test(text))               points.push("🛡️ बीमा दस्तावेज़ लंबित हैं, शीघ्र प्रस्तुत करने हेतु सूचित किया।");
+            if(/draft|drafting|ड्राफ्ट/i.test(text))       points.push("📝 दस्तावेज़ का प्रारूप (ड्राफ्ट) तैयार किया गया।");
+            if(/submit|जमा|file|फाइल/i.test(text))        points.push("📂 क्लाइंट को दस्तावेज़ समय पर जमा करने की सलाह दी गई।");
 
-            if(/invoice|इनवॉइस/i.test(text))
-                points.push("बीएल और इनवॉइस तैयार");
+            // --- COMMUNICATION ---
+            if(/mail|email|मेल/i.test(text))               points.push("📧 संबंधित पक्ष को ई-मेल प्रेषित की गई।");
+            if(/call|phone|फोन|कॉल/i.test(text))          points.push("📞 क्लाइंट से दूरभाष पर वार्तालाप किया गया।");
+            if(/meeting|मीटिंग|बैठक/i.test(text))         points.push("🤝 बैठक/मीटिंग का आयोजन किया गया।");
+            if(/follow.?up|फॉलो अप/i.test(text))          points.push("🔔 क्लाइंट को फॉलो-अप हेतु सूचित किया गया।");
 
-            if(/insurance|बीमा/i.test(text))
-                points.push("बीमा दस्तावेज लंबित");
+            // --- STATUS ---
+            if(/pending|लंबित/i.test(text))                points.push("⏳ प्रकरण अभी भी लंबित है, शीघ्र निराकरण आवश्यक है।");
+            if(/complete|पूर्ण|done|हो गया/i.test(text))   points.push("✅ कार्य सफलतापूर्वक पूर्ण किया गया।");
+            if(/delay|discrepancy|देरी/i.test(text))       points.push("⚠️ विलंब / त्रुटि की संभावना — तत्काल ध्यान आवश्यक।");
+            if(/urgent|जरूरी|तुरंत/i.test(text))           points.push("🚨 प्राथमिकता के आधार पर तत्काल कार्यवाही अपेक्षित।");
+            if(/check|verify|जाँच/i.test(text))            points.push("🔍 संबंधित विवरण की पुष्टि एवं जाँच की गई।");
 
-            if(/submit|जमा/i.test(text))
-                points.push("क्लाइंट को दस्तावेज जमा करने की सलाह दी गई");
+            // --- PEOPLE ---
+            if(/jay patidar|जय पाटीदार/i.test(text))      points.push("👤 श्री जय पाटीदार को संबंधित जानकारी प्रेषित की गई।");
 
-            if(/delay|discrepancy|देरी/i.test(text))
-                points.push("जोखिम: डिस्क्रेपेंसी / भुगतान में देरी");
+            // --- AMOUNTS ---
+            const amtMatch = text.match(/(?:₹|rs\.?|रुपए?|amount|राशि)[:\s]*([0-9,]+(?:\s*(?:lakh|लाख|cr|करोड़|k|हजार))?)/i);
+            if(amtMatch) points.push(`💰 संबंधित राशि: ₹${amtMatch[1].trim()} — उल्लेखित की गई।`);
 
-            if(points.length === 0)
+            // --- DATES ---
+            const dateMatch = text.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,]*\d{0,4})/i);
+            if(dateMatch) points.push(`📅 महत्वपूर्ण तिथि: ${dateMatch[0]} — ध्यान में रखें।`);
+
+            // If nothing matched, write original text as a note
+            if(points.length === 0) {
                 points.push(text);
+            }
 
-            return `केस नोट्स – ${client}\n\n• ` + points.join("\n• ");
+            return points.join("\n");
         }
 
         // ---------- SAVE NOTEBOOK ----------
