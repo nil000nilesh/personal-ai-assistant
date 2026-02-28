@@ -104,11 +104,41 @@
                 <button id="logout-btn-mob" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-medium">Logout</button>
             </header>
 
-            <div id="view-notebook" class="absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex flex-col overflow-y-auto p-4 md:p-10">
-                <div class="max-w-6xl mx-auto w-full">
-                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">My Notebook</h2>
-                    <p class="text-slate-500 mb-10 text-sm md:text-base">Aapke sabhi important drafts aur meeting notes yahan automatically save hote hain.</p>
-                    <div id="notebook-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-8 pb-20 items-start"></div>
+            <div id="view-notebook" class="absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex flex-col overflow-hidden">
+                <!-- Sticky toolbar -->
+                <div class="bg-white border-b border-slate-200 px-4 md:px-10 py-4 flex-shrink-0">
+                    <div class="max-w-6xl mx-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">📓 My Notebook</h2>
+                            <span id="nb-count" class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">0 notes</span>
+                        </div>
+                        <!-- Search + Sort + Filter row -->
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <div class="relative flex-1 min-w-[180px]">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                                <input id="nb-search" type="text" placeholder="Search notes..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 focus:bg-white transition"/>
+                            </div>
+                            <select id="nb-sort" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:border-blue-400 text-slate-600">
+                                <option value="new">🕐 Newest First</option>
+                                <option value="old">📅 Oldest First</option>
+                                <option value="az">🔤 A → Z</option>
+                            </select>
+                            <select id="nb-filter" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:border-blue-400 text-slate-600">
+                                <option value="all">📂 All Clients</option>
+                            </select>
+                            <button id="nb-view-toggle" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-600 transition" title="Toggle view">⊞ Grid</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Scrollable grid -->
+                <div class="flex-1 overflow-y-auto p-4 md:p-8">
+                    <div class="max-w-6xl mx-auto">
+                        <div id="notebook-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20 items-start"></div>
+                        <div id="nb-empty" class="hidden text-center py-20 text-slate-400">
+                            <div class="text-5xl mb-3">📭</div>
+                            <p class="font-semibold">No notes found</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -120,19 +150,69 @@
                 </div>
             </div>
 
-            <div id="view-tasks" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-y-auto p-4 md:p-10">
-                <div class="max-w-4xl mx-auto w-full">
-                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">My Tasks</h2>
-                    <p class="text-slate-500 mb-10 text-sm md:text-base">Aapki smart to-do list jo AI ne banayi hai.</p>
-                    <div id="tasks-list" class="flex flex-col gap-4 pb-20"></div>
+            <div id="view-tasks" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-hidden">
+                <!-- Tasks Toolbar -->
+                <div class="bg-white border-b border-slate-200 px-4 md:px-10 py-4 flex-shrink-0">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">✅ My Tasks</h2>
+                            <div class="flex items-center gap-2">
+                                <span id="task-pending-count" class="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">0 Pending</span>
+                                <span id="task-done-count" class="text-xs font-black text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full">0 Done</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <div class="relative flex-1 min-w-[160px]">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                                <input id="task-search" type="text" placeholder="Search tasks..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 focus:bg-white transition"/>
+                            </div>
+                            <div id="task-filter-btns" class="flex gap-1.5">
+                                <button data-filter="all" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600">All</button>
+                                <button data-filter="Pending" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">⏳ Pending</button>
+                                <button data-filter="Done" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700">✅ Done</button>
+                                <button data-filter="Urgent" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50 hover:border-red-200 hover:text-red-700">🚨 Urgent</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
+                    <div class="max-w-4xl mx-auto">
+                        <div id="tasks-list" class="flex flex-col gap-3 pb-20"></div>
+                        <div id="task-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🎉</div><p class="font-semibold">Koi task nahi! Sab clear hai.</p></div>
+                    </div>
                 </div>
             </div>
 
-            <div id="view-reminders" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-y-auto p-4 md:p-10">
-                <div class="max-w-4xl mx-auto w-full">
-                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">Reminders</h2>
-                    <p class="text-slate-500 mb-10 text-sm md:text-base">Upcoming calls, meetings aur alerts.</p>
-                    <div id="reminders-list" class="grid grid-cols-1 md:grid-cols-2 gap-5 pb-20"></div>
+            <div id="view-reminders" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-hidden">
+                <!-- Reminders Toolbar -->
+                <div class="bg-white border-b border-slate-200 px-4 md:px-10 py-4 flex-shrink-0">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">⏰ Reminders</h2>
+                            <div class="flex gap-2">
+                                <span id="rem-upcoming-count" class="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">0 Upcoming</span>
+                                <span id="rem-overdue-count" class="text-xs font-black text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full">0 Overdue</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <div class="relative flex-1 min-w-[160px]">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                                <input id="rem-search" type="text" placeholder="Search reminders..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 transition"/>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <button data-remfilter="all" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600">All</button>
+                                <button data-remfilter="today" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-blue-50">📅 Today</button>
+                                <button data-remfilter="upcoming" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50">🟢 Upcoming</button>
+                                <button data-remfilter="overdue" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50">🔴 Overdue</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
+                    <div class="max-w-4xl mx-auto">
+                        <div id="reminders-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20"></div>
+                        <div id="rem-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🗓️</div><p class="font-semibold">Koi reminder nahi.</p></div>
+                    </div>
                 </div>
             </div>
 
@@ -476,95 +556,367 @@ Namaste 🙏 — AI Steno Assistant at your service. Powered by GPT-4.1. Aap apn
                 }
             });
 
-            onSnapshot(query(collection(db, "tasks"), orderBy("timestamp", "desc")), (snapshot) => {
-                ui.tasksList.innerHTML = ""; allTasks = [];
-                snapshot.forEach((docData) => {
-                    const task = docData.data(); allTasks.push(task);
-                    const div = document.createElement('div');
-                    div.className = "bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md flex items-center gap-5 transition-shadow";
-                    div.innerHTML = `
-                        <input type="checkbox" class="w-6 h-6 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer transition-colors hover:bg-blue-50">
-                        <span class="flex-1 text-slate-800 font-semibold text-lg">${task.title}</span>
-                        <span class="text-[11px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full uppercase tracking-wider">${task.status}</span>`;
-                    ui.tasksList.appendChild(div);
+            // TASKS — with search, filter, status toggle, priority, due date
+            let taskCurrentFilter = 'all';
+            let taskSearchQuery = '';
+
+            function renderTasks() {
+                const list = document.getElementById('tasks-list');
+                const empty = document.getElementById('task-empty');
+                const pendingCount = document.getElementById('task-pending-count');
+                const doneCount = document.getElementById('task-done-count');
+                list.innerHTML = '';
+
+                let filtered = allTasks.filter(t => {
+                    const matchFilter = taskCurrentFilter === 'all' || t.status === taskCurrentFilter ||
+                        (taskCurrentFilter === 'Urgent' && t.priority === 'Urgent');
+                    const matchSearch = !taskSearchQuery || (t.title||'').toLowerCase().includes(taskSearchQuery) ||
+                        (t.client||'').toLowerCase().includes(taskSearchQuery);
+                    return matchFilter && matchSearch;
                 });
+
+                const pending = allTasks.filter(t => t.status !== 'Done').length;
+                const done    = allTasks.filter(t => t.status === 'Done').length;
+                if(pendingCount) pendingCount.textContent = pending + ' Pending';
+                if(doneCount) doneCount.textContent = done + ' Done';
+
+                if(filtered.length === 0) { empty.classList.remove('hidden'); return; }
+                empty.classList.add('hidden');
+
+                filtered.forEach((task, idx) => {
+                    const isDone = task.status === 'Done';
+                    const isUrgent = task.priority === 'Urgent';
+                    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !isDone;
+                    const d = new Date(task.timestamp);
+                    const dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+                    const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+
+                    let priorityBadge = '';
+                    if(isUrgent) priorityBadge = '<span class="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">🚨 URGENT</span>';
+
+                    let dueBadge = '';
+                    if(task.dueDate) {
+                        const due = new Date(task.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+                        dueBadge = `<span class="text-[10px] font-bold ${isOverdue ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-full">📅 ${due}</span>`;
+                    }
+
+                    let statusBadge = '';
+                    if(isDone)
+                        statusBadge = '<span class="text-[10px] font-black text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">✅ Done</span>';
+                    else if(isOverdue)
+                        statusBadge = '<span class="text-[10px] font-black text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full animate-pulse">🔴 Overdue</span>';
+                    else
+                        statusBadge = '<span class="text-[10px] font-black text-orange-700 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full">⏳ Pending</span>';
+
+                    const div = document.createElement('div');
+                    div.className = `bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isDone ? 'opacity-60 border-slate-100' : isOverdue ? 'border-red-200' : 'border-slate-100 hover:border-blue-200'}`;
+                    div.innerHTML = `
+                        <div class="p-4 flex items-start gap-4">
+                            <!-- Checkbox -->
+                            <button class="task-check-btn mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 ${isDone ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-blue-400'} flex items-center justify-center transition-all" data-idx="${idx}">
+                                ${isDone ? '<svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
+                            </button>
+                            <!-- Content -->
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-slate-800 text-base leading-snug devanagari ${isDone ? 'line-through text-slate-400' : ''}">${task.title}</p>
+                                <div class="flex flex-wrap gap-2 mt-2 items-center">
+                                    ${task.client ? `<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">👤 ${task.client}</span>` : ''}
+                                    ${dueBadge}
+                                    ${priorityBadge}
+                                    <span class="text-[10px] text-slate-400 font-semibold ml-auto">🕐 ${dateStr} ${timeStr}</span>
+                                </div>
+                            </div>
+                            <!-- Status badge -->
+                            <div class="flex-shrink-0">${statusBadge}</div>
+                        </div>`;
+                    list.appendChild(div);
+                });
+
+                // Checkbox toggle
+                list.querySelectorAll('.task-check-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.dataset.idx);
+                        const task = filtered[idx];
+                        task.status = task.status === 'Done' ? 'Pending' : 'Done';
+                        renderTasks();
+                    });
+                });
+            }
+
+            onSnapshot(query(collection(db, "tasks"), orderBy("timestamp", "desc")), (snapshot) => {
+                allTasks = [];
+                snapshot.forEach(d => allTasks.push(d.data()));
+                renderTasks();
             });
+
+            // Task search
+            document.getElementById('task-search')?.addEventListener('input', e => {
+                taskSearchQuery = e.target.value.toLowerCase();
+                renderTasks();
+            });
+
+            // Task filter buttons
+            document.getElementById('task-filter-btns')?.addEventListener('click', e => {
+                const btn = e.target.closest('[data-filter]');
+                if(!btn) return;
+                taskCurrentFilter = btn.dataset.filter;
+                document.querySelectorAll('.task-filter-btn').forEach(b => {
+                    b.className = b === btn
+                        ? 'task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600'
+                        : 'task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50';
+                });
+                renderTasks();
+            });
+
+            // REMINDERS — with search, filter, overdue detection, countdown
+            let remCurrentFilter = 'all';
+            let remSearchQuery = '';
+
+            function parseRemDate(timeStr) {
+                if(!timeStr || timeStr === 'Manual' || timeStr === 'जल्द') return null;
+                const d = new Date(timeStr);
+                return isNaN(d) ? null : d;
+            }
+
+            function renderReminders() {
+                const list = document.getElementById('reminders-list');
+                const empty = document.getElementById('rem-empty');
+                const upcomingEl = document.getElementById('rem-upcoming-count');
+                const overdueEl = document.getElementById('rem-overdue-count');
+                list.innerHTML = '';
+                const now = new Date();
+
+                let filtered = allReminders.filter(r => {
+                    const d = parseRemDate(r.time);
+                    const isOverdue = d && d < now;
+                    const isToday = d && d.toDateString() === now.toDateString();
+                    const matchFilter = remCurrentFilter === 'all' ||
+                        (remCurrentFilter === 'today' && isToday) ||
+                        (remCurrentFilter === 'overdue' && isOverdue) ||
+                        (remCurrentFilter === 'upcoming' && d && d >= now);
+                    const matchSearch = !remSearchQuery || (r.title||'').toLowerCase().includes(remSearchQuery) ||
+                        (r.client||'').toLowerCase().includes(remSearchQuery);
+                    return matchFilter && matchSearch;
+                });
+
+                const upcoming = allReminders.filter(r => { const d=parseRemDate(r.time); return d && d >= now; }).length;
+                const overdue  = allReminders.filter(r => { const d=parseRemDate(r.time); return d && d < now; }).length;
+                if(upcomingEl) upcomingEl.textContent = upcoming + ' Upcoming';
+                if(overdueEl)  overdueEl.textContent  = overdue  + ' Overdue';
+
+                if(filtered.length === 0) { empty.classList.remove('hidden'); return; }
+                empty.classList.add('hidden');
+
+                filtered.forEach(rem => {
+                    const remDate = parseRemDate(rem.time);
+                    const isOverdue = remDate && remDate < now;
+                    const isToday   = remDate && remDate.toDateString() === now.toDateString();
+                    const isManual  = !remDate;
+
+                    let cardColor, dotColor, timeLabel;
+                    if(isOverdue)       { cardColor = 'from-red-50 to-red-100 border-red-200'; dotColor = 'bg-red-500'; timeLabel = '🔴 Overdue'; }
+                    else if(isToday)    { cardColor = 'from-orange-50 to-amber-50 border-amber-200'; dotColor = 'bg-amber-500'; timeLabel = '🟠 Today'; }
+                    else if(isManual)   { cardColor = 'from-slate-50 to-slate-100 border-slate-200'; dotColor = 'bg-slate-400'; timeLabel = '📌 Manual'; }
+                    else                { cardColor = 'from-blue-50 to-indigo-50 border-blue-200'; dotColor = 'bg-blue-500'; timeLabel = '🟢 Upcoming'; }
+
+                    let formattedTime = rem.time;
+                    if(remDate) {
+                        formattedTime = remDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+                        if(remDate.getHours() || remDate.getMinutes())
+                            formattedTime += ' — ' + remDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+                    }
+
+                    // Days countdown
+                    let countdownBadge = '';
+                    if(remDate && !isOverdue) {
+                        const diff = Math.ceil((remDate - now) / (1000*60*60*24));
+                        countdownBadge = diff === 0
+                            ? '<span class="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full animate-pulse">Today!</span>'
+                            : `<span class="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">in ${diff}d</span>`;
+                    } else if(isOverdue) {
+                        const diff = Math.ceil((now - remDate) / (1000*60*60*24));
+                        countdownBadge = `<span class="text-[10px] font-black text-red-700 bg-red-100 px-2 py-0.5 rounded-full">${diff}d ago</span>`;
+                    }
+
+                    const div = document.createElement('div');
+                    div.className = `bg-gradient-to-br ${cardColor} border p-5 rounded-2xl shadow-sm flex flex-col gap-3 relative overflow-hidden hover:shadow-md transition-all`;
+                    div.innerHTML = `
+                        <div class="absolute -right-3 -top-3 text-5xl opacity-[0.07] select-none">⏰</div>
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full ${dotColor} ${isOverdue||isToday ? 'animate-pulse' : ''}"></span>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-wide">${timeLabel}</span>
+                            </div>
+                            ${countdownBadge}
+                        </div>
+                        <p class="font-bold text-slate-800 text-base leading-snug devanagari">${rem.title}</p>
+                        <div class="flex flex-wrap gap-2 items-center mt-1">
+                            <span class="text-[11px] font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-lg">📅 ${formattedTime}</span>
+                            ${rem.client ? `<span class="text-[10px] font-bold text-blue-600 bg-white/60 px-2 py-0.5 rounded-lg">👤 ${rem.client}</span>` : ''}
+                        </div>`;
+                    list.appendChild(div);
+                });
+            }
 
             onSnapshot(query(collection(db, "reminders"), orderBy("timestamp", "desc")), (snapshot) => {
-                ui.remindersList.innerHTML = ""; allReminders = [];
-                snapshot.forEach((docData) => {
-                    const rem = docData.data(); allReminders.push(rem);
-                    const div = document.createElement('div');
-                    div.className = "bg-gradient-to-br from-orange-50 to-red-50 border border-orange-100 p-6 rounded-[1.5rem] shadow-sm flex flex-col gap-2 relative overflow-hidden";
-                    div.innerHTML = `
-                        <div class="absolute -right-4 -top-4 text-6xl opacity-10">⏰</div>
-                        <span class="text-red-600 font-extrabold text-sm tracking-wide uppercase flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> ${rem.time}</span>
-                        <span class="text-slate-800 font-semibold text-lg leading-snug">${rem.title}</span>`;
-                    ui.remindersList.appendChild(div);
+                allReminders = [];
+                snapshot.forEach(d => allReminders.push(d.data()));
+                renderReminders();
+            });
+
+            // Reminders search
+            document.getElementById('rem-search')?.addEventListener('input', e => {
+                remSearchQuery = e.target.value.toLowerCase();
+                renderReminders();
+            });
+
+            // Reminders filter buttons
+            document.querySelectorAll('.rem-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    remCurrentFilter = btn.dataset.remfilter;
+                    document.querySelectorAll('.rem-filter-btn').forEach(b => {
+                        b.className = b === btn
+                            ? 'rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600'
+                            : 'rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50';
+                    });
+                    renderReminders();
                 });
             });
 
-            onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
-                ui.notebookGrid.innerHTML = ""; allNotebooks = [];
+            // NOTEBOOK — grouped by client, search, sort, filter, grid/list toggle
+            let nbSearchQuery = '';
+            let nbSort = 'new';
+            let nbFilterClient = 'all';
+            let nbViewGrid = true;
 
-                // Group notebooks by client name
-                let groupedNotebooks = {};
-                snapshot.forEach((docData) => {
-                    const page = docData.data(); allNotebooks.push(page);
-                    const key = (page.client || page.title || "सामान्य").toUpperCase();
-                    if (!groupedNotebooks[key]) {
-                        groupedNotebooks[key] = { displayName: page.client || page.title || "सामान्य", updates: [] };
-                    }
-                    groupedNotebooks[key].updates.push(page);
+            function renderNotebook() {
+                const grid = document.getElementById('notebook-grid');
+                const empty = document.getElementById('nb-empty');
+                const countEl = document.getElementById('nb-count');
+                grid.innerHTML = '';
+
+                // Group by client
+                let grouped = {};
+                let allClientNames = new Set();
+                allNotebooks.forEach(page => {
+                    const key = (page.client || page.title || 'सामान्य').toUpperCase();
+                    const name = page.client || page.title || 'सामान्य';
+                    allClientNames.add(name);
+                    if(!grouped[key]) grouped[key] = { displayName: name, updates: [] };
+                    grouped[key].updates.push(page);
                 });
 
-                for (const key in groupedNotebooks) {
-                    const group = groupedNotebooks[key];
-                    const card = document.createElement('div');
-                    card.className = "bg-white rounded-[2rem] shadow-sm hover:shadow-xl border border-slate-200 border-l-[12px] border-l-yellow-400 relative transition-all duration-300 transform hover:-translate-y-1 overflow-hidden";
-
-                    // Build client header
-                    let headerHTML = `
-                        <div class="bg-slate-900 text-white px-8 py-5 flex items-center justify-between">
-                            <div>
-                                <div class="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1">📋 क्लाइंट नोट</div>
-                                <h3 class="font-black text-2xl tracking-tight">${group.displayName}</h3>
-                            </div>
-                            <div class="text-right text-xs text-slate-300 font-semibold">
-                                कुल अपडेट: <span class="text-yellow-400 text-lg font-black">${group.updates.length}</span>
-                            </div>
-                        </div>
-                    `;
-
-                    // Build each update entry
-                    let updatesHTML = group.updates.map((page, idx) => {
-                        const dateObj = new Date(page.timestamp);
-                        const formattedDate = dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-                        const formattedTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-                        // Clean content — remove AI Insights section if present
-                        let cleanContent = page.content || "";
-                        cleanContent = cleanContent.replace(/📋\s*AI Insights[\s\S]*?(Status:.*?(Brain|मस्तिष्क)[^\n]*)/gi, "").trim();
-                        cleanContent = cleanContent.replace(/AI Insights:[\s\S]*/gi, "").trim();
-                        cleanContent = cleanContent.replace(/•\s*Date:.*\n?/gi, "").trim();
-                        cleanContent = cleanContent.replace(/•\s*Details:.*\n?/gi, "").trim();
-                        cleanContent = cleanContent.replace(/•\s*Status:.*\n?/gi, "").trim();
-                        cleanContent = cleanContent.replace(/Summary:/gi, "").trim();
-
-                        return `
-                        <div class="px-8 py-5 border-b border-slate-100 last:border-b-0">
-                            <div class="flex items-center gap-3 mb-3">
-                                <span class="bg-yellow-50 border border-yellow-200 text-yellow-800 text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wide">📅 ${formattedDate}</span>
-                                <span class="text-slate-400 text-[11px] font-bold">⏰ ${formattedTime}</span>
-                                <span class="text-slate-300 text-[10px] ml-auto">#${group.updates.length - idx}</span>
-                            </div>
-                            <div class="text-slate-800 text-[15px] whitespace-pre-wrap font-medium leading-relaxed devanagari">${cleanContent}</div>
-                        </div>`;
-                    }).join("");
-
-                    card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50">${updatesHTML}</div>`;
-                    ui.notebookGrid.appendChild(card);
+                // Populate client filter dropdown
+                const filterEl = document.getElementById('nb-filter');
+                if(filterEl && filterEl.options.length <= 1) {
+                    allClientNames.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name; opt.textContent = '👤 ' + name;
+                        filterEl.appendChild(opt);
+                    });
                 }
+
+                // Filter by client
+                let entries = Object.values(grouped).filter(g => {
+                    if(nbFilterClient !== 'all' && g.displayName !== nbFilterClient) return false;
+                    if(!nbSearchQuery) return true;
+                    return g.displayName.toLowerCase().includes(nbSearchQuery) ||
+                        g.updates.some(u => (u.content||'').toLowerCase().includes(nbSearchQuery));
+                });
+
+                // Sort
+                entries.sort((a, b) => {
+                    const aLatest = Math.max(...a.updates.map(u => new Date(u.timestamp)));
+                    const bLatest = Math.max(...b.updates.map(u => new Date(u.timestamp)));
+                    if(nbSort === 'new') return bLatest - aLatest;
+                    if(nbSort === 'old') return aLatest - bLatest;
+                    if(nbSort === 'az')  return a.displayName.localeCompare(b.displayName);
+                    return 0;
+                });
+
+                if(countEl) countEl.textContent = allNotebooks.length + ' notes';
+                grid.className = nbViewGrid
+                    ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20 items-start'
+                    : 'flex flex-col gap-4 pb-20';
+
+                if(entries.length === 0) { empty.classList.remove('hidden'); return; }
+                empty.classList.add('hidden');
+
+                entries.forEach(group => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl border border-l-[8px] border-yellow-400 border-slate-200 relative transition-all duration-300 overflow-hidden group";
+
+                    const sortedUpdates = [...group.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    const latest = sortedUpdates[0];
+
+                    function fmtDate(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+                    function fmtTime(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+
+                    const headerHTML = `
+                        <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] text-yellow-400 font-black uppercase tracking-widest mb-0.5">📋 क्लाइंट नोट</div>
+                                <h3 class="font-black text-xl tracking-tight">${group.displayName}</h3>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] text-slate-400 mb-0.5">कुल अपडेट</div>
+                                <div class="text-yellow-400 text-2xl font-black">${group.updates.length}</div>
+                            </div>
+                        </div>`;
+
+                    const updatesHTML = sortedUpdates.map((page, idx) => {
+                        // Highlight search term
+                        let displayContent = page.content || '';
+                        if(nbSearchQuery) {
+                            const regex = new RegExp(`(${nbSearchQuery})`, 'gi');
+                            displayContent = displayContent.replace(regex, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
+                        }
+                        const isLatest = idx === 0;
+                        return `
+                        <div class="px-6 py-4 border-b border-slate-50 last:border-b-0 ${isLatest ? 'bg-yellow-50/30' : ''}">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${isLatest ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-500'}">📅 ${fmtDate(page.timestamp)}</span>
+                                <span class="text-[10px] font-bold text-slate-400">⏰ ${fmtTime(page.timestamp)}</span>
+                                ${isLatest ? '<span class="text-[9px] font-black bg-yellow-400 text-slate-900 px-2 py-0.5 rounded-full">#${group.updates.length}</span>' : `<span class="text-[9px] text-slate-300 font-bold">#${group.updates.length - idx}</span>`}
+                            </div>
+                            <div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap">${displayContent}</div>
+                        </div>`;
+                    }).join('');
+
+                    card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50 max-h-[300px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
+                    grid.appendChild(card);
+                });
+            }
+
+            onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
+                allNotebooks = [];
+                snapshot.forEach(d => allNotebooks.push(d.data()));
+                renderNotebook();
+            });
+
+            // Notebook search
+            document.getElementById('nb-search')?.addEventListener('input', e => {
+                nbSearchQuery = e.target.value.toLowerCase();
+                renderNotebook();
+            });
+
+            // Notebook sort
+            document.getElementById('nb-sort')?.addEventListener('change', e => {
+                nbSort = e.target.value;
+                renderNotebook();
+            });
+
+            // Notebook filter
+            document.getElementById('nb-filter')?.addEventListener('change', e => {
+                nbFilterClient = e.target.value;
+                renderNotebook();
+            });
+
+            // Notebook grid/list toggle
+            document.getElementById('nb-view-toggle')?.addEventListener('click', () => {
+                nbViewGrid = !nbViewGrid;
+                document.getElementById('nb-view-toggle').textContent = nbViewGrid ? '⊞ Grid' : '☰ List';
+                renderNotebook();
             });
         }
 
