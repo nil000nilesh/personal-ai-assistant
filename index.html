@@ -400,27 +400,78 @@ Namaste 🙏 — AI Steno Assistant at your service. Powered by GPT-4.1. Aap apn
             });
 
             onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "asc")), (snapshot) => {
-                ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {}; 
+                ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {};
                 snapshot.forEach((docData) => {
-                    const note = docData.data(); allSavedNotes.push(note); 
-                    const normalizedTitle = note.title.toUpperCase();
-                    if(!groupedNotes[normalizedTitle]) groupedNotes[normalizedTitle] = { displayTitle: note.title, updates: [] };
+                    const note = docData.data(); allSavedNotes.push(note);
+                    const normalizedTitle = (note.client || note.title || "सामान्य").toUpperCase();
+                    if(!groupedNotes[normalizedTitle]) groupedNotes[normalizedTitle] = {
+                        displayTitle: note.client || note.title || "सामान्य",
+                        mobile: note.mobile || null,
+                        updates: []
+                    };
+                    if(!groupedNotes[normalizedTitle].mobile) {
+                        const mobMatch = (note.content || "").match(/\b[6-9]\d{9}\b/);
+                        if(mobMatch) groupedNotes[normalizedTitle].mobile = mobMatch[0];
+                    }
                     groupedNotes[normalizedTitle].updates.push(note);
                 });
+
                 for (const key in groupedNotes) {
                     const group = groupedNotes[key];
                     const card = document.createElement('div');
-                    card.className = "bg-white p-6 rounded-[1.5rem] shadow-sm hover:shadow-lg border border-slate-100 flex flex-col transition-all h-[280px] relative group overflow-hidden";
-                    let updatesHTML = group.updates.reverse().map(u => `
-                        <div class="border-l-[3px] border-blue-400 pl-4 py-3 relative bg-slate-50/50 mb-2 rounded-r-xl">
-                            <div class="absolute w-2.5 h-2.5 bg-blue-500 rounded-full -left-[6px] top-4 border-2 border-white shadow-sm"></div>
-                            <p class="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">${u.content}</p>
-                        </div>
-                    `).join("");
-                    card.innerHTML = `
+                    card.className = "bg-white rounded-[1.5rem] shadow-sm hover:shadow-lg border border-slate-100 relative group overflow-hidden transition-all";
+
+                    const latestUpdate = group.updates[group.updates.length - 1];
+                    const latestContent = (latestUpdate?.content || "").toLowerCase();
+                    let statusBadge = "🔵 Active";
+                    let statusColor = "bg-blue-50 text-blue-700 border-blue-200";
+                    if(/disburs|वितरण/.test(latestContent))    { statusBadge = "✅ Disbursed";  statusColor = "bg-green-50 text-green-700 border-green-200"; }
+                    else if(/sanction|स्वीकृत/.test(latestContent)) { statusBadge = "✔️ Sanctioned"; statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
+                    else if(/reject|अस्वीकृत/.test(latestContent))  { statusBadge = "❌ Rejected";   statusColor = "bg-red-50 text-red-700 border-red-200"; }
+                    else if(/pending|लंबित/.test(latestContent))     { statusBadge = "⏳ Pending";    statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200"; }
+                    else if(/mortgage|मॉर्गेज/.test(latestContent))  { statusBadge = "📑 Mortgage";   statusColor = "bg-purple-50 text-purple-700 border-purple-200"; }
+                    else if(/processing|प्रोसेसिंग/.test(latestContent)){ statusBadge = "🔄 Processing"; statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200"; }
+
+                    function fmtDate(ts) {
+                        const d = new Date(ts);
+                        return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+                    }
+                    function fmtTime(ts) {
+                        return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+                    }
+                    function fmtDateTime(ts) { return fmtDate(ts) + ' — ' + fmtTime(ts); }
+
+                    const headerHTML = `
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        <h3 class="font-extrabold text-slate-800 text-xl border-b border-slate-100 pb-4 mb-3">${group.displayTitle}</h3>
-                        <div class="overflow-y-auto client-updates-scroll flex-1 pr-1">${updatesHTML}</div>`;
+                        <div class="p-5 pb-3 border-b border-slate-100">
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <h3 class="font-extrabold text-slate-800 text-xl leading-tight">${group.displayTitle}</h3>
+                                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${statusColor}">${statusBadge}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-3 text-[11px] text-slate-500 font-semibold mt-1">
+                                ${group.mobile ? `<span class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">📱 ${group.mobile}</span>` : ""}
+                                <span class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">📋 ${group.updates.length} Update${group.updates.length>1?'s':''}</span>
+                                <span class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">🕐 ${fmtDateTime(latestUpdate.timestamp)}</span>
+                            </div>
+                        </div>`;
+
+                    const sortedUpdates = [...group.updates].reverse();
+                    const updatesHTML = sortedUpdates.map((u, idx) => {
+                        const isLatest = idx === 0;
+                        return `
+                        <div class="relative pl-9 pr-4 py-3 ${isLatest ? 'bg-blue-50/30' : ''} border-b border-slate-50 last:border-b-0">
+                            <div class="absolute left-3.5 top-4 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${isLatest ? 'bg-blue-500' : 'bg-slate-300'}"></div>
+                            ${idx < sortedUpdates.length - 1 ? '<div class="absolute left-[17px] top-7 bottom-0 w-px bg-slate-100"></div>' : ''}
+                            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${isLatest ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}">📅 ${fmtDate(u.timestamp)}</span>
+                                <span class="text-[10px] font-bold text-slate-400">⏰ ${fmtTime(u.timestamp)}</span>
+                                ${isLatest ? '<span class="text-[9px] font-black text-white bg-blue-500 px-2 py-0.5 rounded-full">LATEST</span>' : ''}
+                            </div>
+                            <p class="text-slate-700 text-sm leading-relaxed font-medium whitespace-pre-wrap devanagari">${u.content}</p>
+                        </div>`;
+                    }).join("");
+
+                    card.innerHTML = headerHTML + `<div class="overflow-y-auto client-updates-scroll max-h-[350px]">${updatesHTML}</div>`;
                     ui.notesGrid.appendChild(card);
                 }
             });
@@ -570,7 +621,6 @@ Namaste 🙏 — AI Steno Assistant at your service. Powered by GPT-4.1. Aap apn
             sendBtn.classList.add('opacity-50');
             ui.userInput.value = "";
 
-            renderMessage('user', text);
             chatHistory.push({ role: 'user', content: text });
 
             await addDoc(collection(db, "chats"), {
@@ -658,7 +708,8 @@ RESPONSE FORMAT (HAMESHA valid JSON do, kuch bhi extra mat likho):
   "case": {
     "save": true/false,
     "client": "Client Name",
-    "content": "...case summary..."
+    "mobile": "10-digit mobile number agar diya ho, warna null",
+    "content": "...case summary Hindi mein..."
   },
   "task": {
     "save": true/false,
@@ -742,6 +793,7 @@ RULES:
                         title: aiResponse.case.client || "सामान्य",
                         content: aiResponse.case.content,
                         client: aiResponse.case.client || "सामान्य",
+                        mobile: aiResponse.case.mobile || null,
                         timestamp: now
                     }));
                 }
@@ -771,15 +823,13 @@ RULES:
 
                 await Promise.all(savePromises);
 
-                // ── 6. RENDER AI REPLY ──────────────────────────────────────
+                // ── 6. RENDER AI REPLY — onSnapshot se automatically render hoga
                 loadingDiv.remove();
-                renderMessage('assistant', replyText);
                 ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
             } catch (err) {
                 loadingDiv.remove();
                 const errMsg = `❌ त्रुटि: ${err.message}`;
-                renderMessage('assistant', errMsg);
                 await addDoc(collection(db, "chats"), {
                     role: "assistant", content: errMsg, timestamp: new Date().toISOString()
                 });
