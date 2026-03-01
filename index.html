@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CaseDesk AI — Powered by GPT-4.1</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='11' fill='%236366f1'/><rect x='10' y='8' width='20' height='26' rx='4' fill='white' fill-opacity='0.25' stroke='white' stroke-width='1.5'/><path d='M14 16h12M14 21h12M14 26h8' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 h-[100dvh] overflow-hidden flex flex-col selection:bg-blue-200">
+
+    <div id="login-screen" class="absolute inset-0 z-[100] flex overflow-hidden">
+        <!-- Left panel — branding -->
+        <div class="hidden md:flex flex-col justify-between w-1/2 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-12 relative overflow-hidden">
+            <!-- Decorative circles -->
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <!-- Logo + name -->
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-16">
+                    <svg width="44" height="44" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="40" height="40" rx="11" fill="url(#g44)"/>
+<defs><linearGradient id="g44" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs>
+<rect x="12" y="10" width="16" height="20" rx="3" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/>
+<path d="M16 16h8M16 20h8M16 24h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+                    <span class="text-white font-black text-xl tracking-tight">CaseDesk <span class="text-blue-400">AI</span></span>
+                </div>
+                <h2 class="text-5xl font-black text-white leading-tight mb-4">Your AI-Powered<br/><span class="text-blue-400">Case Manager</span></h2>
+                <p class="text-slate-400 text-base leading-relaxed max-w-sm">Banking cases, tasks aur reminders — sab kuch ek jagah. AI se boliye, automatically ho jata hai.</p>
+            </div>
+            <!-- Feature list -->
+            <div class="relative z-10 space-y-4">
+                <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">📋</div> Smart case notes — Hindi mein, auto-draft</div>
+                <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">⏰</div> Smart reminders with overdue alerts</div>
+                <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">🤖</div> GPT-4.1 powered AI assistant</div>
+            </div>
+        </div>
+        <!-- Right panel — login form (REDESIGNED) -->
+        <div class="flex-1 flex flex-col items-center justify-center px-8 md:px-16 relative overflow-hidden" style="background:linear-gradient(165deg, #f8faff 0%, #eef2ff 40%, #e0e7ff 100%);">
+            <!-- Decorative background elements -->
+            <div class="absolute top-0 right-0 w-72 h-72 rounded-full opacity-30" style="background:radial-gradient(circle,#c7d2fe 0%,transparent 70%);filter:blur(40px);"></div>
+            <div class="absolute bottom-0 left-0 w-60 h-60 rounded-full opacity-20" style="background:radial-gradient(circle,#a5b4fc 0%,transparent 70%);filter:blur(50px);"></div>
+            <!-- Floating dots pattern -->
+            <div class="absolute inset-0 opacity-[0.03]" style="background-image:radial-gradient(#6366f1 1px,transparent 1px);background-size:24px 24px;"></div>
+
+            <!-- Mobile logo -->
+            <div class="md:hidden flex items-center gap-2 mb-8 relative z-10">
+<svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gd173)"/><defs><linearGradient id="gd173" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+                <span class="font-black text-xl text-slate-900 tracking-tight">CaseDesk <span class="text-blue-500">AI</span></span>
+            </div>
+
+            <div class="w-full max-w-sm relative z-10">
+                <!-- Welcome heading with accent -->
+                <div class="mb-8">
+                    <div class="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1 mb-4">
+                        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                        <span class="text-[11px] font-bold text-indigo-600 tracking-wide uppercase">Ready to connect</span>
+                    </div>
+                    <h3 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">Welcome back</h3>
+                    <p class="text-slate-500 text-sm">Sign in to access your AI-powered dashboard</p>
+                </div>
+
+                <!-- Login button — glass card style -->
+                <div class="rounded-2xl p-1" style="background:linear-gradient(135deg,#6366f1,#3b82f6,#6366f1);background-size:200% 200%;animation:gradShift 4s ease infinite;">
+                    <button id="login-btn" class="w-full bg-white hover:bg-blue-50 text-slate-700 px-6 py-4 rounded-xl font-bold transition-all flex items-center gap-4 text-sm group" style="box-shadow:0 4px 20px rgba(99,102,241,0.15);">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0" style="box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        </div>
+                        <div class="flex-1 text-left">
+                            <div class="text-sm font-extrabold text-slate-800">Continue with Google</div>
+                            <div class="text-[10px] font-medium text-slate-400 mt-0.5">Secure one-tap sign in</div>
+                        </div>
+                        <svg class="w-5 h-5 text-indigo-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+
+                <!-- Divider -->
+                <div class="mt-8 flex items-center gap-3 text-xs text-slate-400">
+                    <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#c7d2fe,transparent);"></div>
+                    <span class="font-semibold text-indigo-400 tracking-wider uppercase text-[10px]">Trusted & Secure</span>
+                    <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#c7d2fe,transparent);"></div>
+                </div>
+
+                <!-- Feature badges — redesigned as highlighted cards -->
+                <div class="mt-6 grid grid-cols-3 gap-3 text-center">
+                    <!-- Encrypted -->
+                    <div class="group relative rounded-2xl p-4 cursor-default transition-all duration-300 hover:-translate-y-1" style="background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);border:1px solid rgba(99,102,241,0.1);box-shadow:0 2px 12px rgba(99,102,241,0.06);">
+                        <div class="w-10 h-10 mx-auto mb-2 rounded-xl flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#fef3c7,#fde68a);box-shadow:0 3px 12px rgba(245,158,11,0.2);">🔒</div>
+                        <div class="text-[11px] font-extrabold text-slate-700">Encrypted</div>
+                        <div class="text-[9px] font-medium text-slate-400 mt-0.5">256-bit SSL</div>
+                    </div>
+                    <!-- Cloud Sync -->
+                    <div class="group relative rounded-2xl p-4 cursor-default transition-all duration-300 hover:-translate-y-1" style="background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);border:1px solid rgba(99,102,241,0.1);box-shadow:0 2px 12px rgba(99,102,241,0.06);">
+                        <div class="w-10 h-10 mx-auto mb-2 rounded-xl flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);box-shadow:0 3px 12px rgba(59,130,246,0.2);">☁️</div>
+                        <div class="text-[11px] font-extrabold text-slate-700">Cloud Sync</div>
+                        <div class="text-[9px] font-medium text-slate-400 mt-0.5">Real-time</div>
+                    </div>
+                    <!-- AI Powered -->
+                    <div class="group relative rounded-2xl p-4 cursor-default transition-all duration-300 hover:-translate-y-1" style="background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);border:1px solid rgba(99,102,241,0.1);box-shadow:0 2px 12px rgba(99,102,241,0.06);">
+                        <div class="w-10 h-10 mx-auto mb-2 rounded-xl flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#e0e7ff,#c7d2fe);box-shadow:0 3px 12px rgba(99,102,241,0.2);">🤖</div>
+                        <div class="text-[11px] font-extrabold text-slate-700">AI Powered</div>
+                        <div class="text-[9px] font-medium text-slate-400 mt-0.5">GPT-4.1</div>
+                    </div>
+                </div>
+
+                <!-- Bottom trust line -->
+                <div class="mt-8 text-center">
+                    <div class="inline-flex items-center gap-2 text-[10px] font-semibold text-slate-400">
+                        <svg class="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        <span>Your data never leaves your account</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pin-screen" class="hidden absolute inset-0 z-[100] flex-col items-center justify-center bg-slate-900 text-white bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center">
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
+        <div class="relative z-10 flex flex-col items-center">
+            <div class="flex items-center gap-2 mb-8">
+                <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gdlast)"/><defs><linearGradient id="gdlast" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+                <span class="font-black text-xl text-white">CaseDesk <span class="text-blue-400">AI</span></span>
+            </div>
+            <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 border border-white/10">🔐</div>
+            <h2 class="text-xl mb-2 font-bold tracking-wide text-white">Enter Security PIN</h2>
+            <p class="text-slate-400 text-sm mb-8">Your dashboard is protected</p>
+            <input type="password" id="pin-input" maxlength="4" class="bg-slate-800/50 border-2 border-slate-600 p-4 text-center text-5xl tracking-[0.5em] text-white rounded-2xl mb-8 w-64 outline-none focus:border-blue-500 transition-colors shadow-inner backdrop-blur-sm" />
+            <button id="verify-pin-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-xl shadow-lg shadow-blue-500/30 font-bold transition-all hover:-translate-y-1">Unlock Dashboard</button>
+        </div>
+    </div>
+
+    <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full relative overflow-hidden" style="height:100dvh;">
+        
+        <!-- COLLAPSIBLE SIDEBAR -->
+        <nav id="sidebar" class="hidden md:flex flex-col bg-slate-900 text-slate-300 shadow-2xl z-20 relative"
+             onmouseenter="this.classList.add('expanded')"
+             onmouseleave="this.classList.remove('expanded')">
+
+            <!-- Logo row -->
+            <div class="h-16 border-b border-white/5 flex items-center px-3.5 gap-3 flex-shrink-0 overflow-hidden">
+                <div class="flex-shrink-0"><svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gsb)"/><defs><linearGradient id="gsb" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+                <div class="logo-text flex-shrink-0 flex items-center gap-1">
+                    <span class="text-[15px] font-black text-white tracking-tight">CaseDesk</span>
+                    <span class="text-[15px] font-black text-blue-400">AI</span>
+                </div>
+            </div>
+
+            <!-- Nav items -->
+            <div class="flex-1 py-4 flex flex-col gap-1 px-2 overflow-hidden">
+                <div class="nav-item" data-label="Notebook">
+                    <button id="tab-notebook-desk" class="tab-btn active w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        <span class="label-text text-sm">Notebook</span>
+                    </button>
+                </div>
+                <div class="nav-item" data-label="Client Cases">
+                    <button id="tab-notes-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span class="label-text text-sm">Client Cases</span>
+                    </button>
+                </div>
+                <div class="nav-item" data-label="Tasks">
+                    <button id="tab-tasks-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300" style="position:relative;">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <span class="label-text text-sm">Tasks</span>
+                        <span id="task-badge" class="nav-badge">0</span>
+                    </button>
+                </div>
+                <div class="nav-item" data-label="Reminders">
+                    <button id="tab-reminders-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300" style="position:relative;">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span class="label-text text-sm">Reminders</span>
+                        <span id="rem-badge" class="nav-badge">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notification Bell -->
+            <div class="px-2 pb-1">
+                <div class="nav-item" data-label="Notifications">
+                    <button id="notif-bell-btn" style="position:relative;" class="w-full h-11 rounded-xl font-medium transition-colors flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-400 hover:text-yellow-300 justify-center">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/><circle cx="19" cy="5" r="3" fill="#ef4444" stroke="none" id="bell-dot" style="display:none"/></svg>
+                        <span class="label-text text-sm">Notifications</span>
+                        <span id="bell-badge" class="nav-badge" style="border-color:#1e293b;">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logout -->
+            <div class="p-2 border-t border-white/5 flex-shrink-0">
+                <div class="nav-item" data-label="Logout">
+                    <button id="logout-btn-desk" class="w-full h-11 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-medium transition-colors flex items-center gap-3 px-2.5 justify-center">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span class="label-text logout-text text-sm">Logout</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-1 relative flex flex-col h-full overflow-hidden" style="background:transparent">
+            <header class="md:hidden bg-white border-b border-slate-200 px-5 py-4 flex justify-between items-center z-10 sticky top-0">
+                <div class="flex items-center gap-2">
+                    <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gmob)"/><defs><linearGradient id="gmob" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+                    <h1 class="text-base font-black text-slate-900 tracking-tight">CaseDesk <span class="text-blue-500">AI</span></h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="notif-bell-mob" style="position:relative;width:36px;height:36px;border-radius:10px;background:#f1f5f9;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#475569" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span id="bell-badge-mob" class="nav-badge" style="border-color:#f1f5f9;top:2px;right:2px;display:none;">0</span>
+                    </button>
+                    <button id="logout-btn-mob" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-medium">Logout</button>
+                </div>
+            </header>
+
+            <div id="view-notebook" class="absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex flex-col overflow-hidden">
+                <!-- Sticky toolbar -->
+                <div class="toolbar-glass px-4 md:px-10 py-4 flex-shrink-0">
+                    <div class="max-w-6xl mx-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">📓 My Notebook</h2>
+                            <span id="nb-count" class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">0 notes</span>
+                        </div>
+                        <!-- Search + Sort + Filter row -->
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <div class="relative flex-1 min-w-[180px]">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                                <input id="nb-search" type="text" placeholder="Search notes..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 focus:bg-white transition"/>
+                            </div>
+                            <select id="nb-sort" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:border-blue-400 text-slate-600">
+                                <option value="new">🕐 Newest First</option>
+                                <option value="old">📅 Oldest First</option>
+                                <option value="az">🔤 A → Z</option>
+                            </select>
+                            <select id="nb-filter" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:border-blue-400 text-slate-600">
+                                <option value="all">📂 All Clients</option>
+                            </select>
+                            <button id="nb-view-toggle" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-600 transition" title="Toggle view">⊞ Grid</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Scrollable grid -->
+                <div class="flex-1 overflow-y-auto p-4 md:p-8">
+                    <div class="max-w-6xl mx-auto">
+                        <div id="notebook-grid" class="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20 items-start"></div>
+                        <div id="nb-empty" class="hidden text-center py-20 text-slate-400">
+                            <div class="text-5xl mb-3">📭</div>
+                            <p class="font-semibold">No notes found</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-notes" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-y-auto p-4 md:p-10">
+                <div class="max-w-6xl mx-auto w-full">
+                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2 text-slate-900 tracking-tight">Client Cases</h2>
+                    <p class="text-slate-500 mb-10 text-sm md:text-base">Har client ki history aur latest updates ka record.</p>
+                    <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
+                </div>
+            </div>
+
+            <div id="view-tasks" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-hidden">
+                <!-- Tasks Toolbar -->
+                <div class="toolbar-glass px-4 md:px-10 py-4 flex-shrink-0">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">✅ My Tasks</h2>
+                            <div class="flex items-center gap-2">
+                                <span id="task-pending-count" class="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">0 Pending</span>
+                                <span id="task-done-count" class="text-xs font-black text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full">0 Done</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <div class="relative flex-1 min-w-[160px]">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                                <input id="task-search" type="text" placeholder="Search tasks..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 focus:bg-white transition"/>
+                            </div>
+                            <div id="task-filter-btns" class="flex gap-1.5">
+                                <button data-filter="all" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600">All</button>
+                                <button data-filter="Pending" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">⏳ Pending</button>
+                                <button data-filter="Done" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700">✅ Done</button>
+                                <button data-filter="Urgent" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50 hover:border-red-200 hover:text-red-700">🚨 Urgent</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
+                    <div class="max-w-4xl mx-auto">
+                        <div id="tasks-list" class="flex flex-col gap-3 pb-20"></div>
+                        <div id="task-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🎉</div><p class="font-semibold">Koi task nahi! Sab clear hai.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-reminders" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-hidden">
+                <!-- Reminders Toolbar -->
+                <div class="toolbar-glass px-4 md:px-10 py-4 flex-shrink-0">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">⏰ Reminders</h2>
+                            <div class="flex gap-2">
+                                <span id="rem-upcoming-count" class="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">0 Upcoming</span>
+                                <span id="rem-overdue-count" class="text-xs font-black text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full">0 Overdue</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <div class="relative flex-1 min-w-[160px]">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                                <input id="rem-search" type="text" placeholder="Search reminders..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 transition"/>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <button data-remfilter="all" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600">All</button>
+                                <button data-remfilter="today" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-blue-50">📅 Today</button>
+                                <button data-remfilter="upcoming" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50">🟢 Upcoming</button>
+                                <button data-remfilter="overdue" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50">🔴 Overdue</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
+                    <div class="max-w-4xl mx-auto">
+                        <div id="reminders-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20"></div>
+                        <div id="rem-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🗓️</div><p class="font-semibold">Koi reminder nahi.</p></div>
+                    </div>
+                </div>
+            </div>
+
+
+                        <!-- RIGHT SIDE UPDATE PANEL REMOVED -->
+
+            <!-- DRAGGABLE FAB -->
+            <div id="chat-fab" style="position:fixed;bottom:28px;right:24px;z-index:200;cursor:grab;user-select:none;">
+                <button id="open-chat-fab" style="width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#2563eb);box-shadow:0 8px 32px rgba(79,70,229,0.45);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;position:relative;" title="CaseDesk AI">
+                    <!-- CaseDesk AI doc icon -->
+                    <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+                        <rect x="8" y="5" width="24" height="30" rx="5" fill="white"/>
+                        <path d="M14 14h12M14 20h12M14 26h8" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <!-- Notification badge -->
+                    <span id="fab-badge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;background:#ef4444;border-radius:9px;border:2px solid #fff;font-size:10px;font-weight:900;color:white;align-items:center;justify-content:center;padding:0 3px;">0</span>
+                    <!-- Pulse ring -->
+                    <span style="position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(79,70,229,0.4);animation:fabPulse 2.5s infinite;pointer-events:none;"></span>
+                </button>
+            </div>
+        </main>
+
+        <nav class="md:hidden fixed bottom-0 w-full bg-white border-t border-slate-200 flex items-center justify-around h-[65px] pb-1 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-[30]">
+            <button id="tab-notebook-mob" class="tab-btn-mob active flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
+                <span class="text-lg">📓</span> Notebook
+            </button>
+            <button id="tab-notes-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
+                <span class="text-lg">📂</span> Cases
+            </button>
+            <button id="tab-tasks-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
+                <span class="text-lg">✅</span> Tasks
+            </button>
+            <button id="tab-reminders-mob" class="tab-btn-mob flex-1 h-full flex flex-col items-center justify-center gap-1.5 text-slate-400 text-[10px] transition-colors">
+                <span class="text-lg">⏰</span> Reminds
+            </button>
+        </nav>
+    </div>
+
+    <!-- FLOATING CHAT PANEL — Draggable, Right-side, Modern -->
+    <div id="chat-panel" style="
+        display:none;
+        position:fixed;
+        bottom:100px;
+        right:20px;
+        width:min(390px, calc(100vw - 40px));
+        height:min(580px, calc(100dvh - 120px));
+        z-index:500;
+        border-radius:20px;
+        box-shadow:0 24px 60px rgba(0,0,0,0.18),0 4px 16px rgba(79,70,229,0.12);
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,0.8);
+        background:#f8faff;
+        flex-direction:column;
+        transition:opacity 0.2s,transform 0.2s;
+        min-width:280px;min-height:350px;
+        max-width:calc(100vw - 20px);max-height:calc(100dvh - 40px);
+    ">
+        <!-- RESIZE HANDLE -->
+        <div id="chat-resize" style="position:absolute;bottom:0;left:0;right:0;height:6px;cursor:ns-resize;z-index:10;background:transparent;"></div>
+
+        <!-- HEADER — Draggable -->
+        <div id="chat-panel-header" style="
+            background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1d4ed8 100%);
+            padding:14px 16px 12px;
+            display:flex;align-items:center;gap:12px;
+            cursor:move;flex-shrink:0;
+            position:relative;overflow:hidden;
+        ">
+            <!-- Decorative glow -->
+            <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:rgba(139,92,246,0.2);border-radius:50%;pointer-events:none;"></div>
+            <!-- AI Avatar -->
+            <div style="width:40px;height:40px;border-radius:12px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="40" height="40" rx="11" fill="url(#g40)"/>
+<defs><linearGradient id="g40" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs>
+<rect x="12" y="10" width="16" height="20" rx="3" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/>
+<path d="M16 16h8M16 20h8M16 24h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+            </div>
+            <!-- Title -->
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:800;font-size:14px;color:white;letter-spacing:-0.3px;line-height:1.2;">CaseDesk AI</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:1px;display:flex;align-items:center;gap:4px;">
+                    <span style="width:6px;height:6px;background:#4ade80;border-radius:50%;display:inline-block;animation:pulse 2s infinite;"></span>
+                    Online · GPT-4.1
+                </div>
+            </div>
+            <!-- Header buttons -->
+            <div style="display:flex;gap:6px;align-items:center;">
+                <!-- Activity toggle -->
+                <button id="toggle-activity-btn" title="Live Activity" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.1)'">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </button>
+                <!-- Minimize -->
+                <button id="minimise-chat-btn" title="Minimize" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.1)'">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <!-- Close -->
+                <button id="close-chat-btn" title="Close" style="width:30px;height:30px;border-radius:8px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseenter="this.style.background='rgba(239,68,68,0.4)'" onmouseleave="this.style.background='rgba(239,68,68,0.2)'">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- LIVE ACTIVITY BAR (collapsible) -->
+        <div id="activity-bar" style="background:#fff;border-bottom:1px solid #e2e8f0;padding:8px 14px;display:none;flex-shrink:0;">
+            <div style="font-size:10px;font-weight:800;color:#6366f1;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">⚡ Live Activity</div>
+            <div id="activity-feed" style="display:flex;flex-direction:column;gap:4px;max-height:90px;overflow-y:auto;">
+                <div style="font-size:11px;color:#94a3b8;font-style:italic;">Koi activity nahi abhi...</div>
+            </div>
+        </div>
+
+        <!-- CHAT MESSAGES -->
+        <div id="chat-box" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f8faff;">
+            <div style="display:flex;justify-content:flex-start;">
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;border-top-left-radius:4px;padding:12px 14px;max-width:85%;font-size:13px;line-height:1.6;color:#334155;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+                    Namaste 🙏 — <strong>CaseDesk AI</strong> at your service.<br/>Boliye, kya kaam hai?
+                </div>
+            </div>
+        </div>
+
+        <!-- INPUT AREA -->
+        <div style="padding:12px;background:white;border-top:1px solid #e2e8f0;flex-shrink:0;">
+            <div style="display:flex;gap:8px;align-items:center;background:#f1f5f9;border-radius:14px;padding:6px 8px;border:1.5px solid transparent;transition:border-color 0.2s;" id="input-wrapper">
+                <!-- Mic -->
+                <button id="mic-btn" title="Voice Input" style="width:36px;height:36px;border-radius:10px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;" onmouseenter="this.style.background='#e2e8f0'" onmouseleave="this.style.background='transparent'">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#64748b" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                </button>
+                <!-- Input -->
+                <input type="text" id="user-input" placeholder="Kuch bhi boliye..." style="flex:1;background:transparent;border:none;outline:none;font-size:13px;color:#1e293b;font-family:inherit;font-weight:500;" />
+                <!-- Send -->
+                <button id="send-btn" style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#2563eb);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 2px 8px rgba(79,70,229,0.35);" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </div>
+            <div style="text-align:center;margin-top:6px;font-size:9px;color:#cbd5e1;font-weight:600;letter-spacing:0.5px;">CASDESK AI · GPT-4.1</div>
+        </div>
+    </div>
+
+
+    <script type="module" src="app.js"></script>
+
+
+    <!-- ═══ TOAST CONTAINER ═══ -->
+    <div id="toast-wrap"></div>
+
+    <!-- ═══ NOTIF OVERLAY ═══ -->
+    <div id="notif-overlay" onclick="closeNotifPanel()"></div>
+
+    <!-- ═══ NOTIFICATION SIDE PANEL ═══ -->
+    <div id="notif-panel">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:16px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:30px;height:30px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </div>
+                    <span style="font-weight:800;font-size:15px;color:#fff;">Notifications</span>
+                    <span id="np-unread-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:900;padding:1px 7px;border-radius:8px;">0</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button onclick="markAllRead()" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.6);background:rgba(255,255,255,.1);border:none;border-radius:7px;padding:4px 8px;cursor:pointer;">Mark all read</button>
+                    <button onclick="closeNotifPanel()" style="width:26px;height:26px;background:rgba(255,255,255,.1);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary counters -->
+            <div style="display:flex;gap:6px;">
+                <div style="flex:1;background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:8px;text-align:center;">
+                    <div id="np-task-num" style="font-size:22px;font-weight:900;color:#fbbf24;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Pending Tasks</div>
+                </div>
+                <div style="flex:1;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:8px;text-align:center;">
+                    <div id="np-rem-num" style="font-size:22px;font-weight:900;color:#f87171;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Upcoming Rem.</div>
+                </div>
+                <div style="flex:1;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:8px;text-align:center;">
+                    <div id="np-saved-num" style="font-size:22px;font-weight:900;color:#818cf8;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Saved Today</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div style="display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid #f1f5f9;flex-shrink:0;background:#fafafa;">
+            <button class="nf-btn active" data-nf="all">All</button>
+            <button class="nf-btn" data-nf="task">✅ Tasks</button>
+            <button class="nf-btn" data-nf="reminder">⏰ Reminder</button>
+            <button class="nf-btn" data-nf="notebook">📓 Notes</button>
+            <button class="nf-btn" data-nf="case">📂 Cases</button>
+        </div>
+
+        <!-- List -->
+        <div id="notif-list" style="flex:1;overflow-y:auto;padding:8px;">
+            <div id="notif-empty" style="text-align:center;padding:50px 20px;color:#94a3b8;">
+                <div style="font-size:38px;margin-bottom:8px;">🔔</div>
+                <div style="font-weight:700;font-size:13px;">Abhi koi notification nahi</div>
+                <div style="font-size:11px;margin-top:4px;color:#cbd5e1;">Task ya reminder add hone pe yahan dikhega</div>
+            </div>
+        </div>
+
+        <!-- Browser push permission bar -->
+        <div id="push-bar">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#d97706" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="push-bar-text" style="flex:1;font-size:11px;font-weight:600;color:#92400e;">PC/Mobile par auto-notifications enable karein</span>
+            <button id="enable-push-btn" style="font-size:10px;font-weight:800;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">Enable</button>
+        </div>
+    </div>
+
+</body>
+</html>
