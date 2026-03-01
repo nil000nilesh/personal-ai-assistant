@@ -266,10 +266,13 @@ onAuthStateChanged(auth, (user) => {
     hideAllStates();
     if (user) {
         if (user.email === ALLOWED_EMAIL) {
-            if (!isPinVerified) { 
+           if (!isPinVerified) { 
                 ui.pin.classList.remove('hidden'); 
-                ui.pin.classList.add('flex'); 
-            } else { 
+                ui.pin.classList.add('flex');
+                document.getElementById('pin-input').value = '';
+                loadPinFromDB();
+                loadPinScreenCounts();
+            } else {
                 checkAndLoadApp(); 
             }
         } else { 
@@ -288,13 +291,117 @@ document.getElementById('logout-btn-mob').addEventListener('click', doLogout);
 
 document.getElementById('verify-pin-btn').addEventListener('click', () => {
     if (document.getElementById('pin-input').value === SECRET_PIN) {
-        isPinVerified = true; 
+        // Check if PIN expired (7 days)
+        if (PIN_LAST_CHANGED && isPinExpired()) {
+            document.getElementById('pin-entry-form').style.display = 'none';
+            document.getElementById('pin-change-form').style.display = 'block';
+            document.getElementById('pin-subtitle').textContent = '⚠️ PIN expired! Set a new PIN.';
+            document.getElementById('pin-subtitle').style.color = '#fbbf24';
+            return;
+        }
+        isPinVerified = true;
         checkAndLoadApp();
-    } else { 
-        alert("Incorrect PIN"); 
-        document.getElementById('pin-input').value = ""; 
+    } else {
+        alert("Incorrect PIN");
+        document.getElementById('pin-input').value = "";
     }
 });
+
+// PIN expiry check
+function isPinExpired() {
+    if (!PIN_LAST_CHANGED) return false;
+    const diff = Date.now() - new Date(PIN_LAST_CHANGED).getTime();
+    return diff > PIN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+}
+
+// Load PIN from Firestore
+async function loadPinFromDB() {
+    try {
+        const pinDoc = await getDoc(doc(db, "system_settings", "pin_config"));
+        if (pinDoc.exists()) {
+            const data = pinDoc.data();
+            if (data.pin) SECRET_PIN = data.pin;
+            if (data.lastChanged) PIN_LAST_CHANGED = data.lastChanged;
+        }
+    } catch(e) { console.log('PIN load fallback to default'); }
+}
+
+// Save PIN to Firestore
+async function savePinToDB(newPin) {
+    const now = new Date().toISOString();
+    await setDoc(doc(db, "system_settings", "pin_config"), {
+        pin: newPin,
+        lastChanged: now
+    });
+    SECRET_PIN = newPin;
+    PIN_LAST_CHANGED = now;
+}
+
+// Load notification counts for PIN screen
+async function loadPinScreenCounts() {
+    try {
+        const bar = document.getElementById('pin-notif-bar');
+        const map = { notebook: 'notebook', notes: 'notes', tasks: 'tasks', reminders: 'reminders' };
+        let anyVisible = false;
+        
+        const [nbSnap, noteSnap, taskSnap, remSnap] = await Promise.all([
+            getDocs(collection(db, "notebooks")),
+            getDocs(collection(db, "notes")),
+            getDocs(query(collection(db, "tasks"), where("status", "!=", "Done"))),
+            getDocs(collection(db, "reminders"))
+        ]);
+
+        const counts = { notebook: nbSnap.size, notes: noteSnap.size, tasks: taskSnap.size, reminders: remSnap.size };
+
+        Object.keys(counts).forEach(key => {
+            const badge = document.getElementById('pin-badge-' + key);
+            if (badge && counts[key] > 0) {
+                badge.style.display = 'flex';
+                badge.querySelector('.pin-badge-count').textContent = counts[key];
+                anyVisible = true;
+            }
+        });
+        if (anyVisible) bar.style.display = 'flex';
+    } catch(e) { console.log('PIN screen counts error:', e); }
+}
+
+// Show/hide change PIN form
+document.getElementById('show-change-pin-btn').addEventListener('click', () => {
+    document.getElementById('pin-entry-form').style.display = 'none';
+    document.getElementById('pin-change-form').style.display = 'block';
+    document.getElementById('pin-subtitle').textContent = '🔑 Change your PIN';
+});
+
+document.getElementById('cancel-change-pin-btn').addEventListener('click', () => {
+    document.getElementById('pin-change-form').style.display = 'none';
+    document.getElementById('pin-entry-form').style.display = 'block';
+    document.getElementById('pin-subtitle').textContent = 'Your dashboard is protected';
+    document.getElementById('pin-subtitle').style.color = '';
+});
+
+document.getElementById('save-new-pin-btn').addEventListener('click', async () => {
+    const oldVal = document.getElementById('old-pin').value;
+    const newVal = document.getElementById('new-pin').value;
+    const confVal = document.getElementById('confirm-pin').value;
+
+    if (oldVal !== SECRET_PIN) { alert('❌ Old PIN galat hai!'); return; }
+    if (newVal.length !== 4) { alert('❌ New PIN 4 digit ka hona chahiye!'); return; }
+    if (newVal !== confVal) { alert('❌ New PIN aur Confirm PIN match nahi kar rahe!'); return; }
+
+    await savePinToDB(newVal);
+    alert('✅ PIN changed successfully!');
+    // Reset and go back to entry
+    document.getElementById('old-pin').value = '';
+    document.getElementById('new-pin').value = '';
+    document.getElementById('confirm-pin').value = '';
+    document.getElementById('pin-change-form').style.display = 'none';
+    document.getElementById('pin-entry-form').style.display = 'block';
+    document.getElementById('pin-subtitle').textContent = 'Your dashboard is protected';
+    document.getElementById('pin-subtitle').style.color = '';
+});
+
+// Clear PIN input every time screen shows
+document.getElementById('pin-input').value = '';
 
 async function checkAndLoadApp() {
     hideAllStates();
