@@ -1360,8 +1360,8 @@
                 if (user.email === ALLOWED_EMAIL) {
                     if (!isPinVerified) { 
                         ui.pin.classList.remove('hidden'); 
-                        ui.pin.style.display = 'block';
-                        ui.pin.classList.add('flex'); 
+                        ui.pin.style.display = 'flex';
+                        window._pinScreenActive = true;
                         pinCurrentVal = '';
                         if(typeof updatePinDots === 'function') updatePinDots();
                         if(typeof updatePinMiniPanel === 'function') setTimeout(updatePinMiniPanel, 100);
@@ -1434,59 +1434,94 @@
 
         function doVerifyPin() {
             const msgEl = document.getElementById('pin-msg');
-            if(pinCurrentVal === SECRET_PIN) {
-                // Check weekly reset (new PIN should not match last 2 — but this is login, not change)
+            const currentPin = pinCurrentVal.trim();
+            console.log('[CaseDesk PIN] Verifying', currentPin.length, 'digits');
+            if(currentPin === SECRET_PIN) {
                 isPinVerified = true;
-                savePinHistory(pinCurrentVal);
+                window._pinScreenActive = false;
+                savePinHistory(currentPin);
                 pinCurrentVal = '';
                 updatePinDots();
-                checkAndLoadApp();
+                // Green success flash on dots
+                document.querySelectorAll('.pin-dot').forEach(d => {
+                    d.style.background = '#22c55e';
+                    d.style.borderColor = '#22c55e';
+                    d.style.boxShadow = '0 0 10px rgba(34,197,94,0.6)';
+                });
+                setTimeout(() => checkAndLoadApp(), 300);
             } else {
                 shakePinDots();
-                if(msgEl) { msgEl.textContent = '❌ Incorrect PIN, try again'; msgEl.style.color = '#f87171'; }
+                if(msgEl) { msgEl.textContent = '❌ Galat PIN, dobara try karein'; msgEl.style.color = '#f87171'; }
                 setTimeout(() => {
                     pinCurrentVal = '';
                     updatePinDots();
                     if(msgEl) { msgEl.textContent = 'Your dashboard is protected'; msgEl.style.color = 'rgba(255,255,255,0.5)'; }
-                }, 800);
+                }, 900);
             }
         }
 
-        // Numpad click listeners
-        document.querySelectorAll('.pin-key').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const v = btn.dataset.v;
-                if(v === 'C') {
-                    pinCurrentVal = pinCurrentVal.slice(0, -1);
-                    updatePinDots();
-                } else if(v === 'OK') {
-                    if(pinCurrentVal.length === 4) doVerifyPin();
+        // Numpad click listeners — use event delegation for reliability
+        document.getElementById('pin-numpad').addEventListener('click', (e) => {
+            const btn = e.target.closest('.pin-key');
+            if(!btn) return;
+            const v = btn.dataset.v;
+
+            // Button press animation
+            btn.style.transform = 'scale(0.92)';
+            setTimeout(() => btn.style.transform = '', 120);
+
+            if(v === 'C') {
+                // Backspace
+                pinCurrentVal = pinCurrentVal.slice(0, -1);
+                updatePinDots();
+            } else if(v === 'OK') {
+                // Verify button
+                if(pinCurrentVal.length === 4) {
+                    doVerifyPin();
                 } else {
-                    if(pinCurrentVal.length < 4) {
-                        pinCurrentVal += v;
-                        updatePinDots();
-                        // Auto-verify when 4 digits entered
-                        if(pinCurrentVal.length === 4) {
-                            setTimeout(doVerifyPin, 150);
-                        }
+                    // Shake to indicate incomplete
+                    shakePinDots();
+                }
+            } else if(v !== undefined) {
+                // Digit button
+                if(pinCurrentVal.length < 4) {
+                    pinCurrentVal += v;
+                    updatePinDots();
+                    // Auto-verify when 4 digits entered
+                    if(pinCurrentVal.length === 4) {
+                        setTimeout(() => doVerifyPin(), 200);
                     }
                 }
-            });
+            }
         });
 
-        // Also support keyboard input on PIN screen
+        // Keyboard input on PIN screen — use flag for reliable detection
         document.addEventListener('keydown', (e) => {
-            if(!ui.pin.classList.contains('hidden') && !ui.pin.classList.contains('flex') === false) {
-                // Pin screen visible
-            }
+            // Check if PIN screen is actually visible using flag + class check
             const pinScreen = document.getElementById('pin-screen');
-            if(pinScreen.style.display === 'none' || pinScreen.classList.contains('hidden')) return;
+            const isVisible = window._pinScreenActive === true || 
+                              (!pinScreen.classList.contains('hidden') && 
+                               pinScreen.style.display !== 'none' &&
+                               pinScreen.style.display !== '');
+            if(!isVisible) return;
+
+            // Prevent default to avoid browser shortcuts interfering
+            if((e.key >= '0' && e.key <= '9') || e.key === 'Backspace' || e.key === 'Enter') {
+                e.preventDefault();
+            }
+
             if(e.key >= '0' && e.key <= '9' && pinCurrentVal.length < 4) {
                 pinCurrentVal += e.key;
                 updatePinDots();
+                // Visual feedback - briefly highlight matching numpad key
+                const matchBtn = document.querySelector(`.pin-key[data-v="${e.key}"]`);
+                if(matchBtn) {
+                    matchBtn.style.background = 'rgba(99,102,241,0.5)';
+                    setTimeout(() => matchBtn.style.background = '', 150);
+                }
                 if(pinCurrentVal.length === 4) setTimeout(doVerifyPin, 150);
             } else if(e.key === 'Backspace') {
-                pinCurrentVal = pinCurrentVal.slice(0,-1);
+                pinCurrentVal = pinCurrentVal.slice(0, -1);
                 updatePinDots();
             } else if(e.key === 'Enter' && pinCurrentVal.length === 4) {
                 doVerifyPin();
@@ -1516,7 +1551,9 @@
                 const msgEl = document.getElementById('pin-msg');
                 if(msgEl) { msgEl.textContent = '⏰ Session locked after 5 min inactivity'; msgEl.style.color = '#fbbf24'; }
                 hideAllStates();
-                ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex');
+                ui.pin.classList.remove('hidden'); 
+                ui.pin.style.display = 'flex';
+                window._pinScreenActive = true;
                 updatePinMiniPanel();
             }, INACTIVE_MS);
         }
