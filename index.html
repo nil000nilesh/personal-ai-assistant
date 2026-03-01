@@ -136,6 +136,87 @@
         #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         #activity-feed::-webkit-scrollbar { width: 3px; }
         #activity-feed::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+
+        /* ═══ NOTIFICATION SYSTEM CSS ═══ */
+        /* Bell badge on sidebar icons */
+        .nav-badge {
+            position: absolute; top: 5px; right: 5px;
+            min-width: 17px; height: 17px;
+            background: #ef4444; border-radius: 9px;
+            font-size: 9px; font-weight: 900; color: #fff;
+            display: none; align-items: center; justify-content: center;
+            padding: 0 4px; border: 2px solid #0f172a;
+            pointer-events: none; z-index: 10;
+            animation: badgePop .25s ease;
+        }
+        @keyframes badgePop { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
+
+        /* Notification slide-in panel */
+        #notif-panel {
+            position: fixed; top: 0; right: -380px; width: 360px; height: 100vh;
+            background: #fff; z-index: 400;
+            box-shadow: -6px 0 40px rgba(0,0,0,0.13);
+            transition: right .3s cubic-bezier(.4,0,.2,1);
+            display: flex; flex-direction: column;
+            border-left: 1px solid #e2e8f0;
+        }
+        #notif-panel.open { right: 0; }
+        #notif-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.2); z-index: 399;
+            backdrop-filter: blur(1px);
+        }
+        #notif-overlay.open { display: block; }
+
+        /* Toast */
+        #toast-wrap {
+            position: fixed; top: 18px; right: 18px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 8px;
+            pointer-events: none; max-width: 320px;
+        }
+        .toast {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: #1e293b; color: #fff;
+            border-radius: 14px; padding: 11px 14px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+            pointer-events: all;
+            animation: toastIn .3s ease;
+            border-left: 4px solid #6366f1;
+        }
+        .toast.t-task     { border-left-color: #f59e0b; }
+        .toast.t-reminder { border-left-color: #ef4444; }
+        .toast.t-notebook { border-left-color: #6366f1; }
+        .toast.t-case     { border-left-color: #0891b2; }
+        @keyframes toastIn  { from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(50px)} }
+
+        /* Notif list item */
+        .nitem { display:flex; gap:10px; align-items:flex-start;
+            padding:10px; margin-bottom:5px; border-radius:12px;
+            cursor:pointer; transition:all .15s; border:1px solid transparent; }
+        .nitem:hover { transform:translateX(-2px); }
+        .nitem.unread { background:#eef2ff; border-color:#c7d2fe; }
+        .nitem.read   { background:#fafafa; opacity:.75; }
+        .nitem .nicon { width:32px; height:32px; border-radius:9px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:15px; flex-shrink:0; }
+        .nitem .ntitle { font-size:12px; font-weight:700; color:#0f172a; line-height:1.3; }
+        .nitem .nsub   { font-size:11px; color:#64748b; margin-top:1px;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .nitem .ntime  { font-size:10px; color:#94a3b8; margin-top:3px; }
+        .nitem .ndot   { width:7px; height:7px; border-radius:50%;
+            background:#6366f1; flex-shrink:0; margin-top:5px; }
+
+        /* Filter tabs in panel */
+        .nf-btn { flex:1; padding:5px 3px; border-radius:8px; font-size:11px;
+            font-weight:700; border:1px solid #e2e8f0; cursor:pointer;
+            background:#fff; color:#64748b; transition:all .2s; }
+        .nf-btn.active { background:#6366f1; color:#fff; border-color:#6366f1; }
+
+        /* Push permission bar */
+        #push-bar { padding:10px 14px; background:#fffbeb;
+            border-top:1px solid #fde68a; flex-shrink:0;
+            display:flex; align-items:center; gap:8px; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-[100dvh] overflow-hidden flex flex-col selection:bg-blue-200">
@@ -242,15 +323,28 @@
                     </button>
                 </div>
                 <div class="nav-item" data-label="Tasks">
-                    <button id="tab-tasks-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300">
+                    <button id="tab-tasks-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300" style="position:relative;">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                         <span class="label-text text-sm">Tasks</span>
+                        <span id="task-badge" class="nav-badge">0</span>
                     </button>
                 </div>
                 <div class="nav-item" data-label="Reminders">
-                    <button id="tab-reminders-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300">
+                    <button id="tab-reminders-desk" class="tab-btn w-full h-11 rounded-xl font-medium transition-all flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-300" style="position:relative;">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                         <span class="label-text text-sm">Reminders</span>
+                        <span id="rem-badge" class="nav-badge">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notification Bell -->
+            <div class="px-2 pb-1">
+                <div class="nav-item" data-label="Notifications">
+                    <button id="notif-bell-btn" style="position:relative;" class="w-full h-11 rounded-xl font-medium transition-colors flex items-center gap-3 px-2.5 hover:bg-white/5 text-slate-400 hover:text-yellow-300 justify-center">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/><circle cx="19" cy="5" r="3" fill="#ef4444" stroke="none" id="bell-dot" style="display:none"/></svg>
+                        <span class="label-text text-sm">Notifications</span>
+                        <span id="bell-badge" class="nav-badge" style="border-color:#1e293b;">0</span>
                     </button>
                 </div>
             </div>
@@ -272,7 +366,13 @@
                     <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gmob)"/><defs><linearGradient id="gmob" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
                     <h1 class="text-base font-black text-slate-900 tracking-tight">CaseDesk <span class="text-blue-500">AI</span></h1>
                 </div>
-                <button id="logout-btn-mob" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-medium">Logout</button>
+                <div class="flex items-center gap-2">
+                    <button id="notif-bell-mob" style="position:relative;width:36px;height:36px;border-radius:10px;background:#f1f5f9;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#475569" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span id="bell-badge-mob" class="nav-badge" style="border-color:#f1f5f9;top:2px;right:2px;display:none;">0</span>
+                    </button>
+                    <button id="logout-btn-mob" class="text-xs bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-medium">Logout</button>
+                </div>
             </header>
 
             <div id="view-notebook" class="absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex flex-col overflow-hidden">
@@ -1005,6 +1105,13 @@
                 allTasks = [];
                 snapshot.forEach(d => allTasks.push(d.data()));
                 renderTasks();
+                // Update task sidebar badge with pending count
+                const pending = allTasks.filter(t => (t.status||'').toLowerCase() !== 'done').length;
+                const tb = document.getElementById('task-badge');
+                if(tb) { if(pending>0){tb.textContent=pending>9?'9+':pending;tb.style.display='flex';}else tb.style.display='none'; }
+                // Update notif panel task counter
+                const tn = document.getElementById('np-task-num');
+                if(tn) tn.textContent = pending;
             });
 
             // Task search
@@ -1120,6 +1227,17 @@
                 allReminders = [];
                 snapshot.forEach(d => allReminders.push(d.data()));
                 renderReminders();
+                // Schedule browser push for all upcoming reminders on load
+                allReminders.forEach(rem => { if(window.scheduleReminder) scheduleReminder(rem); });
+                // Update reminder count in notif panel
+                const upcomingCount = allReminders.filter(r => {
+                    const d = new Date(r.time); return !isNaN(d) && d >= new Date();
+                }).length;
+                const rn = document.getElementById('np-rem-num');
+                if(rn) rn.textContent = upcomingCount;
+                // Update sidebar badge with upcoming count
+                const rb = document.getElementById('rem-badge');
+                if(rb) { if(upcomingCount>0){rb.textContent=upcomingCount>9?'9+':upcomingCount;rb.style.display='flex';}else rb.style.display='none'; }
             });
 
             // Reminders search
@@ -1499,6 +1617,7 @@ RULES:
                         timestamp: now
                     }));
                     if(window.addActivity) addActivity('📓', 'Notebook updated: ' + (aiResponse.notebook.client || 'General'), '#4f46e5');
+                    addNotif('notebook', '📓 Notebook saved — ' + (aiResponse.notebook.client || 'General'), 'AI ne automatically save kiya');
                 }
 
                 if (aiResponse.case?.save && aiResponse.case?.content) {
@@ -1510,6 +1629,7 @@ RULES:
                         timestamp: now
                     }));
                     if(window.addActivity) addActivity('📂', 'Client case saved: ' + (aiResponse.case.client || 'General'), '#0891b2');
+                    addNotif('case', '📂 Client Case updated — ' + (aiResponse.case.client || 'General'), aiResponse.case.mobile ? '📱 ' + aiResponse.case.mobile : 'Case record saved');
                 }
 
                 if (aiResponse.task?.save && aiResponse.task?.title) {
@@ -1520,16 +1640,15 @@ RULES:
                         timestamp: now
                     }));
                     if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
+                    addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
                 }
 
                 if (aiResponse.reminder?.save && aiResponse.reminder?.title) {
-                    savePromises.push(addDoc(collection(db, "reminders"), {
-                        title: aiResponse.reminder.title,
-                        time: aiResponse.reminder.time || "जल्द",
-                        client: aiResponse.reminder.client || "सामान्य",
-                        timestamp: now
-                    }));
+                    const remObj = { title: aiResponse.reminder.title, time: aiResponse.reminder.time || "जल्द", client: aiResponse.reminder.client || "सामान्य", timestamp: now };
+                    savePromises.push(addDoc(collection(db, "reminders"), remObj));
                     if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
+                    addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
+                    scheduleReminder(remObj);
                 }
 
                 // Save AI reply to chat
@@ -1560,6 +1679,330 @@ RULES:
 
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+
+        // ╔══════════════════════════════════════════════════════════════╗
+        // ║          CASEDESK AI — NOTIFICATION ENGINE                  ║
+        // ╚══════════════════════════════════════════════════════════════╝
+
+        const NS = {
+            items: [],          // { id, type, title, sub, time, read, ts }
+            unread: 0,
+            filter: 'all',
+            pushOK: false,
+            scheduledKeys: new Set(),   // reminder keys already scheduled
+            savedToday: 0
+        };
+
+        // ─── Panel open / close ──────────────────────────────────────────
+        function openNotifPanel() {
+            document.getElementById('notif-panel').classList.add('open');
+            document.getElementById('notif-overlay').classList.add('open');
+            NS.unread = 0;
+            refreshBadges();
+            renderNotifList();
+        }
+        function closeNotifPanel() {
+            document.getElementById('notif-panel').classList.remove('open');
+            document.getElementById('notif-overlay').classList.remove('open');
+        }
+        function markAllRead() {
+            NS.items.forEach(i => i.read = true);
+            NS.unread = 0;
+            refreshBadges();
+            renderNotifList();
+        }
+
+        document.getElementById('notif-bell-btn').addEventListener('click', openNotifPanel);
+        document.getElementById('notif-bell-mob')?.addEventListener('click', openNotifPanel);
+
+        // ─── Filter tabs ─────────────────────────────────────────────────
+        document.querySelectorAll('.nf-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                NS.filter = btn.dataset.nf;
+                document.querySelectorAll('.nf-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderNotifList();
+            });
+        });
+
+        // ─── Refresh all badges ──────────────────────────────────────────
+        function refreshBadges() {
+            const taskPending = NS.items.filter(i => i.type === 'task' && !i.read).length;
+            const remUnread   = NS.items.filter(i => i.type === 'reminder' && !i.read).length;
+            const total       = NS.unread;
+
+            // Bell badge (sidebar + mobile)
+            ['bell-badge','bell-badge-mob'].forEach(id => {
+                const el = document.getElementById(id);
+                if(!el) return;
+                if(total > 0) { el.textContent = total > 9 ? '9+' : total; el.style.display = 'flex'; }
+                else el.style.display = 'none';
+            });
+            // Bell dot SVG
+            const dot = document.getElementById('bell-dot');
+            if(dot) dot.style.display = total > 0 ? '' : 'none';
+
+            // Task badge on sidebar
+            const tb = document.getElementById('task-badge');
+            if(tb) {
+                const pendingAll = NS.items.filter(i=>i.type==='task').length;
+                if(pendingAll > 0) { tb.textContent = pendingAll>9?'9+':pendingAll; tb.style.display='flex'; }
+                else tb.style.display='none';
+            }
+            // Reminder badge on sidebar
+            const rb = document.getElementById('rem-badge');
+            if(rb) {
+                const remAll = NS.items.filter(i=>i.type==='reminder').length;
+                if(remAll > 0) { rb.textContent = remAll>9?'9+':remAll; rb.style.display='flex'; }
+                else rb.style.display='none';
+            }
+            // Panel header unread badge
+            const ub = document.getElementById('np-unread-badge');
+            if(ub) { if(total>0){ub.textContent=total;ub.style.display='';} else ub.style.display='none'; }
+        }
+
+        // ─── Refresh summary counters in panel header ────────────────────
+        function refreshCounters() {
+            const now = new Date();
+            // Count pending tasks in NS
+            const taskCount = NS.items.filter(i=>i.type==='task').length;
+            // Count upcoming reminders from NS
+            const remCount  = NS.items.filter(i=>i.type==='reminder').length;
+
+            const tn = document.getElementById('np-task-num');
+            const rn = document.getElementById('np-rem-num');
+            const sn = document.getElementById('np-saved-num');
+            if(tn) tn.textContent = taskCount;
+            if(rn) rn.textContent = remCount;
+            if(sn) sn.textContent = NS.savedToday;
+        }
+
+        // ─── Render notification list ────────────────────────────────────
+        function renderNotifList() {
+            const list  = document.getElementById('notif-list');
+            const empty = document.getElementById('notif-empty');
+            refreshCounters();
+
+            const show = NS.filter === 'all'
+                ? NS.items
+                : NS.items.filter(i => i.type === NS.filter);
+
+            if(show.length === 0) {
+                list.innerHTML = '';
+                list.appendChild(empty);
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+            list.innerHTML = '';
+
+            const cfg = {
+                task:     { bg:'#fbbf24', label:'✅ Task' },
+                reminder: { bg:'#ef4444', label:'⏰ Reminder' },
+                notebook: { bg:'#6366f1', label:'📓 Notebook' },
+                case:     { bg:'#0891b2', label:'📂 Case' },
+            };
+
+            [...show].reverse().forEach(item => {
+                const c = cfg[item.type] || cfg.notebook;
+                const d = document.createElement('div');
+                d.className = 'nitem ' + (item.read ? 'read' : 'unread');
+                d.innerHTML =
+                    '<div class="nicon" style="background:' + c.bg + '20;color:' + c.bg + ';font-size:16px;">' +
+                        (item.type==='task'?'✅':item.type==='reminder'?'⏰':item.type==='notebook'?'📓':'📂') +
+                    '</div>' +
+                    '<div style="flex:1;min-width:0;">' +
+                        '<div class="ntitle">' + item.title + '</div>' +
+                        (item.sub ? '<div class="nsub">' + item.sub + '</div>' : '') +
+                        '<div class="ntime">' + item.time + '</div>' +
+                    '</div>' +
+                    (!item.read ? '<div class="ndot"></div>' : '');
+                d.onclick = () => { item.read = true; NS.unread = Math.max(0, NS.unread-1); refreshBadges(); renderNotifList(); };
+                list.appendChild(d);
+            });
+        }
+
+        // ─── Add notification (called everywhere) ────────────────────────
+        window.addNotif = function(type, title, sub) {
+            const now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+            NS.items.push({ id: Date.now(), type, title, sub: sub||'', time: now, read: false });
+            if(type==='notebook'||type==='case') NS.savedToday++;
+            NS.unread++;
+            refreshBadges();
+            refreshCounters();
+            renderNotifList();
+            // In-app toast
+            showToast(type, title, sub);
+            // Browser push (if tab in background)
+            if(NS.pushOK && document.hidden) browserPush(type, title, sub);
+        };
+
+        // ─── In-app toast ─────────────────────────────────────────────────
+        function showToast(type, title, sub) {
+            const wrap = document.getElementById('toast-wrap');
+            const t = document.createElement('div');
+            t.className = 'toast t-' + type;
+            const icons = {task:'✅',reminder:'⏰',notebook:'📓',case:'📂'};
+            const colors = {task:'#f59e0b',reminder:'#ef4444',notebook:'#6366f1',case:'#0891b2'};
+            t.innerHTML =
+                '<div style="width:28px;height:28px;border-radius:8px;background:' + (colors[type]||'#6366f1') + ';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">' + (icons[type]||'🔔') + '</div>' +
+                '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:12px;font-weight:700;color:#fff;line-height:1.3;">' + title + '</div>' +
+                    (sub ? '<div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + sub + '</div>' : '') +
+                '</div>' +
+                '<button onclick="this.closest(\'.toast\').remove()" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:13px;padding:0;flex-shrink:0;">✕</button>';
+            wrap.appendChild(t);
+            setTimeout(() => {
+                t.style.animation = 'toastOut .3s ease forwards';
+                setTimeout(() => t.remove(), 300);
+            }, 5000);
+        }
+
+        // ─── Browser push notification ────────────────────────────────────
+        function browserPush(type, title, body) {
+            try {
+                const labels = {task:'Task',reminder:'Reminder',notebook:'Notebook',case:'Case'};
+                new Notification('CaseDesk AI — ' + (labels[type]||'Update'), {
+                    body: title + (body ? '\n' + body : ''),
+                    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='11' fill='%236366f1'/><rect x='10' y='8' width='20' height='26' rx='4' fill='white' fill-opacity='0.25' stroke='white' stroke-width='1.5'/><path d='M14 16h12M14 21h12M14 26h8' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>",
+                    tag: 'casedesk-' + type,
+                    requireInteraction: type === 'reminder'
+                });
+            } catch(e) {}
+        }
+
+        // ─── Enable push permission ───────────────────────────────────────
+        async function enablePush() {
+            if(!('Notification' in window)) {
+                document.getElementById('push-bar-text').textContent = 'Ye browser notifications support nahi karta.';
+                document.getElementById('enable-push-btn').style.display = 'none';
+                return;
+            }
+            const p = await Notification.requestPermission();
+            const bar = document.getElementById('push-bar');
+            if(p === 'granted') {
+                NS.pushOK = true;
+                bar.style.background = '#f0fdf4'; bar.style.borderColor = '#bbf7d0';
+                bar.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#16a34a" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span style="flex:1;font-size:11px;font-weight:700;color:#15803d;">✨ PC/Mobile notifications enabled! Ab app band ho tab bhi alert milega.</span>';
+                // Test notification
+                setTimeout(() => browserPush('notebook', 'CaseDesk AI connected!', 'Ab har task/reminder ka alert milega.'), 500);
+            } else {
+                document.getElementById('push-bar-text').textContent = 'Permission denied. Browser settings se allow karein.';
+                document.getElementById('push-bar-text').style.color = '#ef4444';
+                document.getElementById('enable-push-btn').style.display = 'none';
+            }
+        }
+        document.getElementById('enable-push-btn').addEventListener('click', enablePush);
+
+        // Auto-check permission on load
+        if('Notification' in window) {
+            if(Notification.permission === 'granted') {
+                NS.pushOK = true;
+                document.getElementById('push-bar').style.display = 'none';
+            } else if(Notification.permission === 'denied') {
+                document.getElementById('push-bar-text').textContent = 'Notifications blocked. Browser settings > Allow karein.';
+                document.getElementById('push-bar-text').style.color = '#ef4444';
+                document.getElementById('enable-push-btn').style.display = 'none';
+            }
+        }
+
+        // ─── REMINDER SCHEDULER — fires browser push at exact set time ───
+        window.scheduleReminder = function(rem) {
+            if(!rem.time || rem.time === 'Manual' || rem.time === 'जल्द') return;
+            const fireAt = new Date(rem.time);
+            if(isNaN(fireAt)) return;
+            const key = rem.title + '|' + rem.time;
+            if(NS.scheduledKeys.has(key)) return;
+            NS.scheduledKeys.add(key);
+
+            const msLeft = fireAt - Date.now();
+            if(msLeft > 0 && msLeft < 7 * 24 * 3600 * 1000) {
+                // In-app notification at exact time
+                setTimeout(() => {
+                    addNotif('reminder', '⏰ ' + rem.title, rem.client ? 'Client: ' + rem.client : 'Reminder time!');
+                    // Force browser push even if tab open
+                    if(NS.pushOK) browserPush('reminder', rem.title, rem.client || 'Reminder!');
+                }, msLeft);
+                console.log('[CaseDesk] Reminder scheduled:', rem.title, 'in', Math.round(msLeft/60000), 'min');
+            } else if(msLeft <= 0 && msLeft > -3600000) {
+                // Just missed (within last hour) — show overdue once
+                addNotif('reminder', '🔴 Overdue: ' + rem.title, rem.client || '');
+            }
+        };
+
+
     </script>
+
+    <!-- ═══ TOAST CONTAINER ═══ -->
+    <div id="toast-wrap"></div>
+
+    <!-- ═══ NOTIF OVERLAY ═══ -->
+    <div id="notif-overlay" onclick="closeNotifPanel()"></div>
+
+    <!-- ═══ NOTIFICATION SIDE PANEL ═══ -->
+    <div id="notif-panel">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:16px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:30px;height:30px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </div>
+                    <span style="font-weight:800;font-size:15px;color:#fff;">Notifications</span>
+                    <span id="np-unread-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:900;padding:1px 7px;border-radius:8px;">0</span>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button onclick="markAllRead()" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.6);background:rgba(255,255,255,.1);border:none;border-radius:7px;padding:4px 8px;cursor:pointer;">Mark all read</button>
+                    <button onclick="closeNotifPanel()" style="width:26px;height:26px;background:rgba(255,255,255,.1);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary counters -->
+            <div style="display:flex;gap:6px;">
+                <div style="flex:1;background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:8px;text-align:center;">
+                    <div id="np-task-num" style="font-size:22px;font-weight:900;color:#fbbf24;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Pending Tasks</div>
+                </div>
+                <div style="flex:1;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:8px;text-align:center;">
+                    <div id="np-rem-num" style="font-size:22px;font-weight:900;color:#f87171;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Upcoming Rem.</div>
+                </div>
+                <div style="flex:1;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:8px;text-align:center;">
+                    <div id="np-saved-num" style="font-size:22px;font-weight:900;color:#818cf8;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;">Saved Today</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter tabs -->
+        <div style="display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid #f1f5f9;flex-shrink:0;background:#fafafa;">
+            <button class="nf-btn active" data-nf="all">All</button>
+            <button class="nf-btn" data-nf="task">✅ Tasks</button>
+            <button class="nf-btn" data-nf="reminder">⏰ Reminder</button>
+            <button class="nf-btn" data-nf="notebook">📓 Notes</button>
+            <button class="nf-btn" data-nf="case">📂 Cases</button>
+        </div>
+
+        <!-- List -->
+        <div id="notif-list" style="flex:1;overflow-y:auto;padding:8px;">
+            <div id="notif-empty" style="text-align:center;padding:50px 20px;color:#94a3b8;">
+                <div style="font-size:38px;margin-bottom:8px;">🔔</div>
+                <div style="font-weight:700;font-size:13px;">Abhi koi notification nahi</div>
+                <div style="font-size:11px;margin-top:4px;color:#cbd5e1;">Task ya reminder add hone pe yahan dikhega</div>
+            </div>
+        </div>
+
+        <!-- Browser push permission bar -->
+        <div id="push-bar">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#d97706" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="push-bar-text" style="flex:1;font-size:11px;font-weight:600;color:#92400e;">PC/Mobile par auto-notifications enable karein</span>
+            <button id="enable-push-btn" style="font-size:10px;font-weight:800;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">Enable</button>
+        </div>
+    </div>
+
 </body>
 </html>
