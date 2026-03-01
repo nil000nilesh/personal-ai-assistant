@@ -515,49 +515,182 @@
                 <div class="flex items-center gap-3 text-slate-300 text-sm"><div class="w-8 h-8 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">🤖</div> GPT-4.1 powered AI assistant</div>
             </div>
         </div>
-        <!-- Right panel — login form -->
-        <div class="flex-1 flex flex-col items-center justify-center bg-white px-8 md:px-16">
+        <!-- Right panel — login form REDESIGNED -->
+        <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden px-8 md:px-16"
+             style="background:linear-gradient(145deg,#f0f4ff 0%,#faf5ff 40%,#fdf2f8 70%,#f0fdf4 100%);">
+            <!-- Animated decorative blobs -->
+            <div style="position:absolute;top:-80px;right:-80px;width:320px;height:320px;background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.08));border-radius:50%;animation:blobFloat 8s ease-in-out infinite;"></div>
+            <div style="position:absolute;bottom:-60px;left:-60px;width:260px;height:260px;background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(16,185,129,0.06));border-radius:50%;animation:blobFloat 10s ease-in-out infinite reverse;"></div>
+            <div style="position:absolute;top:40%;left:10%;width:120px;height:120px;background:rgba(245,158,11,0.06);border-radius:50%;animation:blobFloat 6s ease-in-out infinite 2s;"></div>
             <!-- Mobile logo -->
-            <div class="md:hidden flex items-center gap-2 mb-10">
-<svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gd173)"/><defs><linearGradient id="gd173" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
-                <span class="font-black text-xl text-slate-900 tracking-tight">CaseDesk <span class="text-blue-500">AI</span></span>
-            </div>
-            <div class="w-full max-w-sm">
-                <h3 class="text-3xl font-black text-slate-900 mb-2">Welcome back</h3>
-                <p class="text-slate-500 text-sm mb-10">Sign in to access your dashboard</p>
-                <button id="login-btn" class="w-full bg-white border-2 border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 px-6 py-4 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-3 text-sm group">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                    Continue with Google
-                    <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-500 ml-auto transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                </button>
-                <div class="mt-8 flex items-center gap-3 text-xs text-slate-400">
-                    <div class="flex-1 h-px bg-slate-100"></div>
-                    <span>Private & Secure</span>
-                    <div class="flex-1 h-px bg-slate-100"></div>
+            <div class="md:hidden flex items-center gap-2 mb-8 relative z-10">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#6366f1,#3b82f6);border-radius:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(99,102,241,0.4);">
+                    <svg width="22" height="22" viewBox="0 0 40 40" fill="none"><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.25" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
                 </div>
-                <div class="mt-6 grid grid-cols-3 gap-3 text-center text-[11px] text-slate-500">
-                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-lg mb-1">🔒</div>Encrypted</div>
-                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-lg mb-1">☁️</div>Cloud Sync</div>
-                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-lg mb-1">🤖</div>AI Powered</div>
+                <span class="font-black text-xl text-slate-800 tracking-tight">CaseDesk <span class="text-indigo-600">AI</span></span>
+            </div>
+            <div class="w-full max-w-sm relative z-10">
+                <!-- Welcome badge -->
+                <div style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:100px;padding:5px 14px;margin-bottom:20px;">
+                    <span style="width:6px;height:6px;background:#6366f1;border-radius:50%;animation:pulse 2s infinite;display:inline-block;"></span>
+                    <span style="font-size:11px;font-weight:800;color:#4338ca;letter-spacing:0.5px;">SECURE LOGIN</span>
+                </div>
+                <h3 style="font-size:36px;font-weight:900;background:linear-gradient(135deg,#1e1b4b,#312e81,#4f46e5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;line-height:1.1;">Welcome<br/>back 👋</h3>
+                <p style="color:#6b7280;font-size:14px;margin-bottom:32px;font-weight:500;">Your AI-powered case manager awaits</p>
+                <!-- Google button -->
+                <button id="login-btn" style="width:100%;background:white;border:2px solid #e0e7ff;padding:16px 20px;border-radius:16px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.2s;box-shadow:0 4px 20px rgba(99,102,241,0.12);"
+                    onmouseenter="this.style.borderColor='#818cf8';this.style.boxShadow='0 6px 30px rgba(99,102,241,0.2)';this.style.transform='translateY(-2px)'"
+                    onmouseleave="this.style.borderColor='#e0e7ff';this.style.boxShadow='0 4px 20px rgba(99,102,241,0.12)';this.style.transform=''">
+                    <svg style="width:20px;height:20px;flex-shrink:0" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    <span style="color:#1e1b4b;flex:1;text-align:center;">Continue with Google</span>
+                    <svg style="width:16px;height:16px;color:#818cf8" fill="none" viewBox="0 0 24 24" stroke="#818cf8" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <!-- Divider -->
+                <div style="display:flex;align-items:center;gap:12px;margin:24px 0;">
+                    <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,#c7d2fe);"></div>
+                    <span style="font-size:11px;font-weight:700;color:#a5b4fc;letter-spacing:1px;">PRIVATE & SECURE</span>
+                    <div style="flex:1;height:1px;background:linear-gradient(90deg,#c7d2fe,transparent);"></div>
+                </div>
+                <!-- Feature badges -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                    <div style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:16px;padding:14px 8px;text-align:center;">
+                        <div style="font-size:22px;margin-bottom:4px;">🔐</div>
+                        <div style="font-size:10px;font-weight:800;color:#4338ca;">Encrypted</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:16px;padding:14px 8px;text-align:center;">
+                        <div style="font-size:22px;margin-bottom:4px;">☁️</div>
+                        <div style="font-size:10px;font-weight:800;color:#1d4ed8;">Cloud Sync</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:16px;padding:14px 8px;text-align:center;">
+                        <div style="font-size:22px;margin-bottom:4px;">🤖</div>
+                        <div style="font-size:10px;font-weight:800;color:#15803d;">AI Powered</div>
+                    </div>
+                </div>
+                <!-- Trust indicators -->
+                <div style="margin-top:24px;display:flex;align-items:center;justify-content:center;gap:16px;">
+                    <div style="display:flex;align-items:center;gap:5px;color:#9ca3af;font-size:11px;font-weight:600;">
+                        <span style="width:5px;height:5px;background:#22c55e;border-radius:50%;"></span> GPT-4.1 Powered
+                    </div>
+                    <div style="width:1px;height:12px;background:#e5e7eb;"></div>
+                    <div style="display:flex;align-items:center;gap:5px;color:#9ca3af;font-size:11px;font-weight:600;">
+                        <span style="width:5px;height:5px;background:#6366f1;border-radius:50%;"></span> Firebase Secured
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="pin-screen" class="hidden absolute inset-0 z-[100] flex-col items-center justify-center bg-slate-900 text-white bg-[url('https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center">
-        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
-        <div class="relative z-10 flex flex-col items-center">
-            <div class="flex items-center gap-2 mb-8">
-                <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="11" fill="url(#gdlast)"/><defs><linearGradient id="gdlast" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
-                <span class="font-black text-xl text-white">CaseDesk <span class="text-blue-400">AI</span></span>
+    <!-- ═══ PIN SCREEN — Complete Redesign ═══ -->
+    <div id="pin-screen" class="hidden absolute inset-0 z-[100]" style="background:linear-gradient(145deg,#0f172a 0%,#1e1b4b 40%,#0f172a 100%);">
+        <!-- Animated bg elements -->
+        <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+            <div style="position:absolute;top:-100px;left:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%);animation:blobFloat 8s ease-in-out infinite;"></div>
+            <div style="position:absolute;bottom:-80px;right:-80px;width:350px;height:350px;background:radial-gradient(circle,rgba(59,130,246,0.12) 0%,transparent 70%);animation:blobFloat 10s ease-in-out infinite reverse;"></div>
+            <div style="position:absolute;top:50%;left:70%;width:200px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.08) 0%,transparent 70%);animation:blobFloat 6s ease-in-out infinite 3s;"></div>
+            <!-- Grid lines -->
+            <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(99,102,241,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.03) 1px,transparent 1px);background-size:40px 40px;"></div>
+        </div>
+
+        <!-- Update mini-panel (locked, shows counts but asks for PIN) -->
+        <div id="pin-update-mini" style="position:absolute;top:20px;right:20px;display:none;z-index:10;">
+            <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:12px 16px;min-width:200px;">
+                <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">📡 Live Updates</div>
+                <div id="pin-upd-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
+                <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);font-size:10px;color:rgba(99,102,241,0.8);font-weight:700;text-align:center;cursor:pointer;" onclick="document.getElementById('pin-input').focus()">
+                    🔒 PIN dalkar dekho →
+                </div>
             </div>
-            <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 border border-white/10">🔐</div>
-            <h2 class="text-xl mb-2 font-bold tracking-wide text-white">Enter Security PIN</h2>
-            <p class="text-slate-400 text-sm mb-8">Your dashboard is protected</p>
-            <input type="password" id="pin-input" maxlength="4" class="bg-slate-800/50 border-2 border-slate-600 p-4 text-center text-5xl tracking-[0.5em] text-white rounded-2xl mb-8 w-64 outline-none focus:border-blue-500 transition-colors shadow-inner backdrop-blur-sm" />
-            <button id="verify-pin-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-xl shadow-lg shadow-blue-500/30 font-bold transition-all hover:-translate-y-1">Unlock Dashboard</button>
+        </div>
+
+        <!-- Center card -->
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+            <!-- Logo -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px;">
+                <div style="width:46px;height:46px;background:linear-gradient(135deg,#6366f1,#3b82f6);border-radius:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(99,102,241,0.5);">
+                    <svg width="26" height="26" viewBox="0 0 40 40" fill="none"><rect x="10" y="8" width="20" height="26" rx="4" fill="white" fill-opacity="0.25" stroke="white" stroke-width="1.5"/><path d="M14 16h12M14 21h12M14 26h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                    <div style="font-size:20px;font-weight:900;color:white;letter-spacing:-0.5px;">CaseDesk <span style="color:#818cf8;">AI</span></div>
+                    <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1px;">SECURE ACCESS</div>
+                </div>
+            </div>
+
+            <!-- Main PIN card -->
+            <div style="background:rgba(255,255,255,0.05);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.1);border-radius:28px;padding:36px 40px;width:100%;max-width:360px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.4);">
+                <!-- Lock icon animated -->
+                <div style="width:64px;height:64px;background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(59,130,246,0.2));border:1px solid rgba(255,255,255,0.15);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;animation:lockPulse 3s ease-in-out infinite;">🔐</div>
+
+                <h2 style="font-size:22px;font-weight:900;color:white;margin-bottom:6px;">Enter Security PIN</h2>
+                <p id="pin-msg" style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:28px;font-weight:500;">Your dashboard is protected</p>
+
+                <!-- PIN dots -->
+                <div style="display:flex;justify-content:center;gap:16px;margin-bottom:24px;" id="pin-dots-row">
+                    <div class="pin-dot" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.2);transition:all 0.2s;"></div>
+                    <div class="pin-dot" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.2);transition:all 0.2s;"></div>
+                    <div class="pin-dot" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.2);transition:all 0.2s;"></div>
+                    <div class="pin-dot" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.2);transition:all 0.2s;"></div>
+                </div>
+
+                <!-- Hidden input -->
+                <input type="password" id="pin-input" maxlength="4" 
+                    style="opacity:0;position:absolute;width:1px;height:1px;" 
+                    inputmode="numeric" pattern="[0-9]*"/>
+
+                <!-- Number pad -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;" id="pin-numpad">
+                    <button class="pin-key" data-v="1">1</button>
+                    <button class="pin-key" data-v="2">2</button>
+                    <button class="pin-key" data-v="3">3</button>
+                    <button class="pin-key" data-v="4">4</button>
+                    <button class="pin-key" data-v="5">5</button>
+                    <button class="pin-key" data-v="6">6</button>
+                    <button class="pin-key" data-v="7">7</button>
+                    <button class="pin-key" data-v="8">8</button>
+                    <button class="pin-key" data-v="9">9</button>
+                    <button class="pin-key pin-key-clear" data-v="C">⌫</button>
+                    <button class="pin-key" data-v="0">0</button>
+                    <button class="pin-key pin-key-go" data-v="OK" id="verify-pin-btn">✓</button>
+                </div>
+
+                <!-- Info -->
+                <div id="pin-weekly-info" style="font-size:10px;color:rgba(255,255,255,0.3);font-weight:600;display:none;">
+                    🔄 PIN weekly reset hoga
+                </div>
+            </div>
+
+            <!-- Session info -->
+            <div style="margin-top:20px;font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;display:flex;align-items:center;gap:6px;">
+                <span style="width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite;display:inline-block;"></span>
+                Logged in as Nilesh
+            </div>
         </div>
     </div>
+
+    <style>
+        @keyframes blobFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-20px) scale(1.05)} }
+        @keyframes lockPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+        .pin-key {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            padding: 18px 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .pin-key:hover { background:rgba(99,102,241,0.3);border-color:rgba(99,102,241,0.5);transform:scale(1.05); }
+        .pin-key:active { transform:scale(0.95); }
+        .pin-key-clear { background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.2);color:#f87171; }
+        .pin-key-clear:hover { background:rgba(239,68,68,0.25); }
+        .pin-key-go { background:linear-gradient(135deg,#6366f1,#3b82f6);border-color:transparent;box-shadow:0 4px 16px rgba(99,102,241,0.4); }
+        .pin-key-go:hover { background:linear-gradient(135deg,#4f46e5,#2563eb);box-shadow:0 6px 20px rgba(99,102,241,0.5); }
+        .pin-dot.filled { background:linear-gradient(135deg,#6366f1,#3b82f6);border-color:#6366f1;box-shadow:0 0 8px rgba(99,102,241,0.5); }
+        .pin-dot.shake { animation:pinShake 0.4s ease; }
+        @keyframes pinShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+    </style>
 
     <div id="app-layout" class="hidden flex-1 flex-col md:flex-row w-full relative overflow-hidden" style="height:100dvh;">
         
@@ -889,8 +1022,8 @@
         position:fixed;
         bottom:100px;
         right:20px;
-        width:390px;
-        height:580px;
+        width:min(390px, calc(100vw - 32px));
+        height:min(580px, calc(100vh - 120px));
         z-index:500;
         border-radius:20px;
         box-shadow:0 24px 60px rgba(0,0,0,0.18),0 4px 16px rgba(79,70,229,0.12);
@@ -899,7 +1032,9 @@
         background:#f8faff;
         flex-direction:column;
         transition:opacity 0.2s,transform 0.2s;
-        min-width:320px;min-height:400px;
+        min-width:300px;min-height:380px;
+        max-width:calc(100vw - 32px);
+        max-height:calc(100vh - 80px);
     ">
         <!-- RESIZE HANDLE -->
         <div id="chat-resize" style="position:absolute;bottom:0;left:0;right:0;height:6px;cursor:ns-resize;z-index:10;background:transparent;"></div>
@@ -1081,6 +1216,21 @@
             chatPanel.style.display = 'flex';
             chatPanel.style.opacity = '0';
             chatPanel.style.transform = 'translateY(16px) scale(0.97)';
+            // Ensure panel stays within viewport bounds
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const pw = Math.min(390, vw - 24);
+            const ph = Math.min(580, vh - 120);
+            chatPanel.style.width  = pw + 'px';
+            chatPanel.style.height = ph + 'px';
+            // Reset to bottom-right if dragged off-screen
+            const rect = chatPanel.getBoundingClientRect();
+            if(rect.right > vw || rect.left < 0 || rect.bottom > vh || rect.top < 0 || !chatPanel.style.left) {
+                chatPanel.style.left   = 'auto';
+                chatPanel.style.top    = 'auto';
+                chatPanel.style.right  = '20px';
+                chatPanel.style.bottom = '100px';
+            }
             requestAnimationFrame(() => {
                 chatPanel.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
                 chatPanel.style.opacity = '1';
@@ -1147,8 +1297,9 @@
             if(!dragging) return;
             let nx = e.clientX - dragOffX, ny = e.clientY - dragOffY;
             const pw = chatPanel.offsetWidth, ph = chatPanel.offsetHeight;
-            nx = Math.max(0, Math.min(window.innerWidth - pw, nx));
-            ny = Math.max(0, Math.min(window.innerHeight - ph, ny));
+            // Clamp so panel stays fully on screen with 8px margin
+            nx = Math.max(8, Math.min(window.innerWidth - pw - 8, nx));
+            ny = Math.max(8, Math.min(window.innerHeight - ph - 8, ny));
             chatPanel.style.left = nx + 'px'; chatPanel.style.top = ny + 'px';
             chatPanel.style.right = 'auto';   chatPanel.style.bottom = 'auto';
         });
@@ -1209,7 +1360,11 @@
                 if (user.email === ALLOWED_EMAIL) {
                     if (!isPinVerified) { 
                         ui.pin.classList.remove('hidden'); 
+                        ui.pin.style.display = 'block';
                         ui.pin.classList.add('flex'); 
+                        pinCurrentVal = '';
+                        if(typeof updatePinDots === 'function') updatePinDots();
+                        if(typeof updatePinMiniPanel === 'function') setTimeout(updatePinMiniPanel, 100);
                     } else { 
                         checkAndLoadApp(); 
                     }
@@ -1223,19 +1378,202 @@
             }
         });
 
-        const doLogout = () => { isPinVerified = false; DYNAMIC_OPENAI_KEY = ""; signOut(auth); };
+        // doLogout defined in PIN section above
+
+        // ══════════════════════════════════════════════════
+        //  PIN NUMPAD + SECURITY SYSTEM
+        // ══════════════════════════════════════════════════
+
+        // PIN history (last 2) — stored in sessionStorage
+        const PIN_HISTORY_KEY = 'cd_pin_history';
+        const PIN_WEEKLY_KEY  = 'cd_pin_week';
+
+        function getPinHistory() {
+            try { return JSON.parse(sessionStorage.getItem(PIN_HISTORY_KEY) || '[]'); } catch { return []; }
+        }
+        function savePinHistory(pin) {
+            let hist = getPinHistory();
+            hist.push(pin);
+            if(hist.length > 2) hist = hist.slice(-2);
+            sessionStorage.setItem(PIN_HISTORY_KEY, JSON.stringify(hist));
+        }
+
+        // Weekly PIN reset check
+        function checkWeeklyPinReset() {
+            const now = Date.now();
+            const lastReset = parseInt(localStorage.getItem(PIN_WEEKLY_KEY) || '0');
+            const oneWeek = 7 * 24 * 3600 * 1000;
+            if(now - lastReset > oneWeek) {
+                // Reset PIN history
+                sessionStorage.removeItem(PIN_HISTORY_KEY);
+                localStorage.setItem(PIN_WEEKLY_KEY, now.toString());
+                const info = document.getElementById('pin-weekly-info');
+                if(info) { info.style.display = 'block'; info.textContent = '🔄 PIN history reset (weekly)'; }
+                console.log('[CaseDesk] Weekly PIN reset done');
+            }
+        }
+        checkWeeklyPinReset();
+
+        // numpad current value
+        let pinCurrentVal = '';
+
+        function updatePinDots() {
+            const dots = document.querySelectorAll('.pin-dot');
+            dots.forEach((d, i) => {
+                if(i < pinCurrentVal.length) d.classList.add('filled');
+                else d.classList.remove('filled');
+            });
+        }
+
+        function shakePinDots() {
+            document.querySelectorAll('.pin-dot').forEach(d => {
+                d.classList.add('shake');
+                setTimeout(() => d.classList.remove('shake'), 400);
+            });
+        }
+
+        function doVerifyPin() {
+            const msgEl = document.getElementById('pin-msg');
+            if(pinCurrentVal === SECRET_PIN) {
+                // Check weekly reset (new PIN should not match last 2 — but this is login, not change)
+                isPinVerified = true;
+                savePinHistory(pinCurrentVal);
+                pinCurrentVal = '';
+                updatePinDots();
+                checkAndLoadApp();
+            } else {
+                shakePinDots();
+                if(msgEl) { msgEl.textContent = '❌ Incorrect PIN, try again'; msgEl.style.color = '#f87171'; }
+                setTimeout(() => {
+                    pinCurrentVal = '';
+                    updatePinDots();
+                    if(msgEl) { msgEl.textContent = 'Your dashboard is protected'; msgEl.style.color = 'rgba(255,255,255,0.5)'; }
+                }, 800);
+            }
+        }
+
+        // Numpad click listeners
+        document.querySelectorAll('.pin-key').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const v = btn.dataset.v;
+                if(v === 'C') {
+                    pinCurrentVal = pinCurrentVal.slice(0, -1);
+                    updatePinDots();
+                } else if(v === 'OK') {
+                    if(pinCurrentVal.length === 4) doVerifyPin();
+                } else {
+                    if(pinCurrentVal.length < 4) {
+                        pinCurrentVal += v;
+                        updatePinDots();
+                        // Auto-verify when 4 digits entered
+                        if(pinCurrentVal.length === 4) {
+                            setTimeout(doVerifyPin, 150);
+                        }
+                    }
+                }
+            });
+        });
+
+        // Also support keyboard input on PIN screen
+        document.addEventListener('keydown', (e) => {
+            if(!ui.pin.classList.contains('hidden') && !ui.pin.classList.contains('flex') === false) {
+                // Pin screen visible
+            }
+            const pinScreen = document.getElementById('pin-screen');
+            if(pinScreen.style.display === 'none' || pinScreen.classList.contains('hidden')) return;
+            if(e.key >= '0' && e.key <= '9' && pinCurrentVal.length < 4) {
+                pinCurrentVal += e.key;
+                updatePinDots();
+                if(pinCurrentVal.length === 4) setTimeout(doVerifyPin, 150);
+            } else if(e.key === 'Backspace') {
+                pinCurrentVal = pinCurrentVal.slice(0,-1);
+                updatePinDots();
+            } else if(e.key === 'Enter' && pinCurrentVal.length === 4) {
+                doVerifyPin();
+            }
+        });
+
+        // Old verify-pin-btn fallback (now pin-key-go handles it)
+        document.getElementById('verify-pin-btn').addEventListener('click', () => {
+            if(pinCurrentVal.length === 4) doVerifyPin();
+        });
+
+        // ══════════════════════════════════════════════════
+        //  5-MINUTE INACTIVE → LOCK BACK TO PIN
+        // ══════════════════════════════════════════════════
+
+        let inactiveTimer = null;
+        const INACTIVE_MS = 5 * 60 * 1000; // 5 minutes
+
+        function resetInactiveTimer() {
+            if(!isPinVerified) return;
+            clearTimeout(inactiveTimer);
+            inactiveTimer = setTimeout(() => {
+                // Lock to PIN screen
+                isPinVerified = false;
+                pinCurrentVal = '';
+                updatePinDots();
+                const msgEl = document.getElementById('pin-msg');
+                if(msgEl) { msgEl.textContent = '⏰ Session locked after 5 min inactivity'; msgEl.style.color = '#fbbf24'; }
+                hideAllStates();
+                ui.pin.classList.remove('hidden'); ui.pin.classList.add('flex');
+                updatePinMiniPanel();
+            }, INACTIVE_MS);
+        }
+
+        // Listen for user activity
+        ['mousemove','keydown','click','touchstart','scroll'].forEach(evt => {
+            document.addEventListener(evt, resetInactiveTimer, { passive: true });
+        });
+
+        // ══════════════════════════════════════════════════
+        //  CLEAR PIN ON SIGNOUT
+        // ══════════════════════════════════════════════════
+
+        const doLogout = () => {
+            isPinVerified = false;
+            DYNAMIC_OPENAI_KEY = "";
+            pinCurrentVal = '';
+            updatePinDots();
+            clearTimeout(inactiveTimer);
+            UP.counts = { notebook:0, notes:0, tasks:0, reminders:0 };
+            const msgEl = document.getElementById('pin-msg');
+            if(msgEl) { msgEl.textContent = 'Sign in again to access your dashboard'; msgEl.style.color = 'rgba(255,255,255,0.5)'; }
+            signOut(auth);
+        };
         document.getElementById('logout-btn-desk').addEventListener('click', doLogout);
         document.getElementById('logout-btn-mob').addEventListener('click', doLogout);
 
-        document.getElementById('verify-pin-btn').addEventListener('click', () => {
-            if (document.getElementById('pin-input').value === SECRET_PIN) {
-                isPinVerified = true; 
-                checkAndLoadApp();
-            } else { 
-                alert("Incorrect PIN"); 
-                document.getElementById('pin-input').value = ""; 
-            }
-        });
+        // ══════════════════════════════════════════════════
+        //  PIN MINI-PANEL — shows counts on lock screen
+        // ══════════════════════════════════════════════════
+
+        function updatePinMiniPanel() {
+            const panel = document.getElementById('pin-update-mini');
+            const rowsEl = document.getElementById('pin-upd-rows');
+            if(!panel || !rowsEl) return;
+
+            const totalCount = Object.values(UP.counts).reduce((a,b) => a+b, 0);
+            const nsCount = NS.items.filter(i=>!i.read).length;
+            const totalAll = totalCount + nsCount;
+
+            if(totalAll === 0) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+
+            const items = [
+                { label:'📓 Notebook', count: UP.counts.notebook, color:'#818cf8' },
+                { label:'📂 Cases', count: UP.counts.notes, color:'#22d3ee' },
+                { label:'✅ Tasks', count: UP.counts.tasks + NS.items.filter(i=>i.type==='task'&&!i.read).length, color:'#fbbf24' },
+                { label:'⏰ Reminders', count: UP.counts.reminders + NS.items.filter(i=>i.type==='reminder'&&!i.read).length, color:'#f87171' },
+            ].filter(i => i.count > 0);
+
+            rowsEl.innerHTML = items.map(item => `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);">${item.label}</span>
+                    <span style="background:${item.color};color:#fff;font-size:10px;font-weight:900;padding:2px 8px;border-radius:10px;min-width:24px;text-align:center;">${item.count > 99 ? '99+' : item.count}</span>
+                </div>
+            `).join('');
+        }
 
         async function checkAndLoadApp() {
             hideAllStates();
@@ -1248,6 +1586,8 @@
                     
                     ui.appLayout.classList.remove('hidden'); 
                     ui.appLayout.classList.add('flex');
+                    // Start inactive timer
+                    if(typeof resetInactiveTimer === 'function') resetInactiveTimer();
                     
                     switchView('notebook');
                     loadAppListeners();
@@ -2127,12 +2467,11 @@ RULES:
             if(row) { row.classList.add('visited'); setTimeout(() => row.classList.remove('visited'), 500); }
             // Clear count for this page
             UP.counts[page] = 0;
-            refreshUpdPanel();
-            // Navigate
-            // Use the stored pre-override version
-            if(window._baseSwitchViewUP) _baseSwitchViewUP(page);
-            else if(window.switchView) switchView(page);
             UP.currentPage = page;
+            refreshUpdPanel();
+            // Navigate — use any available version
+            const navFn = window.__finalSwitchView || window._baseSwitchViewUP || window.switchView;
+            if(navFn) navFn(page);
             // Close panel on mobile
             if(window.innerWidth < 768) {
                 UP.open = false;
@@ -2157,6 +2496,8 @@ RULES:
             if(clientName) UP.clients[page] = clientName;
             UP.lastTime = new Date();
             refreshUpdPanel();
+            // Update pin screen mini panel
+            if(typeof updatePinMiniPanel === 'function') updatePinMiniPanel();
             // Auto-open to show the update
             autoOpenPanel();
         };
@@ -2251,17 +2592,31 @@ RULES:
             }
         };
 
-        // Also hook the manual nav clicks at top to update currentPage
+        // Hook manual nav clicks — clear badge when page visited
         ['notebook','notes','tasks','reminders'].forEach(v => {
             ['desk','mob'].forEach(suffix => {
                 const btn = document.getElementById('tab-' + v + '-' + suffix);
                 if(btn) btn.addEventListener('click', () => {
                     UP.currentPage = v;
                     UP.counts[v] = 0;
+                    // Also clear corresponding NS badge (task/reminder sidebar badges)
                     refreshUpdPanel();
                 });
             });
         });
+
+        // Also reset UP counts when switchView called (catches all navigation including goToPage)
+        const __finalSwitchView = window.switchView;
+        window.switchView = function(targetView) {
+            __finalSwitchView(targetView);
+            UP.currentPage = targetView;
+            if(UP.counts[targetView] !== undefined) {
+                UP.counts[targetView] = 0;
+                refreshUpdPanel();
+            }
+            // Also clear NS badges for this page
+            if(typeof markPageVisited === 'function') markPageVisited(targetView);
+        };
 
         // ── Initial render ────────────────────────────────────────────────
         refreshUpdPanel();
@@ -2311,11 +2666,12 @@ RULES:
             });
         });
 
+        // Track which pages have been visited to clear their NS badge on visit
+        const visitedPages = new Set();
+
         // ─── Refresh all badges ──────────────────────────────────────────
         function refreshBadges() {
-            const taskPending = NS.items.filter(i => i.type === 'task' && !i.read).length;
-            const remUnread   = NS.items.filter(i => i.type === 'reminder' && !i.read).length;
-            const total       = NS.unread;
+            const total = NS.unread;
 
             // Bell badge (sidebar + mobile)
             ['bell-badge','bell-badge-mob'].forEach(id => {
@@ -2328,23 +2684,36 @@ RULES:
             const dot = document.getElementById('bell-dot');
             if(dot) dot.style.display = total > 0 ? '' : 'none';
 
-            // Task badge on sidebar
+            // Task badge — only show UNREAD task notifs (clears when tasks page visited)
             const tb = document.getElementById('task-badge');
             if(tb) {
-                const pendingAll = NS.items.filter(i=>i.type==='task').length;
-                if(pendingAll > 0) { tb.textContent = pendingAll>9?'9+':pendingAll; tb.style.display='flex'; }
+                const unreadTasks = visitedPages.has('tasks') ? 0 : NS.items.filter(i=>i.type==='task'&&!i.read).length;
+                if(unreadTasks > 0) { tb.textContent = unreadTasks>9?'9+':unreadTasks; tb.style.display='flex'; }
                 else tb.style.display='none';
             }
-            // Reminder badge on sidebar
+            // Reminder badge — only show UNREAD reminder notifs
             const rb = document.getElementById('rem-badge');
             if(rb) {
-                const remAll = NS.items.filter(i=>i.type==='reminder').length;
-                if(remAll > 0) { rb.textContent = remAll>9?'9+':remAll; rb.style.display='flex'; }
+                const unreadRems = visitedPages.has('reminders') ? 0 : NS.items.filter(i=>i.type==='reminder'&&!i.read).length;
+                if(unreadRems > 0) { rb.textContent = unreadRems>9?'9+':unreadRems; rb.style.display='flex'; }
                 else rb.style.display='none';
             }
             // Panel header unread badge
             const ub = document.getElementById('np-unread-badge');
             if(ub) { if(total>0){ub.textContent=total;ub.style.display='';} else ub.style.display='none'; }
+        }
+
+        // Clear visited-page badges when user visits that page
+        function markPageVisited(page) {
+            visitedPages.add(page);
+            // Mark all notifications of this type as read
+            const typeMap = { tasks:'task', reminders:'reminder', notebook:'notebook', notes:'case' };
+            const nsType = typeMap[page];
+            if(nsType) {
+                NS.items.filter(i=>i.type===nsType).forEach(i=>{ i.read=true; });
+                NS.unread = NS.items.filter(i=>!i.read).length;
+            }
+            refreshBadges();
         }
 
         // ─── Refresh summary counters in panel header ────────────────────
