@@ -1174,8 +1174,11 @@
         // ERROR FIXED HERE: Removing flex class so it hides properly
         function hideAllStates() {
             ui.login.classList.add('hidden'); ui.login.classList.remove('flex');
+            ui.login.style.display = 'none';
             ui.pin.classList.add('hidden'); ui.pin.classList.remove('flex');
+            ui.pin.style.display = 'none';
             ui.appLayout.classList.add('hidden'); ui.appLayout.classList.remove('flex');
+            ui.appLayout.style.display = '';
         }
 
         function switchView(targetView) {
@@ -1355,26 +1358,36 @@
         });
 
         onAuthStateChanged(auth, (user) => {
+            console.log('[CaseDesk] Auth state changed. User:', user?.email, '| isPinVerified:', isPinVerified);
             hideAllStates();
             if (user) {
                 if (user.email === ALLOWED_EMAIL) {
-                    if (!isPinVerified) { 
-                        ui.pin.classList.remove('hidden'); 
+                    if (!isPinVerified) {
+                        // Show PIN screen
                         ui.pin.style.display = 'flex';
+                        ui.pin.classList.remove('hidden');
                         window._pinScreenActive = true;
                         pinCurrentVal = '';
                         if(typeof updatePinDots === 'function') updatePinDots();
-                        if(typeof updatePinMiniPanel === 'function') setTimeout(updatePinMiniPanel, 100);
-                    } else { 
-                        checkAndLoadApp(); 
+                        const msgEl = document.getElementById('pin-msg');
+                        if(msgEl) { msgEl.textContent = 'Your dashboard is protected'; msgEl.style.color = 'rgba(255,255,255,0.5)'; }
+                        if(typeof updatePinMiniPanel === 'function') setTimeout(updatePinMiniPanel, 200);
+                        console.log('[CaseDesk] Showing PIN screen');
+                    } else {
+                        // Already pin-verified (e.g. auth state refresh)
+                        console.log('[CaseDesk] PIN already verified, loading app...');
+                        checkAndLoadApp();
                     }
-                } else { 
-                    alert("Unauthorized Email!"); 
-                    signOut(auth); 
+                } else {
+                    console.warn('[CaseDesk] Unauthorized email:', user.email);
+                    signOut(auth);
                 }
-            } else { 
-                ui.login.classList.remove('hidden'); 
-                ui.login.classList.add('flex'); 
+            } else {
+                // Not logged in — show Google login
+                ui.login.style.display = 'flex';
+                ui.login.classList.remove('hidden');
+                ui.login.classList.add('flex');
+                console.log('[CaseDesk] Showing login screen');
             }
         });
 
@@ -1448,7 +1461,11 @@
                     d.style.borderColor = '#22c55e';
                     d.style.boxShadow = '0 0 10px rgba(34,197,94,0.6)';
                 });
-                setTimeout(() => checkAndLoadApp(), 300);
+                console.log('[CaseDesk] PIN correct! isPinVerified=true, calling checkAndLoadApp...');
+                // Small delay for green flash to show, then load app
+                setTimeout(() => {
+                    checkAndLoadApp();
+                }, 400);
             } else {
                 shakePinDots();
                 if(msgEl) { msgEl.textContent = '❌ Galat PIN, dobara try karein'; msgEl.style.color = '#f87171'; }
@@ -1612,30 +1629,65 @@
             `).join('');
         }
 
+        let appListenersLoaded = false; // prevent double-loading
+
         async function checkAndLoadApp() {
+            console.log('[CaseDesk] checkAndLoadApp() called, isPinVerified=', isPinVerified);
             hideAllStates();
+
+            // Show loading on PIN screen briefly
+            const pinScreen = document.getElementById('pin-screen');
+            const msgEl = document.getElementById('pin-msg');
+            pinScreen.style.display = 'flex';
+            if(msgEl) { msgEl.textContent = '⏳ Loading dashboard...'; msgEl.style.color = '#818cf8'; }
+
             try {
+                console.log('[CaseDesk] Fetching API config from Firebase...');
                 const keyDoc = await getDoc(doc(db, "system_settings", "api_config"));
+                console.log('[CaseDesk] Firebase response - exists:', keyDoc.exists());
+
                 if (keyDoc.exists() && keyDoc.data().openai_key) {
                     DYNAMIC_OPENAI_KEY = keyDoc.data().openai_key;
                     if (keyDoc.data().openai_model) OPENAI_MODEL = keyDoc.data().openai_model;
-                    sessionStartTime = new Date().toISOString(); 
-                    
-                    ui.appLayout.classList.remove('hidden'); 
-                    ui.appLayout.classList.add('flex');
+                    sessionStartTime = new Date().toISOString();
+                    console.log('[CaseDesk] API key loaded, showing app...');
+
+                    // Hide pin screen, show app
+                    pinScreen.style.display = 'none';
+                    window._pinScreenActive = false;
+                    hideAllStates();
+                    ui.appLayout.classList.remove('hidden');
+                    ui.appLayout.style.display = 'flex';
+
                     // Start inactive timer
                     if(typeof resetInactiveTimer === 'function') resetInactiveTimer();
-                    
+
                     switchView('notebook');
-                    loadAppListeners();
-                } else { 
-                    alert("API Key missing in Database!");
-                    ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
-                    signOut(auth);
+
+                    // Load listeners only once
+                    if(!appListenersLoaded) {
+                        appListenersLoaded = true;
+                        loadAppListeners();
+                    }
+                    console.log('[CaseDesk] App loaded successfully ✅');
+
+                } else {
+                    // API key missing — show error on pin screen  
+                    console.warn('[CaseDesk] API key missing in Firebase!');
+                    pinScreen.style.display = 'flex';
+                    if(msgEl) {
+                        msgEl.innerHTML = '❌ API Key missing!<br><span style="font-size:11px;">Firebase mein openai_key set karein</span>';
+                        msgEl.style.color = '#f87171';
+                    }
                 }
-            } catch (error) { 
-                alert("Database connection failed."); 
-                console.error(error);
+            } catch (error) {
+                console.error('[CaseDesk] Firebase error:', error);
+                // Show error on pin screen instead of alert
+                pinScreen.style.display = 'flex';
+                if(msgEl) {
+                    msgEl.innerHTML = '❌ Connection failed!<br><span style="font-size:11px;cursor:pointer;text-decoration:underline;" onclick="checkAndLoadApp()">Retry karein →</span>';
+                    msgEl.style.color = '#f87171';
+                }
             }
         }
 
