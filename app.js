@@ -10,7 +10,41 @@ const firebaseConfig = {
     messagingSenderId: "318215944760",
     appId: "1:318215944760:web:2a387b7bcd068da4ff44cd"
 };
-const SECRET_PIN = "5786"; 
+<div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 border border-white/10">🔐</div>
+            <h2 class="text-xl mb-2 font-bold tracking-wide text-white">Enter Security PIN</h2>
+            <p id="pin-subtitle" class="text-slate-400 text-sm mb-4">Your dashboard is protected</p>
+
+            <!-- Notification badges on PIN screen -->
+            <div id="pin-notif-bar" class="flex gap-2 mb-6" style="display:none;">
+                <div id="pin-badge-notebook" onclick="this.classList.toggle('expanded')" class="pin-badge" style="display:none;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.3);border-radius:20px;padding:4px 10px;cursor:pointer;transition:all 0.2s;display:none;">
+                    <span style="font-size:12px;">📓</span><span class="pin-badge-count" style="font-size:11px;font-weight:800;color:#a5b4fc;margin-left:4px;">0</span>
+                </div>
+                <div id="pin-badge-notes" class="pin-badge" style="display:none;background:rgba(6,182,212,0.2);border:1px solid rgba(6,182,212,0.3);border-radius:20px;padding:4px 10px;cursor:pointer;transition:all 0.2s;">
+                    <span style="font-size:12px;">📂</span><span class="pin-badge-count" style="font-size:11px;font-weight:800;color:#67e8f9;margin-left:4px;">0</span>
+                </div>
+                <div id="pin-badge-tasks" class="pin-badge" style="display:none;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.3);border-radius:20px;padding:4px 10px;cursor:pointer;transition:all 0.2s;">
+                    <span style="font-size:12px;">✅</span><span class="pin-badge-count" style="font-size:11px;font-weight:800;color:#fbbf24;margin-left:4px;">0</span>
+                </div>
+                <div id="pin-badge-reminders" class="pin-badge" style="display:none;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);border-radius:20px;padding:4px 10px;cursor:pointer;transition:all 0.2s;">
+                    <span style="font-size:12px;">⏰</span><span class="pin-badge-count" style="font-size:11px;font-weight:800;color:#f87171;margin-left:4px;">0</span>
+                </div>
+            </div>
+
+            <!-- Normal PIN entry -->
+            <div id="pin-entry-form">
+                <input type="password" id="pin-input" maxlength="4" autocomplete="off" inputmode="numeric" class="bg-slate-800/50 border-2 border-slate-600 p-4 text-center text-5xl tracking-[0.5em] text-white rounded-2xl mb-6 w-64 outline-none focus:border-blue-500 transition-colors shadow-inner backdrop-blur-sm" />
+                <button id="verify-pin-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-xl shadow-lg shadow-blue-500/30 font-bold transition-all hover:-translate-y-1 w-64">Unlock Dashboard</button>
+                <button id="show-change-pin-btn" class="mt-4 text-xs text-slate-500 hover:text-blue-400 transition-colors cursor-pointer bg-transparent border-none">🔑 Change PIN</button>
+            </div>
+
+            <!-- Change PIN form (hidden by default) -->
+            <div id="pin-change-form" style="display:none;" class="w-64">
+                <input type="password" id="old-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="Old PIN" class="w-full bg-slate-800/50 border-2 border-slate-600 p-3 text-center text-lg tracking-widest text-white rounded-xl mb-3 outline-none focus:border-blue-500" />
+                <input type="password" id="new-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="New PIN" class="w-full bg-slate-800/50 border-2 border-slate-600 p-3 text-center text-lg tracking-widest text-white rounded-xl mb-3 outline-none focus:border-yellow-500" />
+                <input type="password" id="confirm-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="Confirm New PIN" class="w-full bg-slate-800/50 border-2 border-slate-600 p-3 text-center text-lg tracking-widest text-white rounded-xl mb-4 outline-none focus:border-green-500" />
+                <button id="save-new-pin-btn" class="w-full bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold transition-all">✅ Save New PIN</button>
+                <button id="cancel-change-pin-btn" class="w-full mt-2 text-xs text-slate-500 hover:text-white transition-colors cursor-pointer bg-transparent border-none py-2">← Back to Login</button>
+            </div>
 const ALLOWED_EMAIL = "nil000nilesh@gmail.com";
 
 const app = initializeApp(firebaseConfig);
