@@ -291,6 +291,21 @@
         /* Mobile: hide on very small screens */
         @media (max-width: 480px) {
             #upd-pull-tab { display: none; }
+            /* Chat panel full-screen on very small phones */
+            #chat-panel {
+                width: 100vw !important;
+                height: 100dvh !important;
+                bottom: 0 !important;
+                right: 0 !important;
+                left: 0 !important;
+                top: 0 !important;
+                border-radius: 0 !important;
+                min-width: unset !important;
+                max-width: 100vw !important;
+                max-height: 100dvh !important;
+            }
+            #chat-resize { display: none !important; }
+            #chat-panel-header { cursor: default !important; }
         }
 
         /* ═══ NOTIFICATION SYSTEM CSS ═══ */
@@ -889,8 +904,8 @@
         position:fixed;
         bottom:100px;
         right:20px;
-        width:390px;
-        height:580px;
+        width:min(390px, calc(100vw - 40px));
+        height:min(580px, calc(100dvh - 120px));
         z-index:500;
         border-radius:20px;
         box-shadow:0 24px 60px rgba(0,0,0,0.18),0 4px 16px rgba(79,70,229,0.12);
@@ -899,7 +914,8 @@
         background:#f8faff;
         flex-direction:column;
         transition:opacity 0.2s,transform 0.2s;
-        min-width:320px;min-height:400px;
+        min-width:280px;min-height:350px;
+        max-width:calc(100vw - 20px);max-height:calc(100dvh - 40px);
     ">
         <!-- RESIZE HANDLE -->
         <div id="chat-resize" style="position:absolute;bottom:0;left:0;right:0;height:6px;cursor:ns-resize;z-index:10;background:transparent;"></div>
@@ -1078,6 +1094,31 @@
         let panelVisible = false;
 
         function showPanel() {
+            // Reset position to ensure panel fits within viewport
+            chatPanel.style.right = '20px';
+            chatPanel.style.bottom = '100px';
+            chatPanel.style.left = 'auto';
+            chatPanel.style.top = 'auto';
+            // Auto-adjust if panel would overflow
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const pw = Math.min(390, vw - 40);
+            const ph = Math.min(580, vh - 120);
+            chatPanel.style.width = pw + 'px';
+            chatPanel.style.height = ph + 'px';
+            // If bottom+height exceeds viewport, shift up
+            if(100 + ph > vh - 20) {
+                chatPanel.style.bottom = Math.max(10, vh - ph - 20) + 'px';
+            }
+            // If right+width exceeds viewport, shift left
+            if(20 + pw > vw - 10) {
+                chatPanel.style.right = Math.max(10, vw - pw - 10) + 'px';
+            }
+            // On very small screens (<=480), go fullscreen (CSS handles size)
+            if(vw <= 480) {
+                chatPanel.style.left = '0'; chatPanel.style.top = '0';
+                chatPanel.style.right = '0'; chatPanel.style.bottom = '0';
+                chatFab.style.display = 'none';
+            }
             chatPanel.style.display = 'flex';
             chatPanel.style.opacity = '0';
             chatPanel.style.transform = 'translateY(16px) scale(0.97)';
@@ -1098,6 +1139,8 @@
             chatPanel.style.transform = 'translateY(14px) scale(0.97)';
             setTimeout(() => { chatPanel.style.display = 'none'; chatPanel.style.display = ''; chatPanel.style.display = 'none'; }, 180);
             panelVisible = false;
+            // Show FAB back on small screens
+            chatFab.style.display = '';
         }
 
         fabBtn.addEventListener('click', (e) => {
@@ -1183,10 +1226,27 @@
         });
         document.addEventListener('mousemove', e => {
             if(!resizing) return;
-            const newH = Math.max(380, Math.min(window.innerHeight - 60, rsH - (e.clientY - rsY)));
+            const maxH = window.innerHeight - 60;
+            const newH = Math.max(350, Math.min(maxH, rsH - (e.clientY - rsY)));
             chatPanel.style.height = newH + 'px';
         });
         document.addEventListener('mouseup', () => { resizing = false; document.body.style.userSelect = ''; });
+
+        // ── Keep chat panel in viewport on window resize ──
+        window.addEventListener('resize', () => {
+            if(!panelVisible) return;
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const pw = chatPanel.offsetWidth, ph = chatPanel.offsetHeight;
+            // Shrink if needed
+            if(pw > vw - 20) chatPanel.style.width = (vw - 20) + 'px';
+            if(ph > vh - 40) chatPanel.style.height = (vh - 40) + 'px';
+            // Reposition if out of bounds
+            const r = chatPanel.getBoundingClientRect();
+            if(r.right > vw) chatPanel.style.right = '10px';
+            if(r.bottom > vh) chatPanel.style.bottom = '10px';
+            if(r.left < 0) { chatPanel.style.left = '10px'; chatPanel.style.right = 'auto'; }
+            if(r.top < 0) { chatPanel.style.top = '10px'; chatPanel.style.bottom = 'auto'; }
+        });
 
         document.getElementById('login-btn').addEventListener('click', async () => {
             const btn = document.getElementById('login-btn');
