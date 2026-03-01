@@ -137,6 +137,162 @@
         #activity-feed::-webkit-scrollbar { width: 3px; }
         #activity-feed::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
 
+
+        /* ═══ RIGHT SIDE LIVE UPDATE PANEL ═══ */
+        #upd-panel-wrap {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 150;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+        }
+        /* The pull tab — always visible on right edge */
+        #upd-pull-tab {
+            pointer-events: all;
+            width: 32px;
+            min-height: 100px;
+            background: linear-gradient(180deg, #4f46e5 0%, #2563eb 100%);
+            border-radius: 12px 0 0 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 12px 0;
+            box-shadow: -3px 0 12px rgba(79,70,229,0.3);
+            transition: width 0.2s;
+            position: relative;
+            user-select: none;
+        }
+        #upd-pull-tab:hover { background: linear-gradient(180deg,#4338ca,#1d4ed8); }
+        #upd-tab-count {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 16px;
+            height: 16px;
+            background: #ef4444;
+            border-radius: 8px;
+            font-size: 8.5px;
+            font-weight: 900;
+            color: white;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+            border: 1.5px solid white;
+        }
+        #upd-tab-icon { color: white; flex-shrink: 0; }
+        #upd-tab-text {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            font-size: 9.5px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.9);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        #upd-tab-chevron {
+            color: rgba(255,255,255,0.5);
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }
+        /* Panel body — slides in from right */
+        #upd-panel-body {
+            pointer-events: all;
+            width: 0;
+            overflow: hidden;
+            transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
+            background: white;
+            border-radius: 12px 0 0 12px;
+            border: 1px solid #e2e8f0;
+            border-right: none;
+            box-shadow: -6px 0 24px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+        }
+        #upd-panel-body.open {
+            width: 270px;
+        }
+        #upd-panel-body.open + #upd-pull-tab #upd-tab-chevron,
+        #upd-pull-tab.open-state #upd-tab-chevron {
+            transform: rotate(180deg);
+        }
+        /* Panel inner (fixed width inside hidden overflow) */
+        #upd-panel-inner {
+            width: 270px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+        }
+        /* Row items */
+        .upd-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f8faff;
+            transition: background 0.15s;
+            position: relative;
+            text-align: left;
+            background: none;
+            border: none;
+            width: 100%;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .upd-row:hover { background: #f0f4ff; }
+        .upd-row:last-child { border-bottom: none; }
+        .upd-row-icon {
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .upd-row-badge {
+            min-width: 22px; height: 22px;
+            border-radius: 11px;
+            font-size: 11px; font-weight: 900; color: white;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 6px; flex-shrink: 0;
+            animation: badgePop .25s ease;
+        }
+        .upd-row-title { font-size: 12px; font-weight: 800; line-height: 1.2; }
+        .upd-row-sub   { font-size: 10px; font-weight: 600; margin-top: 1px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Page visit flash */
+        @keyframes visitFlash {
+            0%   { background: #dbeafe; }
+            100% { background: transparent; }
+        }
+        .upd-row.visited { animation: visitFlash 0.5s ease; }
+        /* Slide in new rows */
+        @keyframes rowSlideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .upd-row.row-new { animation: rowSlideIn 0.3s ease; }
+        /* Badge shake */
+        @keyframes badgeShake {
+            0%,100% { transform: scale(1); }
+            30%      { transform: scale(1.4); }
+            60%      { transform: scale(0.9); }
+        }
+        .upd-row-badge.shake { animation: badgeShake 0.4s ease; }
+
+        /* Mobile: hide on very small screens */
+        @media (max-width: 480px) {
+            #upd-pull-tab { display: none; }
+        }
+
         /* ═══ NOTIFICATION SYSTEM CSS ═══ */
         /* Bell badge on sidebar icons */
         .nav-badge {
@@ -217,6 +373,117 @@
         #push-bar { padding:10px 14px; background:#fffbeb;
             border-top:1px solid #fde68a; flex-shrink:0;
             display:flex; align-items:center; gap:8px; }
+
+        /* ═══ RIGHT SIDE UPDATE PANEL ═══ */
+        #update-panel {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%) translateX(calc(100% - 36px));
+            width: 280px;
+            max-height: 70vh;
+            z-index: 150;
+            display: flex;
+            flex-direction: row;
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+            filter: drop-shadow(-4px 4px 20px rgba(0,0,0,0.12));
+        }
+        #update-panel.panel-open {
+            transform: translateY(-50%) translateX(0);
+        }
+        /* Tab handle on left edge */
+        #update-tab {
+            flex-shrink: 0;
+            width: 36px;
+            background: linear-gradient(180deg, #4f46e5, #2563eb);
+            border-radius: 12px 0 0 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 14px 0;
+            position: relative;
+        }
+        #update-tab-label {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            font-size: 10px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            margin: 4px 0;
+        }
+        #update-total-badge {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 18px;
+            height: 18px;
+            background: #ef4444;
+            border-radius: 9px;
+            font-size: 9px;
+            font-weight: 900;
+            color: white;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            border: 2px solid white;
+            animation: badgePop .25s ease;
+        }
+        /* Panel body */
+        #update-body {
+            flex: 1;
+            background: white;
+            border-radius: 0 12px 12px 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(99,102,241,0.12);
+            border-left: none;
+        }
+        /* Update item */
+        .upd-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f8faff;
+            cursor: pointer;
+            transition: background 0.15s;
+            position: relative;
+            text-decoration: none;
+        }
+        .upd-item:hover { background: #f0f4ff; }
+        .upd-item:last-child { border-bottom: none; }
+        .upd-icon {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .upd-count-badge {
+            position: absolute;
+            top: 6px; right: 10px;
+            min-width: 20px; height: 20px;
+            border-radius: 10px;
+            font-size: 10px; font-weight: 900; color: white;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 5px;
+            animation: badgePop .25s ease;
+        }
+        /* Slide animation for new items */
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .upd-item.new-item { animation: slideInRight .3s ease; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-[100dvh] overflow-hidden flex flex-col selection:bg-blue-200">
@@ -487,6 +754,103 @@
                 </div>
             </div>
 
+
+                        <!-- ═══ RIGHT SIDE LIVE UPDATE PANEL ═══ -->
+            <div id="upd-panel-wrap">
+
+                <!-- Panel body (hidden until open) -->
+                <div id="upd-panel-body">
+                    <div id="upd-panel-inner">
+
+                        <!-- Header -->
+                        <div style="padding:11px 14px 10px;border-bottom:2px solid #eef2ff;background:linear-gradient(135deg,#f8faff 0%,#eef2ff 100%);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <div style="width:26px;height:26px;background:#4f46e5;border-radius:7px;display:flex;align-items:center;justify-content:center;">
+                                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                </div>
+                                <span style="font-size:12px;font-weight:800;color:#312e81;">Live Updates</span>
+                            </div>
+                            <button onclick="clearAllUpdates()" title="Sab clear karo"
+                                style="font-size:9px;font-weight:700;color:#94a3b8;background:none;border:1px solid #e2e8f0;cursor:pointer;padding:3px 8px;border-radius:6px;"
+                                onmouseenter="this.style.background='#f1f5f9';this.style.color='#ef4444'"
+                                onmouseleave="this.style.background='none';this.style.color='#94a3b8'">
+                                ✕ Clear
+                            </button>
+                        </div>
+
+                        <!-- Rows container -->
+                        <div id="upd-rows" style="overflow-y:auto;flex:1;">
+
+                            <!-- NOTEBOOK row -->
+                            <button class="upd-row" id="upd-row-notebook" onclick="goToPage('notebook')" style="display:none;">
+                                <div class="upd-row-icon" style="background:#eef2ff;">📓</div>
+                                <div style="flex:1;min-width:0;">
+                                    <div class="upd-row-title" style="color:#312e81;">Notebook</div>
+                                    <div class="upd-row-sub" id="upd-sub-notebook" style="color:#6366f1;"></div>
+                                </div>
+                                <div class="upd-row-badge" id="upd-badge-notebook" style="background:#6366f1;display:none;">0</div>
+                            </button>
+
+                            <!-- CLIENT CASES row -->
+                            <button class="upd-row" id="upd-row-notes" onclick="goToPage('notes')" style="display:none;">
+                                <div class="upd-row-icon" style="background:#ecfeff;">📂</div>
+                                <div style="flex:1;min-width:0;">
+                                    <div class="upd-row-title" style="color:#0e7490;">Client Cases</div>
+                                    <div class="upd-row-sub" id="upd-sub-notes" style="color:#0891b2;"></div>
+                                </div>
+                                <div class="upd-row-badge" id="upd-badge-notes" style="background:#0891b2;display:none;">0</div>
+                            </button>
+
+                            <!-- TASKS row -->
+                            <button class="upd-row" id="upd-row-tasks" onclick="goToPage('tasks')" style="display:none;">
+                                <div class="upd-row-icon" style="background:#fffbeb;">✅</div>
+                                <div style="flex:1;min-width:0;">
+                                    <div class="upd-row-title" style="color:#92400e;">Tasks</div>
+                                    <div class="upd-row-sub" id="upd-sub-tasks" style="color:#d97706;"></div>
+                                </div>
+                                <div class="upd-row-badge" id="upd-badge-tasks" style="background:#f59e0b;display:none;">0</div>
+                            </button>
+
+                            <!-- REMINDERS row -->
+                            <button class="upd-row" id="upd-row-reminders" onclick="goToPage('reminders')" style="display:none;">
+                                <div class="upd-row-icon" style="background:#fff1f2;">⏰</div>
+                                <div style="flex:1;min-width:0;">
+                                    <div class="upd-row-title" style="color:#9f1239;">Reminders</div>
+                                    <div class="upd-row-sub" id="upd-sub-reminders" style="color:#ef4444;"></div>
+                                </div>
+                                <div class="upd-row-badge" id="upd-badge-reminders" style="background:#ef4444;display:none;">0</div>
+                            </button>
+
+                            <!-- Empty state -->
+                            <div id="upd-empty-state" style="padding:22px 14px;text-align:center;color:#cbd5e1;">
+                                <div style="font-size:28px;margin-bottom:8px;">⚡</div>
+                                <div style="font-size:11px;font-weight:700;color:#94a3b8;">Koi update nahi abhi</div>
+                                <div style="font-size:10px;color:#cbd5e1;margin-top:3px;">AI kuch save karega tab yahan count dikhega</div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div id="upd-footer" style="display:none;padding:6px 14px;background:#f8faff;border-top:1px solid #e2e8f0;flex-shrink:0;">
+                            <span style="font-size:9px;font-weight:600;color:#94a3b8;">Last update: </span>
+                            <span id="upd-last-time" style="font-size:9px;font-weight:700;color:#6366f1;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pull tab (always on right edge) -->
+                <div id="upd-pull-tab" onclick="toggleUpdPanel()" title="Live Updates">
+                    <span id="upd-tab-count">0</span>
+                    <svg id="upd-tab-icon" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span id="upd-tab-text">Updates</span>
+                    <svg id="upd-tab-chevron" width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.6)" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </div>
+
+            </div>
+
             <!-- DRAGGABLE FAB -->
             <div id="chat-fab" style="position:fixed;bottom:28px;right:24px;z-index:200;cursor:grab;user-select:none;">
                 <button id="open-chat-fab" style="width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#2563eb);box-shadow:0 8px 32px rgba(79,70,229,0.45);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;position:relative;" title="CaseDesk AI">
@@ -696,6 +1060,8 @@
             });
         }
 
+        // Store reference to original switchView before notification engine overrides
+        const _baseSwitchView = switchView;
         views.forEach(v => {
             document.getElementById(`tab-${v}-desk`)?.addEventListener('click', () => switchView(v));
             document.getElementById(`tab-${v}-mob`)?.addEventListener('click', () => switchView(v));
@@ -1618,6 +1984,7 @@ RULES:
                     }));
                     if(window.addActivity) addActivity('📓', 'Notebook updated: ' + (aiResponse.notebook.client || 'General'), '#4f46e5');
                     addNotif('notebook', '📓 Notebook saved — ' + (aiResponse.notebook.client || 'General'), 'AI ne automatically save kiya');
+                    if(window.registerUpdate) registerUpdate('notebook', aiResponse.notebook.client || '');
                 }
 
                 if (aiResponse.case?.save && aiResponse.case?.content) {
@@ -1630,6 +1997,7 @@ RULES:
                     }));
                     if(window.addActivity) addActivity('📂', 'Client case saved: ' + (aiResponse.case.client || 'General'), '#0891b2');
                     addNotif('case', '📂 Client Case updated — ' + (aiResponse.case.client || 'General'), aiResponse.case.mobile ? '📱 ' + aiResponse.case.mobile : 'Case record saved');
+                    if(window.registerUpdate) registerUpdate('case', aiResponse.case.client || '');
                 }
 
                 if (aiResponse.task?.save && aiResponse.task?.title) {
@@ -1641,6 +2009,7 @@ RULES:
                     }));
                     if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
                     addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
+                    if(window.registerUpdate) registerUpdate('task', aiResponse.task.client || '');
                 }
 
                 if (aiResponse.reminder?.save && aiResponse.reminder?.title) {
@@ -1649,6 +2018,7 @@ RULES:
                     if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
                     addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
                     scheduleReminder(remObj);
+                    if(window.registerUpdate) registerUpdate('reminder', aiResponse.reminder.client || '');
                 }
 
                 // Save AI reply to chat
@@ -1680,6 +2050,221 @@ RULES:
         document.getElementById('send-btn').addEventListener('click', sendMessage);
         ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
+
+        
+        // ╔══════════════════════════════════════════════════════════════╗
+        // ║        RIGHT SIDE LIVE UPDATE PANEL — COMPLETE ENGINE       ║
+        // ╚══════════════════════════════════════════════════════════════╝
+
+        const UP = {
+            open: false,
+            currentPage: 'notebook',
+            // Per-page unread counts (only count when user NOT on that page)
+            counts: { notebook: 0, notes: 0, tasks: 0, reminders: 0 },
+            // Last client name per page
+            clients: { notebook: '', notes: '', tasks: '', reminders: '' },
+            // Last save time
+            lastTime: null,
+            autoCloseTimer: null
+        };
+
+        // ── Mapping: AI type → page key ──────────────────────────────────
+        const PAGE_MAP = {
+            notebook: 'notebook',
+            case:     'notes',
+            task:     'tasks',
+            reminder: 'reminders'
+        };
+
+        // ── Page metadata ─────────────────────────────────────────────────
+        const PAGE_META = {
+            notebook:  { label: 'Notebook',      badgeColor: '#6366f1', sub: (n,c) => n + ' note' + (n>1?'s':'') + (c ? ' · ' + c : '') },
+            notes:     { label: 'Client Cases',  badgeColor: '#0891b2', sub: (n,c) => n + ' case update' + (n>1?'s':'') + (c ? ' · ' + c : '') },
+            tasks:     { label: 'Tasks',         badgeColor: '#f59e0b', sub: (n,c) => n + ' task' + (n>1?'s':'') + ' added' + (c ? ' · ' + c : '') },
+            reminders: { label: 'Reminders',     badgeColor: '#ef4444', sub: (n,c) => n + ' reminder' + (n>1?'s':'') + ' set' + (c ? ' · ' + c : '') }
+        };
+
+        // ── Toggle panel open/close ──────────────────────────────────────
+        window.toggleUpdPanel = function() {
+            UP.open = !UP.open;
+            const body    = document.getElementById('upd-panel-body');
+            const chevron = document.getElementById('upd-tab-chevron');
+            if(UP.open) {
+                body.classList.add('open');
+                if(chevron) chevron.style.transform = 'rotate(180deg)';
+                // Cancel any auto-close
+                clearTimeout(UP.autoCloseTimer);
+            } else {
+                body.classList.remove('open');
+                if(chevron) chevron.style.transform = '';
+            }
+        };
+
+        // ── Auto-open for 5s then auto-close ────────────────────────────
+        function autoOpenPanel() {
+            if(!UP.open) {
+                UP.open = true;
+                const body    = document.getElementById('upd-panel-body');
+                const chevron = document.getElementById('upd-tab-chevron');
+                if(body) body.classList.add('open');
+                if(chevron) chevron.style.transform = 'rotate(180deg)';
+            }
+            clearTimeout(UP.autoCloseTimer);
+            UP.autoCloseTimer = setTimeout(() => {
+                // Only close if no interaction
+                UP.open = false;
+                const body    = document.getElementById('upd-panel-body');
+                const chevron = document.getElementById('upd-tab-chevron');
+                if(body) body.classList.remove('open');
+                if(chevron) chevron.style.transform = '';
+            }, 5000);
+        }
+
+        // ── Navigate to page + clear that page's badge ──────────────────
+        window.goToPage = function(page) {
+            // Flash the row
+            const row = document.getElementById('upd-row-' + page);
+            if(row) { row.classList.add('visited'); setTimeout(() => row.classList.remove('visited'), 500); }
+            // Clear count for this page
+            UP.counts[page] = 0;
+            refreshUpdPanel();
+            // Navigate
+            // Use the stored pre-override version
+            if(window._baseSwitchViewUP) _baseSwitchViewUP(page);
+            else if(window.switchView) switchView(page);
+            UP.currentPage = page;
+            // Close panel on mobile
+            if(window.innerWidth < 768) {
+                UP.open = false;
+                const body = document.getElementById('upd-panel-body');
+                if(body) body.classList.remove('open');
+            }
+        };
+
+        // ── Clear all badges ─────────────────────────────────────────────
+        window.clearAllUpdates = function() {
+            Object.keys(UP.counts).forEach(k => UP.counts[k] = 0);
+            refreshUpdPanel();
+        };
+
+        // ── Register a new update from AI save ──────────────────────────
+        window.registerUpdate = function(type, clientName) {
+            const page = PAGE_MAP[type] || type;
+            // Only add count if user is NOT currently viewing this page
+            if(UP.currentPage !== page) {
+                UP.counts[page] = (UP.counts[page] || 0) + 1;
+            }
+            if(clientName) UP.clients[page] = clientName;
+            UP.lastTime = new Date();
+            refreshUpdPanel();
+            // Auto-open to show the update
+            autoOpenPanel();
+        };
+
+        // ── Refresh all UI ───────────────────────────────────────────────
+        function refreshUpdPanel() {
+            const pages = Object.keys(UP.counts);
+            let total = 0;
+            let anyVisible = false;
+
+            pages.forEach(page => {
+                const count  = UP.counts[page] || 0;
+                const meta   = PAGE_META[page];
+                const client = UP.clients[page] || '';
+                const row    = document.getElementById('upd-row-'   + page);
+                const badge  = document.getElementById('upd-badge-' + page);
+                const sub    = document.getElementById('upd-sub-'   + page);
+
+                total += count;
+
+                if(!row) return;
+
+                if(count > 0 || UP.clients[page]) {
+                    // Show row
+                    row.style.display = 'flex';
+                    anyVisible = true;
+                    // Badge
+                    if(badge) {
+                        badge.textContent = count > 99 ? '99+' : count;
+                        if(count > 0) {
+                            badge.style.display = 'flex';
+                            // Shake animation for increment
+                            badge.classList.remove('shake');
+                            void badge.offsetWidth; // reflow
+                            badge.classList.add('shake');
+                            setTimeout(() => badge.classList.remove('shake'), 400);
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                    // Sub-label
+                    if(sub && meta) {
+                        sub.textContent = count > 0
+                            ? meta.sub(count, client)
+                            : (client ? 'Last: ' + client : '');
+                    }
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Empty state
+            const emptyEl = document.getElementById('upd-empty-state');
+            if(emptyEl) emptyEl.style.display = anyVisible ? 'none' : 'block';
+
+            // Total tab badge
+            const tabCount = document.getElementById('upd-tab-count');
+            if(tabCount) {
+                if(total > 0) {
+                    tabCount.textContent = total > 99 ? '99+' : total;
+                    tabCount.style.display = 'flex';
+                } else {
+                    tabCount.style.display = 'none';
+                }
+            }
+
+            // Footer timestamp
+            const footer = document.getElementById('upd-footer');
+            const timeEl = document.getElementById('upd-last-time');
+            if(footer && UP.lastTime) {
+                footer.style.display = 'block';
+                if(timeEl) timeEl.textContent = UP.lastTime.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+            } else if(footer && !anyVisible) {
+                footer.style.display = 'none';
+            }
+        }
+
+        // ── Track page visits via switchView hook ────────────────────────
+        // Store the original switchView BEFORE the notification engine possibly wraps it
+        const _baseSwitchViewUP = switchView;
+
+        // Wrap switchView to track current page + clear badge on visit
+        const _switchViewAfterNotif = window.switchView;
+        window.switchView = function(targetView) {
+            // Call whichever is the latest version
+            (_switchViewAfterNotif || _baseSwitchViewUP)(targetView);
+            UP.currentPage = targetView;
+            // Clear the count for this page
+            if(UP.counts[targetView] !== undefined) {
+                UP.counts[targetView] = 0;
+                refreshUpdPanel();
+            }
+        };
+
+        // Also hook the manual nav clicks at top to update currentPage
+        ['notebook','notes','tasks','reminders'].forEach(v => {
+            ['desk','mob'].forEach(suffix => {
+                const btn = document.getElementById('tab-' + v + '-' + suffix);
+                if(btn) btn.addEventListener('click', () => {
+                    UP.currentPage = v;
+                    UP.counts[v] = 0;
+                    refreshUpdPanel();
+                });
+            });
+        });
+
+        // ── Initial render ────────────────────────────────────────────────
+        refreshUpdPanel();
 
         // ╔══════════════════════════════════════════════════════════════╗
         // ║          CASEDESK AI — NOTIFICATION ENGINE                  ║
