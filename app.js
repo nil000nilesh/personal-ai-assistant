@@ -94,7 +94,7 @@ let unreadCount  = 0;
 let panelVisible = false;
 
 function showPanel() {
-    // Reset position and auto-fit within viewport
+    if(!chatPanel) return;
     const vw = window.innerWidth, vh = window.innerHeight;
     const pw = Math.min(390, vw - 40);
     const ph = Math.min(580, vh - 120);
@@ -104,7 +104,6 @@ function showPanel() {
     chatPanel.style.bottom = Math.min(100, vh - ph - 20) + 'px';
     chatPanel.style.left = 'auto';
     chatPanel.style.top = 'auto';
-
     chatPanel.style.display = 'flex';
     chatPanel.style.opacity = '0';
     chatPanel.style.transform = 'translateY(16px) scale(0.97)';
@@ -115,15 +114,16 @@ function showPanel() {
     });
     panelVisible = true;
     unreadCount = 0;
-    fabBadge.style.display = 'none';
-    setTimeout(() => { ui.userInput.focus(); ui.chatBox.scrollTop = ui.chatBox.scrollHeight; }, 100);
+    if(fabBadge) fabBadge.style.display = 'none';
+    setTimeout(() => { if(ui.userInput) ui.userInput.focus(); if(ui.chatBox) ui.chatBox.scrollTop = ui.chatBox.scrollHeight; }, 100);
 }
 
 function hidePanel() {
+    if(!chatPanel) return;
     chatPanel.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
     chatPanel.style.opacity = '0';
     chatPanel.style.transform = 'translateY(14px) scale(0.97)';
-    setTimeout(() => { chatPanel.style.display = 'none'; chatPanel.style.display = ''; chatPanel.style.display = 'none'; }, 180);
+    setTimeout(() => { if(chatPanel) { chatPanel.style.display = 'none'; chatPanel.style.display = ''; chatPanel.style.display = 'none'; } }, 180);
     panelVisible = false;
 }
 
@@ -578,114 +578,169 @@ function loadAppListeners() {
     });
 
     // ── NOTES (Client Cases) ────────────────────────────────────────────
+    // Admin: sirf apna data (userId==adminEmail) + purana data (no userId field)
+    // User: sirf apna data (userId==email)
     const notesQ = isAdminUser
         ? query(collection(db, "notes"))
         : query(collection(db, "notes"), where("userId", "==", uid));
 
+    // ── Notes state for search/sort/filter ──────────────────────────────
+    let notesSearchQ = '', notesSortQ = 'new', notesStatusFilter = 'all';
+    let allGroupedNotes = {}; // persistent grouped data
+
+    function getStatus(latestContent) {
+        const c = latestContent.toLowerCase();
+        if(/disburse ho gaya|disbursed|वितरण हो गया|वितरण पूर्ण/.test(c)) return 'Disbursed';
+        if(/rejected|अस्वीकृत/.test(c)) return 'Rejected';
+        if(/sanctioned|sanction ho gaya|स्वीकृत हो गया|ऋण स्वीकृत/.test(c)) return 'Sanctioned';
+        if(/mortgage|मॉर्गेज/.test(c)) return 'Mortgage';
+        if(/processing start|processing ho|प्रोसेसिंग/.test(c)) return 'Processing';
+        if(/pending|लंबित/.test(c)) return 'Pending';
+        return 'Active';
+    }
+
+    function fmtDateN(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+    function fmtTimeN(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+
+    function renderNotes() {
+        const grid = ui.notesGrid;
+        const emptyEl = document.getElementById('notes-empty');
+        const countEl = document.getElementById('notes-count');
+        grid.innerHTML = '';
+
+        let entries = Object.values(allGroupedNotes);
+
+        // Status filter
+        if(notesStatusFilter !== 'all') {
+            entries = entries.filter(g => {
+                const latest = g.updates[g.updates.length - 1];
+                return getStatus(latest?.content || '') === notesStatusFilter;
+            });
+        }
+
+        // Search
+        if(notesSearchQ) {
+            const q = notesSearchQ.toLowerCase();
+            entries = entries.filter(g =>
+                g.displayTitle.toLowerCase().includes(q) ||
+                (g.mobile||'').includes(q) ||
+                (g.account||'').includes(q) ||
+                (g.address||'').toLowerCase().includes(q) ||
+                g.updates.some(u => (u.content||'').toLowerCase().includes(q))
+            );
+        }
+
+        // Sort
+        entries.sort((a, b) => {
+            const aT = Math.max(...a.updates.map(u => new Date(u.timestamp)));
+            const bT = Math.max(...b.updates.map(u => new Date(u.timestamp)));
+            if(notesSortQ === 'new') return bT - aT; // newest first
+            if(notesSortQ === 'old') return aT - bT;
+            if(notesSortQ === 'az')  return a.displayTitle.localeCompare(b.displayTitle);
+            if(notesSortQ === 'za')  return b.displayTitle.localeCompare(a.displayTitle);
+            return 0;
+        });
+
+        if(countEl) countEl.textContent = entries.length + ' Case' + (entries.length !== 1 ? 's' : '');
+        if(emptyEl) { if(entries.length === 0) emptyEl.classList.remove('hidden'); else emptyEl.classList.add('hidden'); }
+
+        const statusMeta = {
+            'Active':    { badge:'🔵 Active',    grad:'from-blue-600 to-indigo-700' },
+            'Pending':   { badge:'⏳ Pending',   grad:'from-amber-500 to-orange-600' },
+            'Processing':{ badge:'🔄 Processing',grad:'from-indigo-500 to-blue-700' },
+            'Sanctioned':{ badge:'✔️ Sanctioned',grad:'from-teal-600 to-emerald-700' },
+            'Disbursed': { badge:'✅ Disbursed', grad:'from-emerald-600 to-green-700' },
+            'Rejected':  { badge:'❌ Rejected',  grad:'from-red-600 to-rose-700' },
+            'Mortgage':  { badge:'📑 Mortgage',  grad:'from-purple-600 to-violet-700' },
+        };
+
+        entries.forEach(group => {
+            const latestUpdate = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''))[0];
+            const status = getStatus(latestUpdate?.content || '');
+            const meta = statusMeta[status] || statusMeta['Active'];
+            const sortedUpdates = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+
+            // Info chips: only show if data exists
+            const chips = [];
+            if(group.mobile)  chips.push(`📱 ${group.mobile}`);
+            if(group.account) chips.push(`🏦 ${group.account}`);
+            if(group.address) chips.push(`📍 ${group.address}`);
+            chips.push(`📋 ${group.updates.length} Update${group.updates.length>1?'s':''}`);
+            chips.push(`🕐 ${fmtDateN(latestUpdate.timestamp)}`);
+
+            const headerHTML = `
+                <div class="bg-gradient-to-br ${meta.grad} px-5 py-4 relative overflow-hidden flex-shrink-0">
+                    <div class="absolute -right-4 -top-4 w-20 h-20 bg-white/5 rounded-full"></div>
+                    <div class="flex items-start justify-between gap-2 mb-2 relative">
+                        <div>
+                            <p class="text-white/40 text-[9px] font-black uppercase tracking-widest">📁 CLIENT CASE</p>
+                            <h3 class="font-black text-white text-lg leading-tight">${group.displayTitle}</h3>
+                        </div>
+                        <span class="text-[9px] font-black px-2 py-1 rounded-full bg-white/20 text-white border border-white/20 shrink-0">${meta.badge}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1 text-[9px] font-bold relative">
+                        ${chips.map(c=>`<span class="bg-white/10 border border-white/10 text-white/70 px-2 py-0.5 rounded-full">${c}</span>`).join('')}
+                    </div>
+                </div>`;
+
+            const updatesHTML = sortedUpdates.map((u, idx) => {
+                const isLatest = idx === 0;
+                let displayContent = u.content || '';
+                if(notesSearchQ) {
+                    const rx = new RegExp('(' + notesSearchQ.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+                    displayContent = displayContent.replace(rx, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
+                }
+                return `<div class="px-4 py-3 border-b border-slate-50 last:border-0 ${isLatest ? 'bg-blue-50/30' : ''}">
+                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span class="text-[9px] font-black px-2 py-0.5 rounded-full ${isLatest ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}">📅 ${fmtDateN(u.timestamp)} ⏰ ${fmtTimeN(u.timestamp)}</span>
+                        ${isLatest ? '<span class="text-[8px] font-black text-white bg-blue-500 px-2 py-0.5 rounded-full">LATEST</span>' : ''}
+                        <span class="text-[9px] text-slate-300 ml-auto">#${sortedUpdates.length - idx}</span>
+                    </div>
+                    <p class="text-slate-700 text-sm leading-relaxed font-medium whitespace-pre-wrap devanagari">${displayContent}</p>
+                </div>`;
+            }).join('');
+
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 overflow-hidden transition-all duration-200 flex flex-col';
+            card.innerHTML = headerHTML + `<div class="overflow-y-auto max-h-[280px] client-updates-scroll divide-y divide-slate-50">${updatesHTML}</div>`;
+            grid.appendChild(card);
+        });
+    }
+
     onSnapshot(notesQ, (snapshot) => {
-        ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {};
+        allSavedNotes = []; allGroupedNotes = {};
         const docs = [];
-        snapshot.forEach(d => docs.push(d.data()));
+        snapshot.forEach(d => {
+            const data = d.data();
+            if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            docs.push(data);
+        });
         docs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
         docs.forEach(note => {
             allSavedNotes.push(note);
-            const normalizedTitle = (note.client || note.title || "सामान्य").toUpperCase();
-            if(!groupedNotes[normalizedTitle]) groupedNotes[normalizedTitle] = {
-                displayTitle: note.client || note.title || "सामान्य",
-                mobile: note.mobile || null,
-                updates: []
-            };
-            if(!groupedNotes[normalizedTitle].mobile) {
-                const mobMatch = (note.content || "").match(/\b[6-9]\d{9}\b/);
-                if(mobMatch) groupedNotes[normalizedTitle].mobile = mobMatch[0];
-            }
-            groupedNotes[normalizedTitle].updates.push(note);
+            const key = (note.client || note.title || 'सामान्य').toUpperCase();
+            const name = note.client || note.title || 'सामान्य';
+            if(!allGroupedNotes[key]) allGroupedNotes[key] = { displayTitle: name, mobile: null, account: null, address: null, updates: [] };
+            const g = allGroupedNotes[key];
+            // Extract mobile if not set
+            if(!g.mobile && note.mobile) g.mobile = note.mobile;
+            if(!g.mobile) { const m = (note.content||'').match(/\b[6-9]\d{9}\b/); if(m) g.mobile = m[0]; }
+            // Extract account number
+            if(!g.account && note.account) g.account = note.account;
+            if(!g.account) { const a = (note.content||'').match(/खाता\s*(?:संख्या)?[:：]?\s*([\d\/]+)/i); if(a) g.account = a[1]; }
+            // Extract address
+            if(!g.address && note.address) g.address = note.address;
+            g.updates.push(note);
         });
-
-        for (const key in groupedNotes) {
-            const group = groupedNotes[key];
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 relative overflow-hidden transition-all duration-300 group";
-
-            const latestUpdate = group.updates[group.updates.length - 1];
-            const latestContent = (latestUpdate?.content || "").toLowerCase();
-            let statusBadge = "🔵 Active";
-            let statusColor = "bg-blue-50 text-blue-700 border-blue-200";
-            // STRICT matching — avoid false positives like "disbursement suunishchit"
-            if(/disburse ho gaya|disbursed|वितरण हो गया|वितरण पूर्ण/.test(latestContent))
-                { statusBadge = "✅ Disbursed";  statusColor = "bg-green-50 text-green-700 border-green-200"; }
-            else if(/rejected|अस्वीकृत/.test(latestContent))
-                { statusBadge = "❌ Rejected";   statusColor = "bg-red-50 text-red-700 border-red-200"; }
-            else if(/sanctioned|sanction ho gaya|स्वीकृत हो गया|ऋण स्वीकृत/.test(latestContent))
-                { statusBadge = "✔️ Sanctioned"; statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
-            else if(/mortgage|मॉर्गेज/.test(latestContent))
-                { statusBadge = "📑 Mortgage";   statusColor = "bg-purple-50 text-purple-700 border-purple-200"; }
-            else if(/processing start|processing ho|प्रोसेसिंग/.test(latestContent))
-                { statusBadge = "🔄 Processing"; statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200"; }
-            else if(/pending|लंबित/.test(latestContent))
-                { statusBadge = "⏳ Pending";    statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200"; }
-
-            function fmtDate(ts) {
-                const d = new Date(ts);
-                return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-            }
-            function fmtTime(ts) {
-                return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-            }
-            function fmtDateTime(ts) { return fmtDate(ts) + ' — ' + fmtTime(ts); }
-
-            // Dynamic gradient per status
-            let headerGrad = "from-blue-600 to-indigo-700";
-            if(statusBadge.includes("Disbursed"))    headerGrad = "from-emerald-600 to-green-700";
-            else if(statusBadge.includes("Sanctioned")) headerGrad = "from-teal-600 to-emerald-700";
-            else if(statusBadge.includes("Rejected"))   headerGrad = "from-red-600 to-rose-700";
-            else if(statusBadge.includes("Mortgage"))   headerGrad = "from-purple-600 to-violet-700";
-            else if(statusBadge.includes("Processing")) headerGrad = "from-indigo-500 to-blue-700";
-            else if(statusBadge.includes("Pending"))    headerGrad = "from-amber-500 to-orange-600";
-
-            const mobNo = group.mobile ? '<span class="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 text-white/70">📱 ' + group.mobile + '</span>' : '';
-            const updCnt = group.updates.length;
-            const lastTime = fmtDateTime(latestUpdate.timestamp);
-
-            const headerHTML = `
-                <div class="bg-gradient-to-br ${headerGrad} p-5 relative overflow-hidden">
-                    <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/5 rounded-full pointer-events-none"></div>
-                    <div class="absolute right-2 -bottom-5 w-16 h-16 bg-white/5 rounded-full pointer-events-none"></div>
-                    <div class="flex items-start justify-between gap-2 mb-3 relative">
-                        <div>
-                            <p class="text-white/50 text-[9px] font-black uppercase tracking-widest mb-1">📁 Client Case</p>
-                            <h3 class="font-black text-white text-xl leading-tight tracking-tight">${group.displayTitle}</h3>
-                        </div>
-                        <span class="text-[10px] font-black px-3 py-1.5 rounded-full shrink-0 bg-white/20 text-white border border-white/20">${statusBadge}</span>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold relative">
-                        ${mobNo}
-                        <span class="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 text-white/70">📋 ${updCnt} Update${updCnt>1?'s':''}</span>
-                        <span class="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 text-white/70">🕐 ${lastTime}</span>
-                    </div>
-                </div>`;
-
-
-            const sortedUpdates = [...group.updates].reverse();
-            const updatesHTML = sortedUpdates.map((u, idx) => {
-                const isLatest = idx === 0;
-                return `
-                <div class="relative pl-9 pr-4 py-3 ${isLatest ? 'bg-blue-50/30' : ''} border-b border-slate-50 last:border-b-0">
-                    <div class="absolute left-3.5 top-4 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${isLatest ? 'bg-blue-500' : 'bg-slate-300'}"></div>
-                    ${idx < sortedUpdates.length - 1 ? '<div class="absolute left-[17px] top-7 bottom-0 w-px bg-slate-100"></div>' : ''}
-                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${isLatest ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}">📅 ${fmtDate(u.timestamp)}</span>
-                        <span class="text-[10px] font-bold text-slate-400">⏰ ${fmtTime(u.timestamp)}</span>
-                        ${isLatest ? '<span class="text-[9px] font-black text-white bg-blue-500 px-2 py-0.5 rounded-full">LATEST</span>' : ''}
-                    </div>
-                    <p class="text-slate-700 text-sm leading-relaxed font-medium whitespace-pre-wrap devanagari">${u.content}</p>
-                </div>`;
-            }).join("");
-
-            card.innerHTML = headerHTML + `<div class="overflow-y-auto client-updates-scroll max-h-[350px]">${updatesHTML}</div>`;
-            ui.notesGrid.appendChild(card);
-        }
+        renderNotes();
     });
+
+    // Notes search
+    document.getElementById('notes-search')?.addEventListener('input', e => { notesSearchQ = e.target.value.toLowerCase(); renderNotes(); });
+    // Notes sort
+    document.getElementById('notes-sort')?.addEventListener('change', e => { notesSortQ = e.target.value; renderNotes(); });
+    // Notes status filter
+    document.getElementById('notes-status-filter')?.addEventListener('change', e => { notesStatusFilter = e.target.value; renderNotes(); });
 
     // TASKS — with search, filter, status toggle, priority, due date
     let taskCurrentFilter = 'all';
@@ -781,7 +836,11 @@ function loadAppListeners() {
 
     onSnapshot(tasksQ, (snapshot) => {
         allTasks = [];
-        snapshot.forEach(d => allTasks.push(d.data()));
+        snapshot.forEach(d => {
+            const data = d.data();
+            if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            allTasks.push(data);
+        });
         // Client-side sort: timestamp desc (newest first)
         allTasks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderTasks();
@@ -906,7 +965,11 @@ function loadAppListeners() {
 
     onSnapshot(remindersQ, (snapshot) => {
         allReminders = [];
-        snapshot.forEach(d => allReminders.push(d.data()));
+        snapshot.forEach(d => {
+            const data = d.data();
+            if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            allReminders.push(data);
+        });
         // Client-side sort: timestamp desc
         allReminders.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderReminders();
@@ -1053,7 +1116,11 @@ function loadAppListeners() {
 
     onSnapshot(notebooksQ, (snapshot) => {
         allNotebooks = [];
-        snapshot.forEach(d => allNotebooks.push(d.data()));
+        snapshot.forEach(d => {
+            const data = d.data();
+            if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            allNotebooks.push(data);
+        });
         // Client-side sort: timestamp desc
         allNotebooks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderNotebook();
@@ -1192,69 +1259,52 @@ ${summarize(tasksData, ['title','status','client','timestamp'])}
 ${summarize(remindersData, ['title','time','client','timestamp'])}
         `.trim();
 
-        // ── 2. SYSTEM PROMPT ────────────────────────────────────────
-        const today = new Date().toLocaleDateString('en-IN', {
-            day: '2-digit', month: 'long', year: 'numeric'
+        // ── 2. SYSTEM PROMPT — Smart update, no repetition ──────────────
+        const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        // Group existing notes by client for AI context
+        const existingClients = {};
+        [...casesData, ...notebookData].forEach(item => {
+            const key = (item.client || '').toUpperCase();
+            if(key) {
+                if(!existingClients[key]) existingClients[key] = { name: item.client, updates: [] };
+                existingClients[key].updates.push({ ts: item.timestamp, content: item.content });
+            }
         });
+        const clientSummary = Object.values(existingClients).map(c => {
+            const sorted = c.updates.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+            return `CLIENT: ${c.name}\nLATEST UPDATE: ${sorted[0]?.content?.substring(0,200)||''}\nTOTAL UPDATES: ${sorted.length}`;
+        }).join('\n---\n');
 
-        const systemPrompt = `
-Aap "Smart Steno Pro" ke AI Assistant hain — ek intelligent banking case manager jo Nilesh ji ke liye kaam karta hai.
-Aaj ki tarikh: ${today}
+        const systemPrompt = `Aap CaseDesk AI hain — intelligent banking case manager. Aaj: ${today}
 
-AAPKE PAAS YEH SAVED DATA HAI (Firebase se fetch kiya):
-${savedContext}
+EXISTING CLIENT DATA:
+${clientSummary || 'Koi existing data nahi'}
 
-AAPKA KAAM:
-1. Agar user koi CLIENT INFORMATION deta hai (koi bhi banking case — loan, mortgage, sanction, visit, CMA, processing, etc.):
-   - Ek professional, official Devanagari Hindi mein notebook draft banao
-   - Har point naye line mein, appropriate emoji ke saath
-   - Sahi tense use karo: "ho gaya" = ✅ पूर्ण, "ho raha hai" = 🔄 प्रगति में, "karna hai" = ⏳ लंबित
-   - Client ka naam detect karo
-   - JSON format mein respond karo (niche format diya hai)
+TASKS: ${tasksData.map(t=>`${t.title} [${t.status}]`).join(' | ') || 'None'}
+REMINDERS: ${remindersData.map(r=>`${r.title} @${r.time}`).join(' | ') || 'None'}
 
-2. Agar user KUCH PUCHH raha hai (jaise "Paawan Bio Energy ka status kya hai?", "kaunse cases pending hain?", "aaj ke tasks batao"):
-   - Saved data mein se dhundh ke jawab do
-   - Hindi mein, clearly, bullet points mein
-   - JSON format mein respond karo
+═══ CRITICAL RULES — MUST FOLLOW ═══
+1. REPETITION BILKUL NAHI: Agar client ka data already saved hai, toh SIRF NAYA information likho. Purani details KABHI repeat mat karo.
+2. UPDATE MODE: Agar user kisi existing client ke baare mein naya update de raha hai, toh SIRF woh naya point likho content mein. Pehle se jo save hai woh mat repeat karo.
+3. DIFF PRINCIPLE: Content mein sirf "kya naya hua" ya "kya badla" — complete summary nahi, sirf incremental update.
+4. CLIENT CASE UPDATE: Agar user update de raha hai existing client ke liye (jaise "Aditya Gupta ne SBI se loan karwa liya"), toh content mein SIRF yeh naya fact: "✅ अद्यतन: ग्राहक ने SBI से कार लोन करवा लिया है।" — pehle ki poori details repeat mat karo.
 
-3. Agar user REMINDER ya TASK manually maangta hai:
-   - Create karo
-
-RESPONSE FORMAT (HAMESHA valid JSON do, kuch bhi extra mat likho):
+RESPONSE FORMAT (HAMESHA valid JSON, kuch extra nahi):
 {
-  "reply": "...(user ko dikhane wala message Hindi mein)...",
-  "notebook": {
-    "save": true/false,
-    "client": "Client Name",
-    "content": "...Official Devanagari Hindi draft, line by line points..."
-  },
-  "case": {
-    "save": true/false,
-    "client": "Client Name",
-    "mobile": "10-digit mobile number agar diya ho, warna null",
-    "content": "...case summary Hindi mein..."
-  },
-  "task": {
-    "save": true/false,
-    "client": "Client Name",
-    "title": "...task title Hindi mein..."
-  },
-  "reminder": {
-    "save": true/false,
-    "client": "Client Name",
-    "title": "...reminder title...",
-    "time": "...time/date..."
-  }
+  "reply": "Hindi mein short confirm message",
+  "notebook": { "save": true/false, "client": "Name", "content": "SIRF NAYA CONTENT — repeat nahi" },
+  "case": { "save": true/false, "client": "Name", "mobile": "10-digit ya null", "account": "account no ya null", "address": "address ya null", "content": "SIRF NAYA UPDATE — repeat nahi" },
+  "task": { "save": true/false, "client": "Name", "title": "task title" },
+  "reminder": { "save": true/false, "client": "Name", "title": "reminder title", "time": "ISO date ya text" }
 }
 
-RULES:
-- notebook.save = true: HAMESHA jab user koi client info/update deta hai
-- case.save = true: Jab nayi case kholni ho ya major update ho
-- task.save = true: Jab koi kaam karna baaki ho (pending action)
-- reminder.save = true: Jab koi date/follow-up mention ho
-- Sirf JSON do — koi explanation, code block, backtick nahi
-- Hindi mein likho, professional banking language use karo
-        `.trim();
+SAVE RULES:
+- notebook.save = true: Jab client info/update mile
+- case.save = true: Naya client ya significant update (mobile/account extract karo agar mile)
+- task.save = true: Koi pending action ho
+- reminder.save = true: Koi follow-up date mention ho
+- Sirf JSON — koi backtick, explanation nahi`.trim();
 
         // ── 3. CALL OPENAI GPT-4o ───────────────────────────────────
         const messages = [
@@ -1321,6 +1371,8 @@ RULES:
                 content: aiResponse.case.content,
                 client: aiResponse.case.client || "सामान्य",
                 mobile: aiResponse.case.mobile || null,
+                account: aiResponse.case.account || null,
+                address: aiResponse.case.address || null,
                 timestamp: now,
                 userId: currentUserEmail          // ← User isolation
             }));
@@ -1608,6 +1660,7 @@ window.addNotif = function(type, title, sub) {
 // ─── In-app toast ─────────────────────────────────────────────────
 function showToast(type, title, sub) {
     const wrap = document.getElementById('toast-wrap');
+    if(!wrap) return; // null guard
     const t = document.createElement('div');
     t.className = 'toast t-' + type;
     const icons = {task:'✅',reminder:'⏰',notebook:'📓',case:'📂'};
