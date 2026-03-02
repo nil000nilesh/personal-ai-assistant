@@ -29,6 +29,7 @@ let isPinVerified = false;
 let DYNAMIC_OPENAI_KEY = "";
 let OPENAI_MODEL = "gpt-4.1"; // Firebase se override ho sakta hai
 let sessionStartTime;
+let currentUserEmail = ""; // Logged-in user ki email — data isolation ke liye
 
 const ui = {
     login: document.getElementById('login-screen'),
@@ -235,6 +236,7 @@ onAuthStateChanged(auth, async (user) => {
         // ── ADMIN: nil000nilesh@gmail.com — always access, hardcoded ──
         if (user.email === ADMIN_EMAIL) {
             currentUserRole = "admin";
+            currentUserEmail = user.email;
             // Bootstrap admin doc if missing
             try {
                 const snap = await getDocs(query(collection(db, "allowed_users"), where("email", "==", ADMIN_EMAIL)));
@@ -278,6 +280,7 @@ onAuthStateChanged(auth, async (user) => {
 
                 currentUserPin = userData.pin;
                 currentUserRole = "user"; // Users are always "user" — no other admin
+                currentUserEmail = user.email;
 
                 if (!isPinVerified) {
                     showPinScreen(user, { name: userData.name || user.displayName, email: user.email, role: "user" });
@@ -387,8 +390,8 @@ function showPinScreen(user, userDoc) {
 async function fetchPinWidgetCounts() {
     try {
         const [tasksSnap, remSnap] = await Promise.all([
-            getDocs(collection(db, "tasks")),
-            getDocs(collection(db, "reminders"))
+            getDocs(query(collection(db, "tasks"),     where("userId", "==", currentUserEmail))),
+            getDocs(query(collection(db, "reminders"), where("userId", "==", currentUserEmail)))
         ]);
         const pendingTasks = tasksSnap.docs.filter(d => (d.data().status||'') !== 'Done').length;
         const now = new Date();
@@ -406,6 +409,7 @@ const doLogout = () => {
     DYNAMIC_OPENAI_KEY = ""; 
     currentUserPin = "";
     currentUserRole = "user";
+    currentUserEmail = "";
     // Clear PIN boxes
     document.querySelectorAll('.pin-box').forEach(b => { b.value = ''; b.classList.remove('filled','error'); });
     document.getElementById('pin-input').value = '';
@@ -526,25 +530,37 @@ async function checkAndLoadApp() {
 }
 
 function loadAppListeners() {
-    const chatQuery = query(collection(db, "chats"), where("timestamp", ">=", sessionStartTime), orderBy("timestamp", "asc"));
+    // ── Chat: sirf userId filter, timestamp client-side filter+sort ──
+    const chatQuery = query(
+        collection(db, "chats"),
+        where("userId", "==", uid)
+    );
     onSnapshot(chatQuery, (snapshot) => {
         const welcomeMsg = ui.chatBox.firstElementChild;
         ui.chatBox.innerHTML = ""; 
         if(welcomeMsg) ui.chatBox.appendChild(welcomeMsg);
         
+        // Client-side: sirf is session ke messages, timestamp asc sort
+        const msgs = [];
+        snapshot.forEach(d => { const m = d.data(); if(m.timestamp >= sessionStartTime) msgs.push(m); });
+        msgs.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+
         chatHistory = []; 
-        snapshot.forEach((docData) => {
-            const msg = docData.data();
+        msgs.forEach(msg => {
             chatHistory.push({ role: msg.role, content: msg.content });
             renderMessage(msg.role, msg.content);
         });
         ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
     });
 
-    onSnapshot(query(collection(db, "notes"), orderBy("timestamp", "asc")), (snapshot) => {
+    onSnapshot(query(collection(db, "notes"), where("userId", "==", uid)), (snapshot) => {
         ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {};
-        snapshot.forEach((docData) => {
-            const note = docData.data(); allSavedNotes.push(note);
+        // Client-side sort: timestamp asc
+        const docs = [];
+        snapshot.forEach(d => docs.push(d.data()));
+        docs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
+        docs.forEach(note => {
+            allSavedNotes.push(note);
             const normalizedTitle = (note.client || note.title || "सामान्य").toUpperCase();
             if(!groupedNotes[normalizedTitle]) groupedNotes[normalizedTitle] = {
                 displayTitle: note.client || note.title || "सामान्य",
@@ -730,9 +746,11 @@ function loadAppListeners() {
         });
     }
 
-    onSnapshot(query(collection(db, "tasks"), orderBy("timestamp", "desc")), (snapshot) => {
+    onSnapshot(query(collection(db, "tasks"), where("userId", "==", uid)), (snapshot) => {
         allTasks = [];
         snapshot.forEach(d => allTasks.push(d.data()));
+        // Client-side sort: timestamp desc (newest first)
+        allTasks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderTasks();
         // Update notif panel task counter
         const tn = document.getElementById('np-task-num');
@@ -848,9 +866,11 @@ function loadAppListeners() {
         });
     }
 
-    onSnapshot(query(collection(db, "reminders"), orderBy("timestamp", "desc")), (snapshot) => {
+    onSnapshot(query(collection(db, "reminders"), where("userId", "==", uid)), (snapshot) => {
         allReminders = [];
         snapshot.forEach(d => allReminders.push(d.data()));
+        // Client-side sort: timestamp desc
+        allReminders.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderReminders();
         // Schedule browser push for all upcoming reminders on load
         allReminders.forEach(rem => { if(window.scheduleReminder) scheduleReminder(rem); });
@@ -988,9 +1008,11 @@ function loadAppListeners() {
         });
     }
 
-    onSnapshot(query(collection(db, "notebooks"), orderBy("timestamp", "desc")), (snapshot) => {
+    onSnapshot(query(collection(db, "notebooks"), where("userId", "==", uid)), (snapshot) => {
         allNotebooks = [];
         snapshot.forEach(d => allNotebooks.push(d.data()));
+        // Client-side sort: timestamp desc
+        allNotebooks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderNotebook();
     });
 
@@ -1076,7 +1098,8 @@ async function sendMessage() {
     chatHistory.push({ role: 'user', content: text });
 
     await addDoc(collection(db, "chats"), {
-        role: "user", content: text, timestamp: new Date().toISOString()
+        role: "user", content: text, timestamp: new Date().toISOString(),
+        userId: currentUserEmail
     });
 
     // Loading indicator
@@ -1087,12 +1110,12 @@ async function sendMessage() {
     ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
     try {
-        // ── 1. FETCH ALL SAVED DATA FROM FIREBASE FOR CONTEXT ──────
+        // ── 1. FETCH USER-SPECIFIC DATA FROM FIREBASE FOR CONTEXT ──────
         const [notebooksSnap, notesSnap, tasksSnap, remindersSnap] = await Promise.all([
-            getDocs(collection(db, "notebooks")),
-            getDocs(collection(db, "notes")),
-            getDocs(collection(db, "tasks")),
-            getDocs(collection(db, "reminders"))
+            getDocs(query(collection(db, "notebooks"), where("userId", "==", currentUserEmail))),
+            getDocs(query(collection(db, "notes"),     where("userId", "==", currentUserEmail))),
+            getDocs(query(collection(db, "tasks"),     where("userId", "==", currentUserEmail))),
+            getDocs(query(collection(db, "reminders"), where("userId", "==", currentUserEmail)))
         ]);
 
         const notebookData = notebooksSnap.docs.map(d => d.data());
@@ -1236,7 +1259,8 @@ RULES:
                 title: aiResponse.notebook.client || "सामान्य",
                 content: aiResponse.notebook.content,
                 client: aiResponse.notebook.client || "सामान्य",
-                timestamp: now
+                timestamp: now,
+                userId: currentUserEmail          // ← User isolation
             }));
             if(window.addActivity) addActivity('📓', 'Notebook updated: ' + (aiResponse.notebook.client || 'General'), '#4f46e5');
             addNotif('notebook', '📓 Notebook saved — ' + (aiResponse.notebook.client || 'General'), 'AI ne automatically save kiya');
@@ -1249,7 +1273,8 @@ RULES:
                 content: aiResponse.case.content,
                 client: aiResponse.case.client || "सामान्य",
                 mobile: aiResponse.case.mobile || null,
-                timestamp: now
+                timestamp: now,
+                userId: currentUserEmail          // ← User isolation
             }));
             if(window.addActivity) addActivity('📂', 'Client case saved: ' + (aiResponse.case.client || 'General'), '#0891b2');
             addNotif('case', '📂 Client Case updated — ' + (aiResponse.case.client || 'General'), aiResponse.case.mobile ? '📱 ' + aiResponse.case.mobile : 'Case record saved');
@@ -1261,7 +1286,8 @@ RULES:
                 title: aiResponse.task.title,
                 status: "Pending",
                 client: aiResponse.task.client || "सामान्य",
-                timestamp: now
+                timestamp: now,
+                userId: currentUserEmail          // ← User isolation
             }));
             if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
             addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
@@ -1269,7 +1295,13 @@ RULES:
         }
 
         if (aiResponse.reminder?.save && aiResponse.reminder?.title) {
-            const remObj = { title: aiResponse.reminder.title, time: aiResponse.reminder.time || "जल्द", client: aiResponse.reminder.client || "सामान्य", timestamp: now };
+            const remObj = {
+                title: aiResponse.reminder.title,
+                time: aiResponse.reminder.time || "जल्द",
+                client: aiResponse.reminder.client || "सामान्य",
+                timestamp: now,
+                userId: currentUserEmail          // ← User isolation
+            };
             savePromises.push(addDoc(collection(db, "reminders"), remObj));
             if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
@@ -1279,7 +1311,8 @@ RULES:
 
         // Save AI reply to chat
         savePromises.push(addDoc(collection(db, "chats"), {
-            role: "assistant", content: replyText, timestamp: now
+            role: "assistant", content: replyText, timestamp: now,
+            userId: currentUserEmail              // ← User isolation
         }));
 
         await Promise.all(savePromises);
@@ -1292,7 +1325,8 @@ RULES:
         loadingDiv.remove();
         const errMsg = `❌ त्रुटि: ${err.message}`;
         await addDoc(collection(db, "chats"), {
-            role: "assistant", content: errMsg, timestamp: new Date().toISOString()
+            role: "assistant", content: errMsg, timestamp: new Date().toISOString(),
+            userId: currentUserEmail
         });
     } finally {
         isProcessing = false;
