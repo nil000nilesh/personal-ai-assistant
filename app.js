@@ -270,16 +270,14 @@ onAuthStateChanged(auth, async (user) => {
             if (!snap.empty) {
                 const userData = snap.docs[0].data();
 
-                // Check if admin has set PIN (non-empty 4-digit)
                 if (!userData.pin || userData.pin.trim().length !== 4) {
-                    // PIN not set yet — show waiting screen
                     hideAllStates();
                     showPinPendingScreen(user);
                     return;
                 }
 
                 currentUserPin = userData.pin;
-                currentUserRole = "user"; // Users are always "user" — no other admin
+                currentUserRole = "user";
                 currentUserEmail = user.email;
 
                 if (!isPinVerified) {
@@ -288,15 +286,21 @@ onAuthStateChanged(auth, async (user) => {
                     checkAndLoadApp();
                 }
             } else {
-                // Email not in allowed_users at all
                 hideAllStates();
                 showUnauthorizedScreen(user);
             }
         } catch(err) {
+            // Firestore rules permission denied — user allowed_users read blocked
+            // Firestore rules mein allowed_users read allow karein (niche instructions)
             console.error("Auth check error:", err);
-            alert("Database connection error. Please try again.");
-            signOut(auth);
-            ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
+            // Agar permission denied hai to unauthorized screen dikhao
+            if(err.code === 'permission-denied') {
+                hideAllStates();
+                showUnauthorizedScreen(user);
+            } else {
+                hideAllStates();
+                showDbErrorScreen(user, err.message);
+            }
         }
     } else { 
         isPinVerified = false;
@@ -337,7 +341,24 @@ function showPinPendingScreen(user) {
         </div>`;
 }
 
-// ── Show unauthorized screen ────────────────────────────────────────
+// ── Show DB error screen ─────────────────────────────────────────────
+function showDbErrorScreen(user, errMsg) {
+    ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
+    const rightPanel = document.querySelector('#login-screen > div:last-child');
+    if (!rightPanel) return;
+    rightPanel.innerHTML = `
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image:radial-gradient(#6366f1 1px,transparent 1px);background-size:24px 24px;"></div>
+        <div class="w-full max-w-sm relative z-10 text-center">
+            <div class="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center text-3xl" style="background:rgba(239,68,68,0.1);border:2px solid rgba(239,68,68,0.3);">⚠️</div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">Connection Error</h3>
+            <p class="text-slate-500 text-sm mb-3">Firebase Firestore rules mein <strong>allowed_users</strong> collection ka read allow karna hoga.</p>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-5 text-left text-xs text-slate-600 font-mono">${errMsg||'Permission denied'}</div>
+            <p class="text-slate-400 text-xs mb-5">Firebase Console → Firestore → Rules mein update karein</p>
+            <button onclick="window._doLogout&&window._doLogout()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all text-sm">
+                ← Back to Login
+            </button>
+        </div>`;
+}
 function showUnauthorizedScreen(user) {
     ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
     const rightPanel = document.querySelector('#login-screen > div:last-child');
@@ -530,22 +551,25 @@ async function checkAndLoadApp() {
 }
 
 function loadAppListeners() {
-    // ── Chat: sirf userId filter, timestamp client-side filter+sort ──
-    const chatQuery = query(
-        collection(db, "chats"),
-        where("userId", "==", uid)
-    );
-    onSnapshot(chatQuery, (snapshot) => {
-        const welcomeMsg = ui.chatBox.firstElementChild;
-        ui.chatBox.innerHTML = ""; 
-        if(welcomeMsg) ui.chatBox.appendChild(welcomeMsg);
-        
-        // Client-side: sirf is session ke messages, timestamp asc sort
-        const msgs = [];
-        snapshot.forEach(d => { const m = d.data(); if(m.timestamp >= sessionStartTime) msgs.push(m); });
-        msgs.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+    // ── Data isolation ──────────────────────────────────────────────────
+    // Admin: saara data (purana + naya, bina userId field wala bhi)
+    // User: sirf apna data (userId == apna email)
+    const uid = currentUserEmail;
+    const isAdminUser = (currentUserRole === 'admin');
 
-        chatHistory = []; 
+    // ── CHAT ────────────────────────────────────────────────────────────
+    const chatQ = isAdminUser
+        ? query(collection(db, "chats"))
+        : query(collection(db, "chats"), where("userId", "==", uid));
+
+    onSnapshot(chatQ, (snapshot) => {
+        const welcomeMsg = ui.chatBox.firstElementChild;
+        ui.chatBox.innerHTML = "";
+        if(welcomeMsg) ui.chatBox.appendChild(welcomeMsg);
+        const msgs = [];
+        snapshot.forEach(d => { const m = d.data(); if((m.timestamp||'') >= sessionStartTime) msgs.push(m); });
+        msgs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
+        chatHistory = [];
         msgs.forEach(msg => {
             chatHistory.push({ role: msg.role, content: msg.content });
             renderMessage(msg.role, msg.content);
@@ -553,9 +577,13 @@ function loadAppListeners() {
         ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
     });
 
-    onSnapshot(query(collection(db, "notes"), where("userId", "==", uid)), (snapshot) => {
+    // ── NOTES (Client Cases) ────────────────────────────────────────────
+    const notesQ = isAdminUser
+        ? query(collection(db, "notes"))
+        : query(collection(db, "notes"), where("userId", "==", uid));
+
+    onSnapshot(notesQ, (snapshot) => {
         ui.notesGrid.innerHTML = ""; allSavedNotes = []; let groupedNotes = {};
-        // Client-side sort: timestamp asc
         const docs = [];
         snapshot.forEach(d => docs.push(d.data()));
         docs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
@@ -746,7 +774,12 @@ function loadAppListeners() {
         });
     }
 
-    onSnapshot(query(collection(db, "tasks"), where("userId", "==", uid)), (snapshot) => {
+    // ── TASKS ────────────────────────────────────────────────────────────
+    const tasksQ = isAdminUser
+        ? query(collection(db, "tasks"))
+        : query(collection(db, "tasks"), where("userId", "==", uid));
+
+    onSnapshot(tasksQ, (snapshot) => {
         allTasks = [];
         snapshot.forEach(d => allTasks.push(d.data()));
         // Client-side sort: timestamp desc (newest first)
@@ -866,7 +899,12 @@ function loadAppListeners() {
         });
     }
 
-    onSnapshot(query(collection(db, "reminders"), where("userId", "==", uid)), (snapshot) => {
+    // ── REMINDERS ────────────────────────────────────────────────────────
+    const remindersQ = isAdminUser
+        ? query(collection(db, "reminders"))
+        : query(collection(db, "reminders"), where("userId", "==", uid));
+
+    onSnapshot(remindersQ, (snapshot) => {
         allReminders = [];
         snapshot.forEach(d => allReminders.push(d.data()));
         // Client-side sort: timestamp desc
@@ -1008,7 +1046,12 @@ function loadAppListeners() {
         });
     }
 
-    onSnapshot(query(collection(db, "notebooks"), where("userId", "==", uid)), (snapshot) => {
+    // ── NOTEBOOKS ────────────────────────────────────────────────────────
+    const notebooksQ = isAdminUser
+        ? query(collection(db, "notebooks"))
+        : query(collection(db, "notebooks"), where("userId", "==", uid));
+
+    onSnapshot(notebooksQ, (snapshot) => {
         allNotebooks = [];
         snapshot.forEach(d => allNotebooks.push(d.data()));
         // Client-side sort: timestamp desc
@@ -1110,12 +1153,17 @@ async function sendMessage() {
     ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
 
     try {
-        // ── 1. FETCH USER-SPECIFIC DATA FROM FIREBASE FOR CONTEXT ──────
+        // ── 1. FETCH DATA FROM FIREBASE FOR AI CONTEXT ──────────────────
+        // Admin = saara data, User = sirf apna
+        const ctxQuery = (col) => currentUserRole === 'admin'
+            ? getDocs(collection(db, col))
+            : getDocs(query(collection(db, col), where("userId", "==", currentUserEmail)));
+
         const [notebooksSnap, notesSnap, tasksSnap, remindersSnap] = await Promise.all([
-            getDocs(query(collection(db, "notebooks"), where("userId", "==", currentUserEmail))),
-            getDocs(query(collection(db, "notes"),     where("userId", "==", currentUserEmail))),
-            getDocs(query(collection(db, "tasks"),     where("userId", "==", currentUserEmail))),
-            getDocs(query(collection(db, "reminders"), where("userId", "==", currentUserEmail)))
+            ctxQuery("notebooks"),
+            ctxQuery("notes"),
+            ctxQuery("tasks"),
+            ctxQuery("reminders")
         ]);
 
         const notebookData = notebooksSnap.docs.map(d => d.data());
