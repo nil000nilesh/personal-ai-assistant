@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithRedirect, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, onSnapshot, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAeu14r8EACZ7U3eRszsNQmTYTFt5FndcU",
@@ -1156,6 +1156,7 @@ function loadAppListeners() {
     });
 }
 
+
 function renderMessage(role, content) {
     const div = document.createElement('div');
     div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} w-full`;
@@ -1444,7 +1445,12 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
                         const data = d.data();
                         const nameField = (data.client || data.title || '').toLowerCase().trim();
                         if (nameField.includes(matchName) || matchName.includes(nameField)) {
-                           updateJobs.push(
+                            updateJobs.push(
+                                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
+                                .then(({updateDoc, doc: docRef}) =>
+                                    updateDoc(docRef(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
+                                )
+                            );
                         }
                     });
                     if (updateJobs.length > 0) {
@@ -1488,6 +1494,8 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
 
 document.getElementById('send-btn').addEventListener('click', sendMessage);
 ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+
 
 
 
