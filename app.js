@@ -152,7 +152,7 @@ window.addActivity = function(icon, text, color) {
         '<span style="color:#94a3b8;font-size:9px;flex-shrink:0;">' + now + '</span>';
     feed.insertBefore(item, feed.firstChild);
     while(feed.children.length > 8) feed.removeChild(feed.lastChild);
-    if(!panelVisible) {
+    if(!panelVisible && fabBadge) {
         unreadCount++;
         fabBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
         fabBadge.style.display = 'flex';
