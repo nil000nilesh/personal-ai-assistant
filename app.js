@@ -567,7 +567,7 @@ function loadAppListeners() {
         ui.chatBox.innerHTML = "";
         if(welcomeMsg) ui.chatBox.appendChild(welcomeMsg);
         const msgs = [];
-        snapshot.forEach(d => { const m = d.data(); if((m.timestamp||'') >= sessionStartTime) msgs.push(m); });
+        snapshot.forEach(d => { const m = d.data(); if(isAdminUser && m.userId && m.userId !== ADMIN_EMAIL) return; if((m.timestamp||'') >= sessionStartTime) msgs.push(m); });
         msgs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
         chatHistory = [];
         msgs.forEach(msg => {
