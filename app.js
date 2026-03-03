@@ -1444,12 +1444,7 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
                         const data = d.data();
                         const nameField = (data.client || data.title || '').toLowerCase().trim();
                         if (nameField.includes(matchName) || matchName.includes(nameField)) {
-                            updateJobs.push(
-                                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
-                                .then(({updateDoc, doc: docRef}) =>
-                                    updateDoc(docRef(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
-                                )
-                            );
+                           updateJobs.push(
                         }
                     });
                     if (updateJobs.length > 0) {
