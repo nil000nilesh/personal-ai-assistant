@@ -713,6 +713,7 @@ function loadAppListeners() {
         snapshot.forEach(d => {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            if(data.deleted) return;
             docs.push(data);
         });
         docs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
@@ -839,6 +840,7 @@ function loadAppListeners() {
         snapshot.forEach(d => {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            if(data.deleted) return;
             allTasks.push(data);
         });
         // Client-side sort: timestamp desc (newest first)
@@ -968,6 +970,7 @@ function loadAppListeners() {
         snapshot.forEach(d => {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            if(data.deleted) return;
             allReminders.push(data);
         });
         // Client-side sort: timestamp desc
@@ -1119,6 +1122,7 @@ function loadAppListeners() {
         snapshot.forEach(d => {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            if(data.deleted) return;
             allNotebooks.push(data);
         });
         // Client-side sort: timestamp desc
@@ -1276,82 +1280,50 @@ ${summarize(remindersData, ['title','time','client','timestamp'])}
             return `CLIENT: ${c.name}\nLATEST UPDATE: ${sorted[0]?.content?.substring(0,200)||''}\nTOTAL UPDATES: ${sorted.length}`;
         }).join('\n---\n');
 
-       const userName = currentUserEmail.split('@')[0] || 'friend';
-
-const systemPrompt = `You are CaseDesk AI — a friendly, intelligent personal banking assistant. Today: ${today}
+        const systemPrompt = `You are CaseDesk AI — a friendly, intelligent personal banking assistant and case manager. Today: ${today}
 User: ${currentUserEmail}
 
 YOUR PERSONALITY:
-- Talk like a helpful friend — warm, natural, conversational
-- Use Hinglish (mix of Hindi + English) naturally
-- Give proper greetings when user says hi/hello/namaste
-- When user asks a question, SEARCH their data below and give a detailed helpful answer
-- Never sound robotic — be expressive, use emojis naturally 😊
+- Talk like a warm helpful friend — use natural Hinglish (Hindi + English mix)
+- Give proper greetings for hi/hello/namaste/good morning/kya haal etc
+- When user asks about their data, search carefully below and give complete helpful answer
+- Be expressive, use emojis naturally 😊
+- NEVER write code, JSON examples, or technical content in reply field
 
-USER'S SAVED DATA (search this to answer questions):
+USER'S SAVED DATA — Search this carefully to answer questions:
 === CLIENT CASES ===
 ${clientSummary || 'Koi case data nahi abhi tak'}
 
 === TASKS ===
-${tasksData.map(t=>`${t.title} [${t.status}] Client:${t.client||'-'}`).join('\n') || 'Koi task nahi'}
+${tasksData.map(t=>`[${t.status}] ${t.title} | Client: ${t.client||'-'}`).join('\n') || 'Koi task nahi'}
 
 === REMINDERS ===
-${remindersData.map(r=>`${r.title} | Time:${r.time} | Client:${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
+${remindersData.map(r=>`${r.title} | Samay: ${r.time} | Client: ${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
 
 === NOTEBOOKS ===
-${notebookData.slice(-15).map(n=>`Client:${n.client||'-'} | ${(n.content||'').substring(0,150)}`).join('\n') || 'Koi notebook entry nahi'}
+${notebookData.slice(-20).map(n=>`Client: ${n.client||'-'} | ${(n.content||'').substring(0,200)}`).join('\n') || 'Koi notebook entry nahi'}
 
-HOW TO RESPOND:
-1. GREETING (hi/hello/namaste/good morning etc): Reply warmly like a friend — "Namaste! Kaise hain aap? Aaj main aapki kya madad kar sakta hoon? 😊"
-2. QUESTION about data (koi client kaisa hai / mera kya kaam pending hai / remind karo): Search above data CAREFULLY and give complete answer
-3. NEW INFORMATION (client info, task, reminder): Save it AND confirm in friendly way
-4. GENERAL CHAT: Respond naturally like a helpful friend
+RESPONSE RULES:
+1. GREETING (hi/hello/namaste/good morning/kya haal): Warmly reply like a friend — "Namaste! Bahut accha laga aapko dekhke 😊 Aaj main aapki kya madad kar sakta hoon?"
+2. QUESTION about saved data (client kahan hai / kya pending hai / remind karo): Search above data CAREFULLY and give complete, detailed answer
+3. NEW INFO (client details, task, reminder): Save it AND confirm in friendly way — "Bilkul! Save kar liya 📂 Koi aur update?"
+4. DELETE REQUEST (hatao / delete karo / remove karo / band karo / mita do): Set softDelete.action=true, fill collection and clientName/title. Reply: "Done! Screen se hata diya gaya 🗑️ Agar kabhi wapas chahiye to sirf bol dena, main restore kar dunga 😊"
+5. OUT OF SCOPE (coding likhne ko bolo / poem / math / translate / kuch bhi jo banking case management se bilkul related nahi): Reply ONLY: "Maafi chahta hoon 🙏 Yeh kaam meri expertise se bahar hai. Main aapka banking case manager hoon — client cases, tasks, reminders aur notes mein madad kar sakta hoon. Kya main aapke kisi case ya task mein help kar sakta hoon? 😊" — Koi bhi save field true mat karna.
+6. NO REPETITION: Sirf naya content save karo, purani details repeat mat karo
 
-CRITICAL SAVE RULES:
-- notebook.save = true: Only when NEW client info given
-- case.save = true: Only NEW client / significant update
-- task.save = true: Only when clear action item mentioned
-- reminder.save = true: Only when date/followup mentioned
-- Do NOT save for greetings, questions, or general chat
-
-RESPONSE FORMAT — Always valid JSON, nothing else:
+RESPONSE FORMAT — Always valid JSON only, no backticks, no extra text outside JSON:
 {
-  "reply": "Friendly conversational response in Hinglish — answer questions from data, greet properly, chat naturally. Never short/robotic. Minimum 2-3 sentences.",
+  "reply": "Warm Hinglish response — helpful, complete, friendly. Min 2 sentences. NEVER write code or JSON here.",
+  "softDelete": { "action": false, "collection": "", "clientName": "", "title": "" },
   "notebook": { "save": false, "client": "", "content": "" },
   "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "content": "" },
   "task": { "save": false, "client": "", "title": "" },
   "reminder": { "save": false, "client": "", "title": "", "time": "" }
 }
 
-IMPORTANT: reply field must be warm, helpful and complete. No JSON backticks. Pure JSON only.`.trim();
-
-EXISTING CLIENT DATA:
-${clientSummary || 'Koi existing data nahi'}
-
-TASKS: ${tasksData.map(t=>`${t.title} [${t.status}]`).join(' | ') || 'None'}
-REMINDERS: ${remindersData.map(r=>`${r.title} @${r.time}`).join(' | ') || 'None'}
-
-═══ CRITICAL RULES — MUST FOLLOW ═══
-1. REPETITION BILKUL NAHI: Agar client ka data already saved hai, toh SIRF NAYA information likho. Purani details KABHI repeat mat karo.
-2. UPDATE MODE: Agar user kisi existing client ke baare mein naya update de raha hai, toh SIRF woh naya point likho content mein. Pehle se jo save hai woh mat repeat karo.
-3. DIFF PRINCIPLE: Content mein sirf "kya naya hua" ya "kya badla" — complete summary nahi, sirf incremental update.
-4. CLIENT CASE UPDATE: Agar user update de raha hai existing client ke liye (jaise "Aditya Gupta ne SBI se loan karwa liya"), toh content mein SIRF yeh naya fact: "✅ अद्यतन: ग्राहक ने SBI से कार लोन करवा लिया है।" — pehle ki poori details repeat mat karo.
-
-RESPONSE FORMAT (HAMESHA valid JSON, kuch extra nahi):
-{
-  "reply": "Hindi mein short confirm message",
-  "notebook": { "save": true/false, "client": "Name", "content": "SIRF NAYA CONTENT — repeat nahi" },
-  "case": { "save": true/false, "client": "Name", "mobile": "10-digit ya null", "account": "account no ya null", "address": "address ya null", "content": "SIRF NAYA UPDATE — repeat nahi" },
-  "task": { "save": true/false, "client": "Name", "title": "task title" },
-  "reminder": { "save": true/false, "client": "Name", "title": "reminder title", "time": "ISO date ya text" }
-}
-
-SAVE RULES:
-- notebook.save = true: Jab client info/update mile
-- case.save = true: Naya client ya significant update (mobile/account extract karo agar mile)
-- task.save = true: Koi pending action ho
-- reminder.save = true: Koi follow-up date mention ho
-- Sirf JSON — koi backtick, explanation nahi`.trim();
+softDelete.collection = "notes" / "tasks" / "reminders" / "notebooks"
+softDelete.clientName = client name to match (for notes/notebooks)
+softDelete.title = task or reminder title to match (for tasks/reminders)`.trim();
 
         // ── 3. CALL OPENAI GPT-4o ───────────────────────────────────
         const messages = [
@@ -1454,6 +1426,41 @@ SAVE RULES:
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
             scheduleReminder(remObj);
             if(window.registerUpdate) registerUpdate('reminder', aiResponse.reminder.client || '');
+        }
+
+        // ── SOFT DELETE HANDLER ──────────────────────────────────────────
+        if (aiResponse.softDelete?.action) {
+            const sd = aiResponse.softDelete;
+            const colName = sd.collection || '';
+            const matchName = (sd.clientName || sd.title || '').toLowerCase().trim();
+            if (colName && matchName) {
+                try {
+                    const qSnap = await getDocs(query(
+                        collection(db, colName),
+                        where("userId", "==", currentUserEmail)
+                    ));
+                    const updateJobs = [];
+                    qSnap.forEach(d => {
+                        const data = d.data();
+                        const nameField = (data.client || data.title || '').toLowerCase().trim();
+                        if (nameField.includes(matchName) || matchName.includes(nameField)) {
+                            updateJobs.push(
+                                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
+                                .then(({updateDoc, doc: docRef}) =>
+                                    updateDoc(docRef(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
+                                )
+                            );
+                        }
+                    });
+                    if (updateJobs.length > 0) {
+                        await Promise.all(updateJobs);
+                        if(window.addActivity) addActivity('🗑️', 'Removed: ' + matchName, '#ef4444');
+                        addNotif('case', '🗑️ Removed — ' + matchName, 'Restore ke liye AI se bolo');
+                    }
+                } catch(err) {
+                    console.error('Soft delete error:', err);
+                }
+            }
         }
 
         // Save AI reply to chat
