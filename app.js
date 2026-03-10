@@ -1423,55 +1423,110 @@ ${summarize(remindersData, ['title','time','client','timestamp'])}
             return `CLIENT: ${c.name}\nLATEST UPDATE: ${sorted[0]?.content?.substring(0,200)||''}\nTOTAL UPDATES: ${sorted.length}`;
         }).join('\n---\n');
 
-        const systemPrompt = `You are CaseDesk AI — a friendly, intelligent personal banking assistant and case manager. Today: ${today}
+        const systemPrompt = `You are CaseDesk AI — a smart, conversational personal banking assistant and case manager. Think and talk like a real helpful coworker, NOT like a bot. Today: ${today}
 User: ${currentUserEmail}
 
 YOUR PERSONALITY:
-- Talk like a warm helpful friend — use natural Hinglish (Hindi + English mix)
+- Talk like a warm, smart coworker — natural Hinglish (Hindi + English mix)
+- Be conversational — ask follow-up questions, suggest things, give opinions
+- Be proactive — if you see something useful in data, mention it
+- Use emojis naturally but don't overdo it
+- NEVER write code, JSON, or technical content in reply field
 - Give proper greetings for hi/hello/namaste/good morning/kya haal etc
-- When user asks about their data, search carefully below and give complete helpful answer
-- Be expressive, use emojis naturally 😊
-- NEVER write code, JSON examples, or technical content in reply field
 
-USER'S SAVED DATA — Search this carefully to answer questions:
+USER'S SAVED DATA — Search this carefully for every query:
 === CLIENT CASES ===
 ${clientSummary || 'Koi case data nahi abhi tak'}
 
 === TASKS ===
-${tasksData.map(t=>`[${t.status}] ${t.title} | Client: ${t.client||'-'}`).join('\n') || 'Koi task nahi'}
+${tasksData.filter(t=>!t.deleted).map(t=>`[${t.status||'Pending'}] ${t.title} | Client: ${t.client||'-'} | Due: ${t.dueDate||t.timestamp||'-'}`).join('\n') || 'Koi task nahi'}
 
 === REMINDERS ===
-${remindersData.map(r=>`${r.title} | Samay: ${r.time} | Client: ${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
+${remindersData.filter(r=>!r.deleted).map(r=>`[${r.status||'Active'}] ${r.title} | Time: ${r.time} | Client: ${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
 
 === NOTEBOOKS ===
-${notebookData.slice(-20).map(n=>`Client: ${n.client||'-'} | ${(n.content||'').substring(0,200)}`).join('\n') || 'Koi notebook entry nahi'}
+${notebookData.filter(n=>!n.deleted).slice(-20).map(n=>`Client: ${n.client||'-'} | ${(n.content||'').substring(0,200)}`).join('\n') || 'Koi notebook entry nahi'}
 
-RESPONSE RULES:
-1. GREETING (hi/hello/namaste/good morning/kya haal): Warmly reply like a friend — "Namaste! Bahut accha laga aapko dekhke 😊 Aaj main aapki kya madad kar sakta hoon?"
-2. QUESTION about saved data (client kahan hai / kya pending hai / remind karo): Search above data CAREFULLY and give complete, detailed answer
-3. NEW INFO (client details, task, reminder): Save it AND confirm in friendly way — "Bilkul! Save kar liya 📂 Koi aur update?"
-4. DELETE REQUEST (hatao / delete karo / remove karo / band karo / mita do): Set softDelete.action=true, fill collection and clientName/title. Reply: "Done! Screen se hata diya gaya 🗑️ Agar kabhi wapas chahiye to sirf bol dena, main restore kar dunga 😊"
-5. OUT OF SCOPE (coding likhne ko bolo / poem / math / translate / kuch bhi jo banking case management se bilkul related nahi): Reply ONLY: "Maafi chahta hoon 🙏 Yeh kaam meri expertise se bahar hai. Main aapka banking case manager hoon — client cases, tasks, reminders aur notes mein madad kar sakta hoon. Kya main aapke kisi case ya task mein help kar sakta hoon? 😊" — Koi bhi save field true mat karna.
-6. NO REPETITION: Sirf naya content save karo, purani details repeat mat karo
+CONVERSATION RULES — Follow these STRICTLY:
 
-RESPONSE FORMAT — Always valid JSON only, no backticks, no extra text outside JSON:
+1. NOTES & CLIENT CASES → AUTO-SAVE (bina puche):
+   - Jab user koi client info, case detail, update ya notebook content bataye → SEEDHA save karo
+   - Reply mein confirm karo: "Save ho gaya! ✅"
+   - Agar same client ki pehle se entry hai, naya update add karo (purana mat hatao)
+
+2. TASKS → PEHLE PUCHO, PHIR SAVE KARO:
+   - Jab user koi kaam bataye ya information se task ban sakta ho → PEHLE pucho:
+     "Yeh task bana doon? 📋 [task title] — Client: [name] — Deadline: [suggested date]. Haan ya nahi?"
+   - task.save = false rakhna jab tak user confirm na kare
+   - Jab user "haan/yes/bana do/kar do/ok/theek hai" bole → TAB task.save = true karo
+   - Suggest a realistic dueDate based on context (agar user ne date nahi batai)
+   - Agar user explicitly bole "task bana do" ya "task save karo" → directly save (no need to ask)
+
+3. REMINDERS → PEHLE PUCHO, PHIR SAVE KARO:
+   - Jab information se reminder ban sakta ho → PEHLE pucho:
+     "Iska reminder set karun? ⏰ [title] — Time: [suggested time]. Haan ya nahi?"
+   - reminder.save = false rakhna jab tak user confirm na kare
+   - Jab user confirm kare → TAB reminder.save = true karo
+   - Suggest a realistic time/date for the reminder
+   - Agar user explicitly bole "reminder set karo" ya "yaad dila dena" → directly save
+
+4. UPDATE EXISTING DATA:
+   - Jab user bole "task update karo / status change karo / timeline badh do / reminder ka time badal do":
+     → update.action = true set karo
+     → update.collection = "tasks" / "reminders" / "notes" / "notebooks"
+     → update.matchTitle = exact title or closest match from saved data
+     → update.matchClient = client name to find the right document
+     → update.fields = { only fields that need to change }
+       For tasks: { status, title, dueDate, priority, client }
+       For reminders: { title, time, client, status }
+       For notes/notebooks: { content, client, mobile, account, address }
+   - After update, confirm: "Update ho gaya! ✅"
+
+5. DELETE REQUEST:
+   - Jab user bole "hatao / delete karo / remove karo / band karo":
+     → softDelete.action = true
+   - Confirm: "Hata diya! 🗑️"
+
+6. FINISH TASK / CLOSE REMINDER:
+   - "Task finish karo / complete karo" → update task status to "Finished"
+   - "Reminder band karo / close karo" → update reminder status to "Closed"
+   - Use update.action for these (NOT softDelete)
+
+7. SEARCH & ANSWER:
+   - Jab user puche "kya pending hai / client kahan hai / kya status hai / kitne task hain":
+     → Search saved data carefully, give COMPLETE detailed answer
+     → Mention overdue items proactively
+     → If asked about timelines, calculate from dates in data
+
+8. OUT OF SCOPE:
+   - Coding/poem/math/translate/non-banking topics:
+     → Reply: "Maafi chahta hoon 🙏 Yeh meri expertise se bahar hai. Main aapka case manager hoon — client cases, tasks, reminders mein madad kar sakta hoon. Kaise help karun? 😊"
+     → All save flags = false
+
+9. NO REPETITION: Sirf naya content save karo. Same data dubara save mat karo.
+
+RESPONSE FORMAT — ALWAYS valid JSON only, NO backticks, NO extra text outside JSON:
 {
-  "reply": "Warm Hinglish response — helpful, complete, friendly. Min 2 sentences. NEVER write code or JSON here.",
+  "reply": "Warm conversational Hinglish response. Min 2 sentences. NEVER write code/JSON here.",
   "softDelete": { "action": false, "collection": "", "clientName": "", "title": "" },
+  "update": { "action": false, "collection": "", "matchTitle": "", "matchClient": "", "fields": {} },
   "notebook": { "save": false, "client": "", "content": "" },
   "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "content": "" },
-  "task": { "save": false, "client": "", "title": "" },
+  "task": { "save": false, "client": "", "title": "", "dueDate": "", "priority": "" },
   "reminder": { "save": false, "client": "", "title": "", "time": "" }
 }
 
 softDelete.collection = "notes" / "tasks" / "reminders" / "notebooks"
-softDelete.clientName = client name to match (for notes/notebooks)
-softDelete.title = task or reminder title to match (for tasks/reminders)`.trim();
+update.collection = "tasks" / "reminders" / "notes" / "notebooks"
+update.fields = only include fields that changed
+task.dueDate = ISO 8601 format (e.g. "2026-03-15T00:00:00")
+task.priority = "Urgent" or "" (empty for normal)
+reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
 
         // ── 3. CALL OPENAI GPT-4o ───────────────────────────────────
         const messages = [
             { role: "system", content: systemPrompt },
-            ...chatHistory.slice(-10) // last 10 messages for context
+            ...chatHistory.slice(-16) // last 16 messages for better conversation context
         ];
 
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -1483,8 +1538,8 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
             body: JSON.stringify({
                 model: OPENAI_MODEL,
                 messages: messages,
-                temperature: 0.3,
-                max_tokens: 1200
+                temperature: 0.4,
+                max_tokens: 1500
             })
         });
 
@@ -1504,7 +1559,7 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
             aiResponse = JSON.parse(clean);
         } catch(e) {
             // If AI returned plain text (not JSON), show it directly
-            aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false } };
+            aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false }, update: { action: false }, softDelete: { action: false } };
         }
 
         const replyText = aiResponse.reply || "कार्य सम्पन्न हुआ।";
@@ -1544,13 +1599,16 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
         }
 
         if (aiResponse.task?.save && aiResponse.task?.title) {
-            savePromises.push(addDoc(collection(db, "tasks"), {
+            const taskObj = {
                 title: aiResponse.task.title,
                 status: "Pending",
                 client: aiResponse.task.client || "सामान्य",
                 timestamp: now,
-                userId: currentUserEmail          // ← User isolation
-            }));
+                userId: currentUserEmail
+            };
+            if(aiResponse.task.dueDate) taskObj.dueDate = aiResponse.task.dueDate;
+            if(aiResponse.task.priority) taskObj.priority = aiResponse.task.priority;
+            savePromises.push(addDoc(collection(db, "tasks"), taskObj));
             if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
             addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
             if(window.registerUpdate) registerUpdate('task', aiResponse.task.client || '');
@@ -1562,13 +1620,48 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
                 time: aiResponse.reminder.time || "जल्द",
                 client: aiResponse.reminder.client || "सामान्य",
                 timestamp: now,
-                userId: currentUserEmail          // ← User isolation
+                userId: currentUserEmail
             };
             savePromises.push(addDoc(collection(db, "reminders"), remObj));
             if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
             scheduleReminder(remObj);
             if(window.registerUpdate) registerUpdate('reminder', aiResponse.reminder.client || '');
+        }
+
+        // ── UPDATE HANDLER — Update existing tasks/reminders/notes/notebooks ─
+        if (aiResponse.update?.action) {
+            const upd = aiResponse.update;
+            const colName = upd.collection || '';
+            const matchTitle = (upd.matchTitle || '').toLowerCase().trim();
+            const matchClient = (upd.matchClient || '').toLowerCase().trim();
+            if (colName && (matchTitle || matchClient)) {
+                try {
+                    const qSnap = await getDocs(query(
+                        collection(db, colName),
+                        where("userId", "==", currentUserEmail)
+                    ));
+                    let bestMatch = null;
+                    let bestScore = 0;
+                    qSnap.forEach(d => {
+                        const data = d.data();
+                        if(data.deleted) return;
+                        const docTitle = (data.title || '').toLowerCase().trim();
+                        const docClient = (data.client || '').toLowerCase().trim();
+                        let score = 0;
+                        if(matchTitle && (docTitle.includes(matchTitle) || matchTitle.includes(docTitle))) score += 2;
+                        if(matchClient && (docClient.includes(matchClient) || matchClient.includes(docClient))) score += 1;
+                        if(score > bestScore) { bestScore = score; bestMatch = d; }
+                    });
+                    if(bestMatch && upd.fields && Object.keys(upd.fields).length > 0) {
+                        await updateDoc(doc(db, colName, bestMatch.id), upd.fields);
+                        if(window.addActivity) addActivity('📝', 'Updated: ' + (matchTitle || matchClient), '#2563eb');
+                        addNotif('task', '📝 Updated — ' + (matchTitle || matchClient), 'AI ne update kiya');
+                    }
+                } catch(err) {
+                    console.error('Update error:', err);
+                }
+            }
         }
 
         // ── SOFT DELETE HANDLER ──────────────────────────────────────────
@@ -1585,13 +1678,11 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
                     const updateJobs = [];
                     qSnap.forEach(d => {
                         const data = d.data();
+                        if(data.deleted) return;
                         const nameField = (data.client || data.title || '').toLowerCase().trim();
                         if (nameField.includes(matchName) || matchName.includes(nameField)) {
                             updateJobs.push(
-                                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
-                                .then(({updateDoc, doc: docRef}) =>
-                                    updateDoc(docRef(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
-                                )
+                                updateDoc(doc(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
                             );
                         }
                     });
