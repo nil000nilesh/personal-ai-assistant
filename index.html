@@ -136,17 +136,17 @@
             </div>
             <div class="flex gap-2">
                 <div class="pin-stat-chip pin-task-chip">
-                    <span class="text-base">✅</span>
+                    <span class="text-base">📋</span>
                     <div>
-                        <div id="pin-task-count" class="text-sm font-black text-amber-300 leading-none">—</div>
-                        <div class="text-[9px] font-bold text-white/40 mt-0.5">Tasks</div>
+                        <div id="pin-task-count" class="text-sm font-black text-red-400 leading-none">—</div>
+                        <div class="text-[9px] font-bold text-white/40 mt-0.5">Overdue Tasks</div>
                     </div>
                 </div>
                 <div class="pin-stat-chip pin-rem-chip">
                     <span class="text-base">⏰</span>
                     <div>
-                        <div id="pin-rem-count" class="text-sm font-black text-red-300 leading-none">—</div>
-                        <div class="text-[9px] font-bold text-white/40 mt-0.5">Reminders</div>
+                        <div id="pin-rem-count" class="text-sm font-black text-red-400 leading-none">—</div>
+                        <div class="text-[9px] font-bold text-white/40 mt-0.5">Overdue Reminders</div>
                     </div>
                 </div>
             </div>
@@ -467,9 +467,10 @@
                     <div class="max-w-4xl mx-auto">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">✅ My Tasks</h2>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span id="task-pending-count" class="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">0 Pending</span>
                                 <span id="task-done-count" class="text-xs font-black text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full">0 Done</span>
+                                <span id="task-finished-count" class="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">0 Finished</span>
                             </div>
                         </div>
                         <div class="flex gap-2 flex-wrap">
@@ -482,6 +483,7 @@
                                 <button data-filter="Pending" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">⏳ Pending</button>
                                 <button data-filter="Done" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700">✅ Done</button>
                                 <button data-filter="Urgent" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50 hover:border-red-200 hover:text-red-700">🚨 Urgent</button>
+                                <button data-filter="Finished" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700">🏆 Finished</button>
                             </div>
                         </div>
                     </div>
@@ -500,9 +502,10 @@
                     <div class="max-w-4xl mx-auto">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">⏰ Reminders</h2>
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 flex-wrap">
                                 <span id="rem-upcoming-count" class="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">0 Upcoming</span>
                                 <span id="rem-overdue-count" class="text-xs font-black text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full">0 Overdue</span>
+                                <span id="rem-closed-count" class="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">0 Closed</span>
                             </div>
                         </div>
                         <div class="flex gap-2 flex-wrap">
@@ -515,6 +518,7 @@
                                 <button data-remfilter="today" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-blue-50">📅 Today</button>
                                 <button data-remfilter="upcoming" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50">🟢 Upcoming</button>
                                 <button data-remfilter="overdue" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50">🔴 Overdue</button>
+                                <button data-remfilter="closed" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-emerald-50">🏁 Closed</button>
                             </div>
                         </div>
                     </div>
