@@ -23,7 +23,7 @@ let chatHistory = [];
 let allSavedNotes = []; 
 let allTasks = [];
 let allReminders = [];
-let allNotebooks = [];
+let allNotebooks = []; // Legacy — kept for backward compat, data now merged into notes
 
 let isPinVerified = false;
 let DYNAMIC_OPENAI_KEY = "";
@@ -50,7 +50,7 @@ const ui = {
     chatModalContent: document.getElementById('chat-modal-content')
 };
 
-const views = ['notes', 'tasks', 'reminders', 'notebook'];
+const views = ['notes', 'tasks', 'reminders'];
 
 // ERROR FIXED HERE: Removing flex class so it hides properly
 function hideAllStates() {
@@ -82,6 +82,9 @@ views.forEach(v => {
     document.getElementById(`tab-${v}-desk`)?.addEventListener('click', () => switchView(v));
     document.getElementById(`tab-${v}-mob`)?.addEventListener('click', () => switchView(v));
 });
+// Redirect legacy notebook tabs to notes view
+document.getElementById('tab-notebook-desk')?.addEventListener('click', () => switchView('notes'));
+document.getElementById('tab-notebook-mob')?.addEventListener('click', () => switchView('notes'));
 
 // ══════════════════════════════════════════════════
 //  FLOATING CHAT PANEL — Drag, Resize, Badge, Activity
@@ -611,7 +614,7 @@ async function checkAndLoadApp() {
                 if (adminNav) adminNav.style.display = 'block';
             }
             
-            switchView('notebook');
+            switchView('notes');
             loadAppListeners();
             setupAdminPanel();
         } else { 
@@ -1147,154 +1150,44 @@ function loadAppListeners() {
         });
     });
 
-    // NOTEBOOK — grouped by client, search, sort, filter, grid/list toggle
-    let nbSearchQuery = '';
-    let nbSort = 'new';
-    let nbFilterClient = 'all';
-    let nbViewGrid = true;
+    // NOTEBOOK — now merged into notes view (backward-compatible read from notebooks collection)
 
-    function renderNotebook() {
-        const grid = document.getElementById('notebook-grid');
-        const empty = document.getElementById('nb-empty');
-        const countEl = document.getElementById('nb-count');
-        grid.innerHTML = '';
-
-        // Group by client
-        let grouped = {};
-        let allClientNames = new Set();
-        allNotebooks.forEach(page => {
-            const key = (page.client || page.title || 'सामान्य').toUpperCase();
-            const name = page.client || page.title || 'सामान्य';
-            allClientNames.add(name);
-            if(!grouped[key]) grouped[key] = { displayName: name, updates: [] };
-            grouped[key].updates.push(page);
-        });
-
-        // Populate client filter dropdown
-        const filterEl = document.getElementById('nb-filter');
-        if(filterEl && filterEl.options.length <= 1) {
-            allClientNames.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name; opt.textContent = '👤 ' + name;
-                filterEl.appendChild(opt);
-            });
-        }
-
-        // Filter by client
-        let entries = Object.values(grouped).filter(g => {
-            if(nbFilterClient !== 'all' && g.displayName !== nbFilterClient) return false;
-            if(!nbSearchQuery) return true;
-            return g.displayName.toLowerCase().includes(nbSearchQuery) ||
-                g.updates.some(u => (u.content||'').toLowerCase().includes(nbSearchQuery));
-        });
-
-        // Sort
-        entries.sort((a, b) => {
-            const aLatest = Math.max(...a.updates.map(u => new Date(u.timestamp)));
-            const bLatest = Math.max(...b.updates.map(u => new Date(u.timestamp)));
-            if(nbSort === 'new') return bLatest - aLatest;
-            if(nbSort === 'old') return aLatest - bLatest;
-            if(nbSort === 'az')  return a.displayName.localeCompare(b.displayName);
-            return 0;
-        });
-
-        if(countEl) countEl.textContent = allNotebooks.length + ' notes';
-        grid.className = nbViewGrid
-            ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20 items-start'
-            : 'flex flex-col gap-4 pb-20';
-
-        if(entries.length === 0) { empty.classList.remove('hidden'); return; }
-        empty.classList.add('hidden');
-
-        entries.forEach(group => {
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl border border-l-[8px] border-yellow-400 border-slate-200 relative transition-all duration-300 overflow-hidden group";
-
-            const sortedUpdates = [...group.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-            const latest = sortedUpdates[0];
-
-            function fmtDate(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
-            function fmtTime(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
-
-            const headerHTML = `
-                <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-                    <div>
-                        <div class="text-[10px] text-yellow-400 font-black uppercase tracking-widest mb-0.5">📋 क्लाइंट नोट</div>
-                        <h3 class="font-black text-xl tracking-tight">${group.displayName}</h3>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-[10px] text-slate-400 mb-0.5">कुल अपडेट</div>
-                        <div class="text-yellow-400 text-2xl font-black">${group.updates.length}</div>
-                    </div>
-                </div>`;
-
-            const updatesHTML = sortedUpdates.map((page, idx) => {
-                let displayContent = page.content || '';
-                if(nbSearchQuery) {
-                    const regex = new RegExp('(' + nbSearchQuery + ')', 'gi');
-                    displayContent = displayContent.replace(regex, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
-                }
-                const isLatest = idx === 0;
-                const dDate = new Date(page.timestamp).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-                const dTime = new Date(page.timestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-                const updateNum = group.updates.length - idx;
-                const badgeClass = isLatest ? 'bg-yellow-400 text-slate-900 font-black' : 'bg-slate-100 text-slate-400';
-                return '<div class="px-6 py-4 border-b border-slate-50 last:border-b-0 ' + (isLatest ? 'bg-yellow-50/30' : '') + '">' +
-                    '<div class="flex items-center gap-2 mb-2 flex-wrap">' +
-                    '<span class="text-[10px] font-black px-2 py-0.5 rounded-full ' + (isLatest ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-500') + '">📅 ' + dDate + '</span>' +
-                    '<span class="text-[10px] font-bold text-slate-400">⏰ ' + dTime + '</span>' +
-                    '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto ' + badgeClass + '">#' + updateNum + '</span>' +
-                    '</div>' +
-                    '<div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap">' + displayContent + '</div>' +
-                    '</div>';
-            }).join('');
-
-            card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50 max-h-[300px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
-            grid.appendChild(card);
-        });
-    }
-
-    // ── NOTEBOOKS ────────────────────────────────────────────────────────
+    // ── NOTEBOOKS (legacy) — merge into notes view for backward compatibility ──
+    let legacyNotebooks = [];
     const notebooksQ = isAdminUser
         ? query(collection(db, "notebooks"))
         : query(collection(db, "notebooks"), where("userId", "==", uid));
 
+    function mergeNotebooksIntoNotes() {
+        // Merge legacy notebook data into allGroupedNotes
+        legacyNotebooks.forEach(note => {
+            const key = (note.client || note.title || 'सामान्य').toUpperCase();
+            const name = note.client || note.title || 'सामान्य';
+            if(!allGroupedNotes[key]) allGroupedNotes[key] = { displayTitle: name, mobile: null, account: null, address: null, updates: [] };
+            const g = allGroupedNotes[key];
+            // Avoid duplicate entries (check timestamp)
+            const isDuplicate = g.updates.some(u => u.timestamp === note.timestamp && u.content === note.content);
+            if(!isDuplicate) {
+                if(!g.mobile && note.mobile) g.mobile = note.mobile;
+                if(!g.mobile) { const m = (note.content||'').match(/\b[6-9]\d{9}\b/); if(m) g.mobile = m[0]; }
+                if(!g.account && note.account) g.account = note.account;
+                if(!g.address && note.address) g.address = note.address;
+                g.updates.push(note);
+            }
+        });
+        renderNotes();
+    }
+
     onSnapshot(notebooksQ, (snapshot) => {
-        allNotebooks = [];
+        legacyNotebooks = [];
         snapshot.forEach(d => {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
             if(data.deleted) return;
-            allNotebooks.push(data);
+            legacyNotebooks.push(data);
         });
-        // Client-side sort: timestamp desc
-        allNotebooks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
-        renderNotebook();
-    });
-
-    // Notebook search
-    document.getElementById('nb-search')?.addEventListener('input', e => {
-        nbSearchQuery = e.target.value.toLowerCase();
-        renderNotebook();
-    });
-
-    // Notebook sort
-    document.getElementById('nb-sort')?.addEventListener('change', e => {
-        nbSort = e.target.value;
-        renderNotebook();
-    });
-
-    // Notebook filter
-    document.getElementById('nb-filter')?.addEventListener('change', e => {
-        nbFilterClient = e.target.value;
-        renderNotebook();
-    });
-
-    // Notebook grid/list toggle
-    document.getElementById('nb-view-toggle')?.addEventListener('click', () => {
-        nbViewGrid = !nbViewGrid;
-        document.getElementById('nb-view-toggle').textContent = nbViewGrid ? '⊞ Grid' : '☰ List';
-        renderNotebook();
+        legacyNotebooks.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
+        mergeNotebooksIntoNotes();
     });
 }
 
@@ -1392,12 +1285,11 @@ async function sendMessage() {
             ).join('\n');
         }
 
+        // Merge notebooks + notes into single dataset for AI context
+        const allCasesData = [...casesData, ...notebookData];
         const savedContext = `
-=== SAVED NOTEBOOKS (last 30) ===
-${summarize(notebookData, ['client','content','timestamp'])}
-
-=== CLIENT CASES (last 30) ===
-${summarize(casesData, ['client','content','timestamp'])}
+=== CLIENT CASES & NOTES (last 30) ===
+${summarize(allCasesData, ['client','content','mobile','account','address','timestamp'])}
 
 === TASKS (last 30) ===
 ${summarize(tasksData, ['title','status','client','timestamp'])}
@@ -1444,15 +1336,27 @@ ${tasksData.filter(t=>!t.deleted).map(t=>`[${t.status||'Pending'}] ${t.title} | 
 === REMINDERS ===
 ${remindersData.filter(r=>!r.deleted).map(r=>`[${r.status||'Active'}] ${r.title} | Time: ${r.time} | Client: ${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
 
-=== NOTEBOOKS ===
-${notebookData.filter(n=>!n.deleted).slice(-20).map(n=>`Client: ${n.client||'-'} | ${(n.content||'').substring(0,200)}`).join('\n') || 'Koi notebook entry nahi'}
-
 CONVERSATION RULES — Follow these STRICTLY:
 
-1. NOTES & CLIENT CASES → AUTO-SAVE (bina puche):
-   - Jab user koi client info, case detail, update ya notebook content bataye → SEEDHA save karo
-   - Reply mein confirm karo: "Save ho gaya! ✅"
+1. NOTES & CLIENT CASES → AUTO-SAVE (bina puche) — SECRETARY STYLE DRAFTING:
+   - Jab user koi client info, case detail, update ya communication bataye → PROFESSIONALLY draft karke save karo
+   - USER KA RAW MESSAGE DIRECTLY SAVE MAT KARO — usse ek professional secretary ki tarah REWRITE karo
+   - DRAFTING FORMAT for case.content:
+     • 📅 Date/Time reference (agar conversation mein hai)
+     • 📌 Key update/action — clearly ek line mein
+     • 📞 Communication summary — kisne call kiya, kya baat hui, kya pending hai
+     • 📊 Financial details (loan amount, profit, tax, CMA etc.) properly formatted
+     • ⏳ Next steps / follow-up actions (agar koi ho)
+   - IMPORTANT EXTRACTION RULES:
+     • client field = client/company ka naam (ALWAYS fill)
+     • mobile field = 10-digit phone number extract karo (jaise 9753332926)
+     • account field = CC/account number extract karo (jaise 389005/614)
+     • address field = address extract karo (agar available ho)
+   - Hinglish mein likho but PROFESSIONAL tone — jaise ek experienced secretary likhti hai
+   - Short, crisp sentences — unnecessary details hatao, key points rakho
+   - Reply mein confirm karo with brief summary: "Save ho gaya! ✅"
    - Agar same client ki pehle se entry hai, naya update add karo (purana mat hatao)
+   - ALWAYS set case.save = true for ANY client information/update (NEVER use notebook)
 
 2. TASKS → PEHLE PUCHO, PHIR SAVE KARO:
    - Jab user koi kaam bataye ya information se task ban sakta ho → PEHLE pucho:
@@ -1462,18 +1366,19 @@ CONVERSATION RULES — Follow these STRICTLY:
    - Suggest a realistic dueDate based on context (agar user ne date nahi batai)
    - Agar user explicitly bole "task bana do" ya "task save karo" → directly save (no need to ask)
 
-3. REMINDERS → PEHLE PUCHO, PHIR SAVE KARO:
-   - Jab information se reminder ban sakta ho → PEHLE pucho:
+3. REMINDERS → SMART SAVE:
+   - Agar user EXPLICITLY bole "reminder set karo" / "yaad dila dena" / "remind karo" / "reminder bana do" / "reminder add karo" → DIRECTLY save (reminder.save = true), puche bina!
+   - Agar user ne time bhi bataya hai (jaise "2 baje", "kal subah", "15 March ko") → ISO 8601 format mein convert karke reminder.time mein daalo
+   - Agar user ne time nahi bataya → time = "Manual" set karo, but STILL save karo
+   - Sirf jab information se INDIRECTLY reminder ban sakta ho (user ne nahi bola) → TAB pucho:
      "Iska reminder set karun? ⏰ [title] — Time: [suggested time]. Haan ya nahi?"
-   - reminder.save = false rakhna jab tak user confirm na kare
-   - Jab user confirm kare → TAB reminder.save = true karo
-   - Suggest a realistic time/date for the reminder
-   - Agar user explicitly bole "reminder set karo" ya "yaad dila dena" → directly save
+   - Jab user confirm kare ("haan/yes/ok/theek hai") → TAB reminder.save = true karo
+   - IMPORTANT: reminder.time MUST be valid ISO 8601 (e.g. "2026-03-15T14:00:00") ya "Manual"
 
 4. UPDATE EXISTING DATA:
    - Jab user bole "task update karo / status change karo / timeline badh do / reminder ka time badal do":
      → update.action = true set karo
-     → update.collection = "tasks" / "reminders" / "notes" / "notebooks"
+     → update.collection = "tasks" / "reminders" / "notes"
      → update.matchTitle = exact title or closest match from saved data
      → update.matchClient = client name to find the right document
      → update.fields = { only fields that need to change }
@@ -1510,14 +1415,14 @@ RESPONSE FORMAT — ALWAYS valid JSON only, NO backticks, NO extra text outside 
   "reply": "Warm conversational Hinglish response. Min 2 sentences. NEVER write code/JSON here.",
   "softDelete": { "action": false, "collection": "", "clientName": "", "title": "" },
   "update": { "action": false, "collection": "", "matchTitle": "", "matchClient": "", "fields": {} },
-  "notebook": { "save": false, "client": "", "content": "" },
   "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "content": "" },
   "task": { "save": false, "client": "", "title": "", "dueDate": "", "priority": "" },
   "reminder": { "save": false, "client": "", "title": "", "time": "" }
 }
 
-softDelete.collection = "notes" / "tasks" / "reminders" / "notebooks"
-update.collection = "tasks" / "reminders" / "notes" / "notebooks"
+IMPORTANT: "notebook" field REMOVED — sab kuch "case" mein save karo. Kabhi bhi notebook use mat karo.
+softDelete.collection = "notes" / "tasks" / "reminders"
+update.collection = "tasks" / "reminders" / "notes"
 update.fields = only include fields that changed
 task.dueDate = ISO 8601 format (e.g. "2026-03-15T00:00:00")
 task.priority = "Urgent" or "" (empty for normal)
@@ -1559,7 +1464,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             aiResponse = JSON.parse(clean);
         } catch(e) {
             // If AI returned plain text (not JSON), show it directly
-            aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false }, update: { action: false }, softDelete: { action: false } };
+            aiResponse = { reply: rawContent, case: { save: false }, task: { save: false }, reminder: { save: false }, update: { action: false }, softDelete: { action: false } };
         }
 
         const replyText = aiResponse.reply || "कार्य सम्पन्न हुआ।";
@@ -1569,17 +1474,15 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
         const now = new Date().toISOString();
         const savePromises = [];
 
-        if (aiResponse.notebook?.save && aiResponse.notebook?.content) {
-            savePromises.push(addDoc(collection(db, "notebooks"), {
-                title: aiResponse.notebook.client || "सामान्य",
-                content: aiResponse.notebook.content,
+        // Notebook save removed — all notes now save to "notes" collection only
+        // If AI still returns notebook data (backward compat), redirect to case/notes
+        if (aiResponse.notebook?.save && aiResponse.notebook?.content && !aiResponse.case?.save) {
+            aiResponse.case = {
+                save: true,
                 client: aiResponse.notebook.client || "सामान्य",
-                timestamp: now,
-                userId: currentUserEmail          // ← User isolation
-            }));
-            if(window.addActivity) addActivity('📓', 'Notebook updated: ' + (aiResponse.notebook.client || 'General'), '#4f46e5');
-            addNotif('notebook', '📓 Notebook saved — ' + (aiResponse.notebook.client || 'General'), 'AI ne automatically save kiya');
-            if(window.registerUpdate) registerUpdate('notebook', aiResponse.notebook.client || '');
+                content: aiResponse.notebook.content,
+                mobile: null, account: null, address: null
+            };
         }
 
         if (aiResponse.case?.save && aiResponse.case?.content) {
@@ -1660,6 +1563,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                     }
                 } catch(err) {
                     console.error('Update error:', err);
+                    if(window.addNotif) addNotif('error', '❌ Update failed', err.message || 'Update mein error aaya');
                 }
             }
         }
@@ -1693,6 +1597,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                     }
                 } catch(err) {
                     console.error('Soft delete error:', err);
+                    if(window.addNotif) addNotif('error', '❌ Delete failed', err.message || 'Delete mein error aaya');
                 }
             }
         }
@@ -1737,7 +1642,7 @@ ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMe
 // ╚══════════════════════════════════════════════════════════════╝
 
 const PAGE_MAP = {
-    notebook: 'notebook',
+    notebook: 'notes',
     case:     'notes',
     task:     'tasks',
     reminder: 'reminders'
@@ -1751,8 +1656,7 @@ window.clearAllUpdates = function() {};
 
 // Notification type mapping: page → notification types
 const PAGE_TO_NOTIF = {
-    notebook:  ['notebook'],
-    notes:     ['case'],
+    notes:     ['case', 'notebook'],
     tasks:     ['task'],
     reminders: ['reminder']
 };
@@ -2021,7 +1925,11 @@ if('Notification' in window) {
 window.scheduleReminder = function(rem) {
     if(!rem.time || rem.time === 'Manual' || rem.time === 'जल्द') return;
     const fireAt = new Date(rem.time);
-    if(isNaN(fireAt)) return;
+    if(isNaN(fireAt)) {
+        console.warn('[CaseDesk] Invalid reminder time:', rem.time, 'for:', rem.title);
+        if(window.addNotif) addNotif('reminder', '⚠️ Reminder time invalid: ' + (rem.title||'').substring(0,30), 'Time "' + rem.time + '" parse nahi ho paya');
+        return;
+    }
     const key = rem.title + '|' + rem.time;
     if(NS.scheduledKeys.has(key)) return;
     NS.scheduledKeys.add(key);
