@@ -415,24 +415,85 @@ async function fetchPinWidgetCounts() {
             getDocs(query(collection(db, "reminders"), where("userId", "==", currentUserEmail)))
         ]);
         const now = new Date();
-        // Count overdue tasks (Pending + past due or past timestamp)
-        const overdueTasks = tasksSnap.docs.filter(d => {
+
+        // Filter active (non-deleted) docs
+        const activeTasks = tasksSnap.docs.filter(d => !d.data().deleted);
+        const activeRems  = remSnap.docs.filter(d => !d.data().deleted);
+
+        // Total counts
+        const totalTasks = activeTasks.length;
+        const totalRems  = activeRems.length;
+
+        // Overdue tasks (Pending + past due/timestamp)
+        const overdueTaskCount = activeTasks.filter(d => {
             const data = d.data();
-            if(data.deleted || data.status === 'Done' || data.status === 'Finished') return false;
+            if(data.status === 'Done' || data.status === 'Finished') return false;
             const dueDate = data.dueDate ? new Date(data.dueDate) : (data.timestamp ? new Date(data.timestamp) : null);
             return dueDate && dueDate < now;
         }).length;
-        // Count overdue reminders
-        const overdueRem = remSnap.docs.filter(d => {
+
+        // Overdue reminders (past time, not Closed)
+        const overdueRemCount = activeRems.filter(d => {
             const data = d.data();
-            if(data.deleted || data.status === 'Closed') return false;
-            const t = data.time ? new Date(data.time) : null;
-            return t && !isNaN(t) && t < now;
+            if(data.status === 'Closed') return false;
+            if(!data.time || data.time === 'Manual' || data.time === 'जल्द') return false;
+            const t = new Date(data.time);
+            return !isNaN(t) && t < now;
         }).length;
-        document.getElementById('pin-task-count').textContent = overdueTasks;
-        document.getElementById('pin-rem-count').textContent = overdueRem;
+
+        // Latest task (newest by timestamp, not Done/Finished)
+        const pendingTasks = activeTasks
+            .map(d => d.data())
+            .filter(t => t.status !== 'Done' && t.status !== 'Finished')
+            .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+        const latestTask = pendingTasks[0] || null;
+
+        // Latest reminder (newest by timestamp, not Closed)
+        const pendingRems = activeRems
+            .map(d => d.data())
+            .filter(r => r.status !== 'Closed')
+            .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+        const latestRem = pendingRems[0] || null;
+
+        // Update UI — Totals
+        document.getElementById('pin-task-total').textContent = totalTasks;
+        document.getElementById('pin-rem-total').textContent = totalRems;
+
+        // Update UI — Overdue row
+        const overdueRow = document.getElementById('pin-overdue-row');
+        if(overdueTaskCount > 0 || overdueRemCount > 0) {
+            overdueRow.classList.remove('hidden');
+            overdueRow.classList.add('flex');
+            document.getElementById('pin-task-overdue').textContent = overdueTaskCount;
+            document.getElementById('pin-rem-overdue').textContent = overdueRemCount;
+        }
+
+        // Update UI — Latest items
+        const latestSection = document.getElementById('pin-latest-items');
+        if(latestTask || latestRem) {
+            latestSection.classList.remove('hidden');
+
+            if(latestTask) {
+                const ltEl = document.getElementById('pin-latest-task');
+                ltEl.classList.remove('hidden');
+                document.getElementById('pin-latest-task-title').textContent = latestTask.title || 'Untitled Task';
+                const taskDate = latestTask.dueDate ? new Date(latestTask.dueDate) : new Date(latestTask.timestamp);
+                const clientStr = latestTask.client ? '👤 ' + latestTask.client + ' · ' : '';
+                document.getElementById('pin-latest-task-meta').textContent = clientStr + '📅 ' + taskDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+            }
+
+            if(latestRem) {
+                const lrEl = document.getElementById('pin-latest-rem');
+                lrEl.classList.remove('hidden');
+                document.getElementById('pin-latest-rem-title').textContent = latestRem.title || 'Untitled Reminder';
+                const remTime = latestRem.time && latestRem.time !== 'Manual' && latestRem.time !== 'जल्द' ? new Date(latestRem.time) : null;
+                const clientStr = latestRem.client ? '👤 ' + latestRem.client + ' · ' : '';
+                document.getElementById('pin-latest-rem-meta').textContent = clientStr + (remTime ? '📅 ' + remTime.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '📌 Manual');
+            }
+        }
+
         document.getElementById('pin-notif-widget').classList.remove('hidden');
-    } catch(e) { /* silent fail */ }
+    } catch(e) { console.error('Quick Peek error:', e); }
 }
 
 const doLogout = () => {
