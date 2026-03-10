@@ -325,12 +325,13 @@ body { font-family: 'Inter', sans-serif; }
 .pin-notif-widget {
     position: absolute;
     top: 20px; right: 20px; z-index: 20;
-    background: rgba(15,20,50,0.7);
+    background: rgba(15,20,50,0.75);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 18px;
     padding: 12px 14px;
-    min-width: 170px;
+    min-width: 200px;
+    max-width: 260px;
     animation: pinCardIn .5s .3s cubic-bezier(0.34,1.56,0.64,1) both;
 }
 .pin-stat-chip {
@@ -340,6 +341,22 @@ body { font-family: 'Inter', sans-serif; }
     border-radius: 12px;
     padding: 8px 10px;
     flex: 1;
+}
+.pin-overdue-chip {
+    background: rgba(239,68,68,0.1) !important;
+    border-color: rgba(239,68,68,0.2) !important;
+}
+.pin-latest-item {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+}
+.pin-latest-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0; animation: pulse 2s infinite;
 }
 
 /* ═══ OVERDUE POPUP ═══ */
@@ -384,5 +401,5 @@ body { font-family: 'Inter', sans-serif; }
 @media (max-width: 500px) {
     .admin-form-grid { grid-template-columns: 1fr !important; }
     .pin-card { width: calc(100vw - 32px); }
-    .pin-notif-widget { right: 12px; top: 12px; }
+    .pin-notif-widget { right: 8px; top: 8px; min-width: 160px; max-width: 200px; padding: 10px 12px; }
 }

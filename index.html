@@ -128,25 +128,67 @@
 
         <!-- ── Mini Notification Widget (top-right) ── -->
         <div id="pin-notif-widget" class="pin-notif-widget hidden">
-            <div class="flex items-center gap-2 mb-2">
+            <div class="flex items-center gap-2 mb-3">
                 <div class="w-5 h-5 rounded-lg bg-indigo-500/30 flex items-center justify-center">
                     <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="#a5b4fc" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                 </div>
                 <span class="text-[10px] font-black text-indigo-300 uppercase tracking-wider">Quick Peek</span>
             </div>
-            <div class="flex gap-2">
-                <div class="pin-stat-chip pin-task-chip">
-                    <span class="text-base">✅</span>
+            <!-- Stats Row -->
+            <div class="flex gap-2 mb-2">
+                <div class="pin-stat-chip">
+                    <span class="text-base">📋</span>
                     <div>
-                        <div id="pin-task-count" class="text-sm font-black text-amber-300 leading-none">—</div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="pin-task-total" class="text-sm font-black text-blue-300 leading-none">—</span>
+                            <span class="text-[8px] font-bold text-white/30">total</span>
+                        </div>
                         <div class="text-[9px] font-bold text-white/40 mt-0.5">Tasks</div>
                     </div>
                 </div>
-                <div class="pin-stat-chip pin-rem-chip">
+                <div class="pin-stat-chip">
                     <span class="text-base">⏰</span>
                     <div>
-                        <div id="pin-rem-count" class="text-sm font-black text-red-300 leading-none">—</div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="pin-rem-total" class="text-sm font-black text-blue-300 leading-none">—</span>
+                            <span class="text-[8px] font-bold text-white/30">total</span>
+                        </div>
                         <div class="text-[9px] font-bold text-white/40 mt-0.5">Reminders</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Overdue Row -->
+            <div id="pin-overdue-row" class="hidden flex gap-2 mb-2">
+                <div class="pin-stat-chip pin-overdue-chip">
+                    <span class="text-xs">🔴</span>
+                    <div>
+                        <span id="pin-task-overdue" class="text-sm font-black text-red-400 leading-none">0</span>
+                        <span class="text-[8px] font-bold text-red-300/60 ml-1">overdue tasks</span>
+                    </div>
+                </div>
+                <div class="pin-stat-chip pin-overdue-chip">
+                    <span class="text-xs">🔴</span>
+                    <div>
+                        <span id="pin-rem-overdue" class="text-sm font-black text-red-400 leading-none">0</span>
+                        <span class="text-[8px] font-bold text-red-300/60 ml-1">overdue rem</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Latest Items Preview -->
+            <div id="pin-latest-items" class="hidden">
+                <div class="text-[8px] font-black text-amber-300/70 uppercase tracking-wider mb-1.5">Latest Unseen</div>
+                <div id="pin-latest-task" class="hidden pin-latest-item">
+                    <span class="pin-latest-dot bg-amber-400"></span>
+                    <div class="flex-1 min-w-0">
+                        <div id="pin-latest-task-title" class="text-[10px] font-bold text-white/80 truncate">—</div>
+                        <div id="pin-latest-task-meta" class="text-[8px] text-white/35 font-semibold truncate">—</div>
+                    </div>
+                </div>
+                <div id="pin-latest-rem" class="hidden pin-latest-item">
+                    <span class="pin-latest-dot bg-red-400"></span>
+                    <div class="flex-1 min-w-0">
+                        <div id="pin-latest-rem-title" class="text-[10px] font-bold text-white/80 truncate">—</div>
+                        <div id="pin-latest-rem-meta" class="text-[8px] text-white/35 font-semibold truncate">—</div>
                     </div>
                 </div>
             </div>
@@ -467,9 +509,10 @@
                     <div class="max-w-4xl mx-auto">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">✅ My Tasks</h2>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span id="task-pending-count" class="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">0 Pending</span>
                                 <span id="task-done-count" class="text-xs font-black text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full">0 Done</span>
+                                <span id="task-finished-count" class="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">0 Finished</span>
                             </div>
                         </div>
                         <div class="flex gap-2 flex-wrap">
@@ -482,6 +525,7 @@
                                 <button data-filter="Pending" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">⏳ Pending</button>
                                 <button data-filter="Done" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700">✅ Done</button>
                                 <button data-filter="Urgent" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50 hover:border-red-200 hover:text-red-700">🚨 Urgent</button>
+                                <button data-filter="Finished" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700">🏆 Finished</button>
                             </div>
                         </div>
                     </div>
@@ -500,9 +544,10 @@
                     <div class="max-w-4xl mx-auto">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">⏰ Reminders</h2>
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 flex-wrap">
                                 <span id="rem-upcoming-count" class="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">0 Upcoming</span>
                                 <span id="rem-overdue-count" class="text-xs font-black text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full">0 Overdue</span>
+                                <span id="rem-closed-count" class="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">0 Closed</span>
                             </div>
                         </div>
                         <div class="flex gap-2 flex-wrap">
@@ -515,6 +560,7 @@
                                 <button data-remfilter="today" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-blue-50">📅 Today</button>
                                 <button data-remfilter="upcoming" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50">🟢 Upcoming</button>
                                 <button data-remfilter="overdue" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50">🔴 Overdue</button>
+                                <button data-remfilter="closed" class="rem-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-emerald-50">🏁 Closed</button>
                             </div>
                         </div>
                     </div>

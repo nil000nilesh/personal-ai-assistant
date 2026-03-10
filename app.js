@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithRedirect, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, onSnapshot, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAeu14r8EACZ7U3eRszsNQmTYTFt5FndcU",
@@ -414,15 +414,86 @@ async function fetchPinWidgetCounts() {
             getDocs(query(collection(db, "tasks"),     where("userId", "==", currentUserEmail))),
             getDocs(query(collection(db, "reminders"), where("userId", "==", currentUserEmail)))
         ]);
-        const pendingTasks = tasksSnap.docs.filter(d => (d.data().status||'') !== 'Done').length;
         const now = new Date();
-        const upcomingRem = remSnap.docs.filter(d => {
-            const t = new Date(d.data().time); return !isNaN(t) && t >= now;
+
+        // Filter active (non-deleted) docs
+        const activeTasks = tasksSnap.docs.filter(d => !d.data().deleted);
+        const activeRems  = remSnap.docs.filter(d => !d.data().deleted);
+
+        // Total counts
+        const totalTasks = activeTasks.length;
+        const totalRems  = activeRems.length;
+
+        // Overdue tasks (Pending + past due/timestamp)
+        const overdueTaskCount = activeTasks.filter(d => {
+            const data = d.data();
+            if(data.status === 'Done' || data.status === 'Finished') return false;
+            const dueDate = data.dueDate ? new Date(data.dueDate) : (data.timestamp ? new Date(data.timestamp) : null);
+            return dueDate && dueDate < now;
         }).length;
-        document.getElementById('pin-task-count').textContent = pendingTasks;
-        document.getElementById('pin-rem-count').textContent = upcomingRem;
+
+        // Overdue reminders (past time, not Closed)
+        const overdueRemCount = activeRems.filter(d => {
+            const data = d.data();
+            if(data.status === 'Closed') return false;
+            if(!data.time || data.time === 'Manual' || data.time === 'जल्द') return false;
+            const t = new Date(data.time);
+            return !isNaN(t) && t < now;
+        }).length;
+
+        // Latest task (newest by timestamp, not Done/Finished)
+        const pendingTasks = activeTasks
+            .map(d => d.data())
+            .filter(t => t.status !== 'Done' && t.status !== 'Finished')
+            .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+        const latestTask = pendingTasks[0] || null;
+
+        // Latest reminder (newest by timestamp, not Closed)
+        const pendingRems = activeRems
+            .map(d => d.data())
+            .filter(r => r.status !== 'Closed')
+            .sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+        const latestRem = pendingRems[0] || null;
+
+        // Update UI — Totals
+        document.getElementById('pin-task-total').textContent = totalTasks;
+        document.getElementById('pin-rem-total').textContent = totalRems;
+
+        // Update UI — Overdue row
+        const overdueRow = document.getElementById('pin-overdue-row');
+        if(overdueTaskCount > 0 || overdueRemCount > 0) {
+            overdueRow.classList.remove('hidden');
+            overdueRow.classList.add('flex');
+            document.getElementById('pin-task-overdue').textContent = overdueTaskCount;
+            document.getElementById('pin-rem-overdue').textContent = overdueRemCount;
+        }
+
+        // Update UI — Latest items
+        const latestSection = document.getElementById('pin-latest-items');
+        if(latestTask || latestRem) {
+            latestSection.classList.remove('hidden');
+
+            if(latestTask) {
+                const ltEl = document.getElementById('pin-latest-task');
+                ltEl.classList.remove('hidden');
+                document.getElementById('pin-latest-task-title').textContent = latestTask.title || 'Untitled Task';
+                const taskDate = latestTask.dueDate ? new Date(latestTask.dueDate) : new Date(latestTask.timestamp);
+                const clientStr = latestTask.client ? '👤 ' + latestTask.client + ' · ' : '';
+                document.getElementById('pin-latest-task-meta').textContent = clientStr + '📅 ' + taskDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+            }
+
+            if(latestRem) {
+                const lrEl = document.getElementById('pin-latest-rem');
+                lrEl.classList.remove('hidden');
+                document.getElementById('pin-latest-rem-title').textContent = latestRem.title || 'Untitled Reminder';
+                const remTime = latestRem.time && latestRem.time !== 'Manual' && latestRem.time !== 'जल्द' ? new Date(latestRem.time) : null;
+                const clientStr = latestRem.client ? '👤 ' + latestRem.client + ' · ' : '';
+                document.getElementById('pin-latest-rem-meta').textContent = clientStr + (remTime ? '📅 ' + remTime.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '📌 Manual');
+            }
+        }
+
         document.getElementById('pin-notif-widget').classList.remove('hidden');
-    } catch(e) { /* silent fail */ }
+    } catch(e) { console.error('Quick Peek error:', e); }
 }
 
 const doLogout = () => {
@@ -756,34 +827,53 @@ function loadAppListeners() {
         const empty = document.getElementById('task-empty');
         const pendingCount = document.getElementById('task-pending-count');
         const doneCount = document.getElementById('task-done-count');
+        const finishedCount = document.getElementById('task-finished-count');
         list.innerHTML = '';
 
-        let filtered = allTasks.filter(t => {
-            const matchFilter = taskCurrentFilter === 'all' || t.status === taskCurrentFilter ||
-                (taskCurrentFilter === 'Urgent' && t.priority === 'Urgent');
-            const matchSearch = !taskSearchQuery || (t.title||'').toLowerCase().includes(taskSearchQuery) ||
-                (t.client||'').toLowerCase().includes(taskSearchQuery);
-            return matchFilter && matchSearch;
-        });
+        // Active tasks = not Finished
+        const activeTasks = allTasks.filter(t => t.status !== 'Finished');
+        const finishedTasks = allTasks.filter(t => t.status === 'Finished');
 
-        const pending = allTasks.filter(t => t.status !== 'Done').length;
-        const done    = allTasks.filter(t => t.status === 'Done').length;
+        let filtered;
+        if(taskCurrentFilter === 'Finished') {
+            filtered = finishedTasks.filter(t => {
+                const matchSearch = !taskSearchQuery || (t.title||'').toLowerCase().includes(taskSearchQuery) ||
+                    (t.client||'').toLowerCase().includes(taskSearchQuery);
+                return matchSearch;
+            });
+        } else {
+            filtered = activeTasks.filter(t => {
+                const matchFilter = taskCurrentFilter === 'all' || t.status === taskCurrentFilter ||
+                    (taskCurrentFilter === 'Urgent' && t.priority === 'Urgent');
+                const matchSearch = !taskSearchQuery || (t.title||'').toLowerCase().includes(taskSearchQuery) ||
+                    (t.client||'').toLowerCase().includes(taskSearchQuery);
+                return matchFilter && matchSearch;
+            });
+        }
+
+        const pending = activeTasks.filter(t => t.status !== 'Done').length;
+        const done    = activeTasks.filter(t => t.status === 'Done').length;
         if(pendingCount) pendingCount.textContent = pending + ' Pending';
         if(doneCount) doneCount.textContent = done + ' Done';
+        if(finishedCount) finishedCount.textContent = finishedTasks.length + ' Finished';
 
         if(filtered.length === 0) { empty.classList.remove('hidden'); return; }
         empty.classList.add('hidden');
 
         filtered.forEach((task, idx) => {
             const isDone = task.status === 'Done';
+            const isFinished = task.status === 'Finished';
             const isUrgent = task.priority === 'Urgent';
-            const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !isDone;
+            const now = new Date();
+            const isOverdue = task.dueDate ? new Date(task.dueDate) < now && !isDone && !isFinished
+                : task.timestamp ? new Date(task.timestamp) < now && !isDone && !isFinished
+                : false;
             const d = new Date(task.timestamp);
             const dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
             const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
             let priorityBadge = '';
-            if(isUrgent) priorityBadge = '<span class="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">🚨 URGENT</span>';
+            if(isUrgent && !isFinished) priorityBadge = '<span class="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">🚨 URGENT</span>';
 
             let dueBadge = '';
             if(task.dueDate) {
@@ -792,28 +882,40 @@ function loadAppListeners() {
             }
 
             let statusBadge = '';
-            if(isDone)
+            if(isFinished)
+                statusBadge = '<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">🏆 Finished</span>';
+            else if(isDone)
                 statusBadge = '<span class="text-[10px] font-black text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">✅ Done</span>';
             else if(isOverdue)
                 statusBadge = '<span class="text-[10px] font-black text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full animate-pulse">🔴 Overdue</span>';
             else
                 statusBadge = '<span class="text-[10px] font-black text-orange-700 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full">⏳ Pending</span>';
 
+            // Finished date
+            let finishedBadge = '';
+            if(isFinished && task.finishedAt) {
+                const fd = new Date(task.finishedAt);
+                finishedBadge = `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">🏁 ${fd.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>`;
+            }
+
             const div = document.createElement('div');
-            div.className = `bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isDone ? 'opacity-60 border-slate-100' : isOverdue ? 'border-red-200' : 'border-slate-100 hover:border-blue-200'}`;
+            div.className = `bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isFinished ? 'opacity-70 border-emerald-200 bg-emerald-50/30' : isDone ? 'opacity-60 border-slate-100' : isOverdue ? 'border-red-200' : 'border-slate-100 hover:border-blue-200'}`;
             div.innerHTML = `
                 <div class="p-4 flex items-start gap-4">
                     <!-- Checkbox -->
-                    <button class="task-check-btn mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 ${isDone ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-blue-400'} flex items-center justify-center transition-all" data-idx="${idx}">
+                    ${isFinished ? `<div class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500 border-2 border-emerald-500 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    </div>` : `<button class="task-check-btn mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 ${isDone ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-blue-400'} flex items-center justify-center transition-all" data-idx="${idx}">
                         ${isDone ? '<svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
-                    </button>
+                    </button>`}
                     <!-- Content -->
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-slate-800 text-base leading-snug devanagari ${isDone ? 'line-through text-slate-400' : ''}">${task.title}</p>
+                        <p class="font-semibold text-slate-800 text-base leading-snug devanagari ${isFinished ? 'line-through text-slate-400' : isDone ? 'line-through text-slate-400' : ''}">${task.title}</p>
                         <div class="flex flex-wrap gap-2 mt-2 items-center">
                             ${task.client ? `<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">👤 ${task.client}</span>` : ''}
                             ${dueBadge}
                             ${priorityBadge}
+                            ${finishedBadge}
                             <span class="text-[10px] text-slate-400 font-semibold ml-auto">🕐 ${dateStr} ${timeStr}</span>
                         </div>
                     </div>
@@ -823,13 +925,24 @@ function loadAppListeners() {
             list.appendChild(div);
         });
 
-        // Checkbox toggle
+        // Checkbox toggle — persist to Firestore
         list.querySelectorAll('.task-check-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.dataset.idx);
                 const task = filtered[idx];
-                task.status = task.status === 'Done' ? 'Pending' : 'Done';
+                if(!task || !task._docId) return;
+                const newStatus = task.status === 'Done' ? 'Pending' : 'Done';
+                // Optimistic UI update
+                task.status = newStatus;
                 renderTasks();
+                // Persist to Firestore
+                try {
+                    await updateDoc(doc(db, 'tasks', task._docId), { status: newStatus });
+                } catch(err) {
+                    console.error('Task status update error:', err);
+                    task.status = newStatus === 'Done' ? 'Pending' : 'Done'; // revert
+                    renderTasks();
+                }
             });
         });
     }
@@ -851,8 +964,9 @@ function loadAppListeners() {
         allTasks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderTasks();
         // Update notif panel task counter
+        const pendingForNotif = allTasks.filter(t => t.status !== 'Done' && t.status !== 'Finished').length;
         const tn = document.getElementById('np-task-num');
-        if(tn) tn.textContent = pending;
+        if(tn) tn.textContent = pendingForNotif;
         // Notify overdue popup system that tasks are ready
         if(window._onTasksLoaded) window._onTasksLoaded();
     });
@@ -891,38 +1005,55 @@ function loadAppListeners() {
         const empty = document.getElementById('rem-empty');
         const upcomingEl = document.getElementById('rem-upcoming-count');
         const overdueEl = document.getElementById('rem-overdue-count');
+        const closedEl = document.getElementById('rem-closed-count');
         list.innerHTML = '';
         const now = new Date();
 
-        let filtered = allReminders.filter(r => {
-            const d = parseRemDate(r.time);
-            const isOverdue = d && d < now;
-            const isToday = d && d.toDateString() === now.toDateString();
-            const matchFilter = remCurrentFilter === 'all' ||
-                (remCurrentFilter === 'today' && isToday) ||
-                (remCurrentFilter === 'overdue' && isOverdue) ||
-                (remCurrentFilter === 'upcoming' && d && d >= now);
-            const matchSearch = !remSearchQuery || (r.title||'').toLowerCase().includes(remSearchQuery) ||
-                (r.client||'').toLowerCase().includes(remSearchQuery);
-            return matchFilter && matchSearch;
-        });
+        // Separate active and closed reminders
+        const activeReminders = allReminders.filter(r => r.status !== 'Closed');
+        const closedReminders = allReminders.filter(r => r.status === 'Closed');
 
-        const upcoming = allReminders.filter(r => { const d=parseRemDate(r.time); return d && d >= now; }).length;
-        const overdue  = allReminders.filter(r => { const d=parseRemDate(r.time); return d && d < now; }).length;
+        let filtered;
+        if(remCurrentFilter === 'closed') {
+            filtered = closedReminders.filter(r => {
+                const matchSearch = !remSearchQuery || (r.title||'').toLowerCase().includes(remSearchQuery) ||
+                    (r.client||'').toLowerCase().includes(remSearchQuery);
+                return matchSearch;
+            });
+        } else {
+            filtered = activeReminders.filter(r => {
+                const d = parseRemDate(r.time);
+                const isOverdue = d && d < now;
+                const isToday = d && d.toDateString() === now.toDateString();
+                const matchFilter = remCurrentFilter === 'all' ||
+                    (remCurrentFilter === 'today' && isToday) ||
+                    (remCurrentFilter === 'overdue' && isOverdue) ||
+                    (remCurrentFilter === 'upcoming' && d && d >= now);
+                const matchSearch = !remSearchQuery || (r.title||'').toLowerCase().includes(remSearchQuery) ||
+                    (r.client||'').toLowerCase().includes(remSearchQuery);
+                return matchFilter && matchSearch;
+            });
+        }
+
+        const upcoming = activeReminders.filter(r => { const d=parseRemDate(r.time); return d && d >= now; }).length;
+        const overdue  = activeReminders.filter(r => { const d=parseRemDate(r.time); return d && d < now; }).length;
         if(upcomingEl) upcomingEl.textContent = upcoming + ' Upcoming';
         if(overdueEl)  overdueEl.textContent  = overdue  + ' Overdue';
+        if(closedEl)   closedEl.textContent   = closedReminders.length + ' Closed';
 
         if(filtered.length === 0) { empty.classList.remove('hidden'); return; }
         empty.classList.add('hidden');
 
         filtered.forEach(rem => {
             const remDate = parseRemDate(rem.time);
-            const isOverdue = remDate && remDate < now;
-            const isToday   = remDate && remDate.toDateString() === now.toDateString();
+            const isClosed = rem.status === 'Closed';
+            const isOverdue = !isClosed && remDate && remDate < now;
+            const isToday   = !isClosed && remDate && remDate.toDateString() === now.toDateString();
             const isManual  = !remDate;
 
             let cardColor, dotColor, timeLabel;
-            if(isOverdue)       { cardColor = 'from-red-50 to-red-100 border-red-200'; dotColor = 'bg-red-500'; timeLabel = '🔴 Overdue'; }
+            if(isClosed)        { cardColor = 'from-emerald-50 to-green-50 border-emerald-200'; dotColor = 'bg-emerald-500'; timeLabel = '🏁 Closed'; }
+            else if(isOverdue)  { cardColor = 'from-red-50 to-red-100 border-red-200'; dotColor = 'bg-red-500'; timeLabel = '🔴 Overdue'; }
             else if(isToday)    { cardColor = 'from-orange-50 to-amber-50 border-amber-200'; dotColor = 'bg-amber-500'; timeLabel = '🟠 Today'; }
             else if(isManual)   { cardColor = 'from-slate-50 to-slate-100 border-slate-200'; dotColor = 'bg-slate-400'; timeLabel = '📌 Manual'; }
             else                { cardColor = 'from-blue-50 to-indigo-50 border-blue-200'; dotColor = 'bg-blue-500'; timeLabel = '🟢 Upcoming'; }
@@ -936,7 +1067,10 @@ function loadAppListeners() {
 
             // Days countdown
             let countdownBadge = '';
-            if(remDate && !isOverdue) {
+            if(isClosed && rem.finishedAt) {
+                const fd = new Date(rem.finishedAt);
+                countdownBadge = `<span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">🏁 ${fd.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
+            } else if(remDate && !isOverdue) {
                 const diff = Math.ceil((remDate - now) / (1000*60*60*24));
                 countdownBadge = diff === 0
                     ? '<span class="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full animate-pulse">Today!</span>'
@@ -947,9 +1081,9 @@ function loadAppListeners() {
             }
 
             const div = document.createElement('div');
-            div.className = `bg-gradient-to-br ${cardColor} border p-5 rounded-2xl shadow-sm flex flex-col gap-3 relative overflow-hidden hover:shadow-md transition-all`;
+            div.className = `bg-gradient-to-br ${cardColor} border p-5 rounded-2xl shadow-sm flex flex-col gap-3 relative overflow-hidden hover:shadow-md transition-all ${isClosed ? 'opacity-70' : ''}`;
             div.innerHTML = `
-                <div class="absolute -right-3 -top-3 text-5xl opacity-[0.07] select-none">⏰</div>
+                <div class="absolute -right-3 -top-3 text-5xl opacity-[0.07] select-none">${isClosed ? '🏁' : '⏰'}</div>
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full ${dotColor} ${isOverdue||isToday ? 'animate-pulse' : ''}"></span>
@@ -957,7 +1091,7 @@ function loadAppListeners() {
                     </div>
                     ${countdownBadge}
                 </div>
-                <p class="font-bold text-slate-800 text-base leading-snug devanagari">${rem.title}</p>
+                <p class="font-bold ${isClosed ? 'text-slate-400 line-through' : 'text-slate-800'} text-base leading-snug devanagari">${rem.title}</p>
                 <div class="flex flex-wrap gap-2 items-center mt-1">
                     <span class="text-[11px] font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-lg">📅 ${formattedTime}</span>
                     ${rem.client ? `<span class="text-[10px] font-bold text-blue-600 bg-white/60 px-2 py-0.5 rounded-lg">👤 ${rem.client}</span>` : ''}
@@ -1289,55 +1423,110 @@ ${summarize(remindersData, ['title','time','client','timestamp'])}
             return `CLIENT: ${c.name}\nLATEST UPDATE: ${sorted[0]?.content?.substring(0,200)||''}\nTOTAL UPDATES: ${sorted.length}`;
         }).join('\n---\n');
 
-        const systemPrompt = `You are CaseDesk AI — a friendly, intelligent personal banking assistant and case manager. Today: ${today}
+        const systemPrompt = `You are CaseDesk AI — a smart, conversational personal banking assistant and case manager. Think and talk like a real helpful coworker, NOT like a bot. Today: ${today}
 User: ${currentUserEmail}
 
 YOUR PERSONALITY:
-- Talk like a warm helpful friend — use natural Hinglish (Hindi + English mix)
+- Talk like a warm, smart coworker — natural Hinglish (Hindi + English mix)
+- Be conversational — ask follow-up questions, suggest things, give opinions
+- Be proactive — if you see something useful in data, mention it
+- Use emojis naturally but don't overdo it
+- NEVER write code, JSON, or technical content in reply field
 - Give proper greetings for hi/hello/namaste/good morning/kya haal etc
-- When user asks about their data, search carefully below and give complete helpful answer
-- Be expressive, use emojis naturally 😊
-- NEVER write code, JSON examples, or technical content in reply field
 
-USER'S SAVED DATA — Search this carefully to answer questions:
+USER'S SAVED DATA — Search this carefully for every query:
 === CLIENT CASES ===
 ${clientSummary || 'Koi case data nahi abhi tak'}
 
 === TASKS ===
-${tasksData.map(t=>`[${t.status}] ${t.title} | Client: ${t.client||'-'}`).join('\n') || 'Koi task nahi'}
+${tasksData.filter(t=>!t.deleted).map(t=>`[${t.status||'Pending'}] ${t.title} | Client: ${t.client||'-'} | Due: ${t.dueDate||t.timestamp||'-'}`).join('\n') || 'Koi task nahi'}
 
 === REMINDERS ===
-${remindersData.map(r=>`${r.title} | Samay: ${r.time} | Client: ${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
+${remindersData.filter(r=>!r.deleted).map(r=>`[${r.status||'Active'}] ${r.title} | Time: ${r.time} | Client: ${r.client||'-'}`).join('\n') || 'Koi reminder nahi'}
 
 === NOTEBOOKS ===
-${notebookData.slice(-20).map(n=>`Client: ${n.client||'-'} | ${(n.content||'').substring(0,200)}`).join('\n') || 'Koi notebook entry nahi'}
+${notebookData.filter(n=>!n.deleted).slice(-20).map(n=>`Client: ${n.client||'-'} | ${(n.content||'').substring(0,200)}`).join('\n') || 'Koi notebook entry nahi'}
 
-RESPONSE RULES:
-1. GREETING (hi/hello/namaste/good morning/kya haal): Warmly reply like a friend — "Namaste! Bahut accha laga aapko dekhke 😊 Aaj main aapki kya madad kar sakta hoon?"
-2. QUESTION about saved data (client kahan hai / kya pending hai / remind karo): Search above data CAREFULLY and give complete, detailed answer
-3. NEW INFO (client details, task, reminder): Save it AND confirm in friendly way — "Bilkul! Save kar liya 📂 Koi aur update?"
-4. DELETE REQUEST (hatao / delete karo / remove karo / band karo / mita do): Set softDelete.action=true, fill collection and clientName/title. Reply: "Done! Screen se hata diya gaya 🗑️ Agar kabhi wapas chahiye to sirf bol dena, main restore kar dunga 😊"
-5. OUT OF SCOPE (coding likhne ko bolo / poem / math / translate / kuch bhi jo banking case management se bilkul related nahi): Reply ONLY: "Maafi chahta hoon 🙏 Yeh kaam meri expertise se bahar hai. Main aapka banking case manager hoon — client cases, tasks, reminders aur notes mein madad kar sakta hoon. Kya main aapke kisi case ya task mein help kar sakta hoon? 😊" — Koi bhi save field true mat karna.
-6. NO REPETITION: Sirf naya content save karo, purani details repeat mat karo
+CONVERSATION RULES — Follow these STRICTLY:
 
-RESPONSE FORMAT — Always valid JSON only, no backticks, no extra text outside JSON:
+1. NOTES & CLIENT CASES → AUTO-SAVE (bina puche):
+   - Jab user koi client info, case detail, update ya notebook content bataye → SEEDHA save karo
+   - Reply mein confirm karo: "Save ho gaya! ✅"
+   - Agar same client ki pehle se entry hai, naya update add karo (purana mat hatao)
+
+2. TASKS → PEHLE PUCHO, PHIR SAVE KARO:
+   - Jab user koi kaam bataye ya information se task ban sakta ho → PEHLE pucho:
+     "Yeh task bana doon? 📋 [task title] — Client: [name] — Deadline: [suggested date]. Haan ya nahi?"
+   - task.save = false rakhna jab tak user confirm na kare
+   - Jab user "haan/yes/bana do/kar do/ok/theek hai" bole → TAB task.save = true karo
+   - Suggest a realistic dueDate based on context (agar user ne date nahi batai)
+   - Agar user explicitly bole "task bana do" ya "task save karo" → directly save (no need to ask)
+
+3. REMINDERS → PEHLE PUCHO, PHIR SAVE KARO:
+   - Jab information se reminder ban sakta ho → PEHLE pucho:
+     "Iska reminder set karun? ⏰ [title] — Time: [suggested time]. Haan ya nahi?"
+   - reminder.save = false rakhna jab tak user confirm na kare
+   - Jab user confirm kare → TAB reminder.save = true karo
+   - Suggest a realistic time/date for the reminder
+   - Agar user explicitly bole "reminder set karo" ya "yaad dila dena" → directly save
+
+4. UPDATE EXISTING DATA:
+   - Jab user bole "task update karo / status change karo / timeline badh do / reminder ka time badal do":
+     → update.action = true set karo
+     → update.collection = "tasks" / "reminders" / "notes" / "notebooks"
+     → update.matchTitle = exact title or closest match from saved data
+     → update.matchClient = client name to find the right document
+     → update.fields = { only fields that need to change }
+       For tasks: { status, title, dueDate, priority, client }
+       For reminders: { title, time, client, status }
+       For notes/notebooks: { content, client, mobile, account, address }
+   - After update, confirm: "Update ho gaya! ✅"
+
+5. DELETE REQUEST:
+   - Jab user bole "hatao / delete karo / remove karo / band karo":
+     → softDelete.action = true
+   - Confirm: "Hata diya! 🗑️"
+
+6. FINISH TASK / CLOSE REMINDER:
+   - "Task finish karo / complete karo" → update task status to "Finished"
+   - "Reminder band karo / close karo" → update reminder status to "Closed"
+   - Use update.action for these (NOT softDelete)
+
+7. SEARCH & ANSWER:
+   - Jab user puche "kya pending hai / client kahan hai / kya status hai / kitne task hain":
+     → Search saved data carefully, give COMPLETE detailed answer
+     → Mention overdue items proactively
+     → If asked about timelines, calculate from dates in data
+
+8. OUT OF SCOPE:
+   - Coding/poem/math/translate/non-banking topics:
+     → Reply: "Maafi chahta hoon 🙏 Yeh meri expertise se bahar hai. Main aapka case manager hoon — client cases, tasks, reminders mein madad kar sakta hoon. Kaise help karun? 😊"
+     → All save flags = false
+
+9. NO REPETITION: Sirf naya content save karo. Same data dubara save mat karo.
+
+RESPONSE FORMAT — ALWAYS valid JSON only, NO backticks, NO extra text outside JSON:
 {
-  "reply": "Warm Hinglish response — helpful, complete, friendly. Min 2 sentences. NEVER write code or JSON here.",
+  "reply": "Warm conversational Hinglish response. Min 2 sentences. NEVER write code/JSON here.",
   "softDelete": { "action": false, "collection": "", "clientName": "", "title": "" },
+  "update": { "action": false, "collection": "", "matchTitle": "", "matchClient": "", "fields": {} },
   "notebook": { "save": false, "client": "", "content": "" },
   "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "content": "" },
-  "task": { "save": false, "client": "", "title": "" },
+  "task": { "save": false, "client": "", "title": "", "dueDate": "", "priority": "" },
   "reminder": { "save": false, "client": "", "title": "", "time": "" }
 }
 
 softDelete.collection = "notes" / "tasks" / "reminders" / "notebooks"
-softDelete.clientName = client name to match (for notes/notebooks)
-softDelete.title = task or reminder title to match (for tasks/reminders)`.trim();
+update.collection = "tasks" / "reminders" / "notes" / "notebooks"
+update.fields = only include fields that changed
+task.dueDate = ISO 8601 format (e.g. "2026-03-15T00:00:00")
+task.priority = "Urgent" or "" (empty for normal)
+reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
 
         // ── 3. CALL OPENAI GPT-4o ───────────────────────────────────
         const messages = [
             { role: "system", content: systemPrompt },
-            ...chatHistory.slice(-10) // last 10 messages for context
+            ...chatHistory.slice(-16) // last 16 messages for better conversation context
         ];
 
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -1349,8 +1538,8 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
             body: JSON.stringify({
                 model: OPENAI_MODEL,
                 messages: messages,
-                temperature: 0.3,
-                max_tokens: 1200
+                temperature: 0.4,
+                max_tokens: 1500
             })
         });
 
@@ -1370,7 +1559,7 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
             aiResponse = JSON.parse(clean);
         } catch(e) {
             // If AI returned plain text (not JSON), show it directly
-            aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false } };
+            aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false }, update: { action: false }, softDelete: { action: false } };
         }
 
         const replyText = aiResponse.reply || "कार्य सम्पन्न हुआ।";
@@ -1410,13 +1599,16 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
         }
 
         if (aiResponse.task?.save && aiResponse.task?.title) {
-            savePromises.push(addDoc(collection(db, "tasks"), {
+            const taskObj = {
                 title: aiResponse.task.title,
                 status: "Pending",
                 client: aiResponse.task.client || "सामान्य",
                 timestamp: now,
-                userId: currentUserEmail          // ← User isolation
-            }));
+                userId: currentUserEmail
+            };
+            if(aiResponse.task.dueDate) taskObj.dueDate = aiResponse.task.dueDate;
+            if(aiResponse.task.priority) taskObj.priority = aiResponse.task.priority;
+            savePromises.push(addDoc(collection(db, "tasks"), taskObj));
             if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
             addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
             if(window.registerUpdate) registerUpdate('task', aiResponse.task.client || '');
@@ -1428,13 +1620,48 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
                 time: aiResponse.reminder.time || "जल्द",
                 client: aiResponse.reminder.client || "सामान्य",
                 timestamp: now,
-                userId: currentUserEmail          // ← User isolation
+                userId: currentUserEmail
             };
             savePromises.push(addDoc(collection(db, "reminders"), remObj));
             if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
             scheduleReminder(remObj);
             if(window.registerUpdate) registerUpdate('reminder', aiResponse.reminder.client || '');
+        }
+
+        // ── UPDATE HANDLER — Update existing tasks/reminders/notes/notebooks ─
+        if (aiResponse.update?.action) {
+            const upd = aiResponse.update;
+            const colName = upd.collection || '';
+            const matchTitle = (upd.matchTitle || '').toLowerCase().trim();
+            const matchClient = (upd.matchClient || '').toLowerCase().trim();
+            if (colName && (matchTitle || matchClient)) {
+                try {
+                    const qSnap = await getDocs(query(
+                        collection(db, colName),
+                        where("userId", "==", currentUserEmail)
+                    ));
+                    let bestMatch = null;
+                    let bestScore = 0;
+                    qSnap.forEach(d => {
+                        const data = d.data();
+                        if(data.deleted) return;
+                        const docTitle = (data.title || '').toLowerCase().trim();
+                        const docClient = (data.client || '').toLowerCase().trim();
+                        let score = 0;
+                        if(matchTitle && (docTitle.includes(matchTitle) || matchTitle.includes(docTitle))) score += 2;
+                        if(matchClient && (docClient.includes(matchClient) || matchClient.includes(docClient))) score += 1;
+                        if(score > bestScore) { bestScore = score; bestMatch = d; }
+                    });
+                    if(bestMatch && upd.fields && Object.keys(upd.fields).length > 0) {
+                        await updateDoc(doc(db, colName, bestMatch.id), upd.fields);
+                        if(window.addActivity) addActivity('📝', 'Updated: ' + (matchTitle || matchClient), '#2563eb');
+                        addNotif('task', '📝 Updated — ' + (matchTitle || matchClient), 'AI ne update kiya');
+                    }
+                } catch(err) {
+                    console.error('Update error:', err);
+                }
+            }
         }
 
         // ── SOFT DELETE HANDLER ──────────────────────────────────────────
@@ -1451,13 +1678,11 @@ softDelete.title = task or reminder title to match (for tasks/reminders)`.trim()
                     const updateJobs = [];
                     qSnap.forEach(d => {
                         const data = d.data();
+                        if(data.deleted) return;
                         const nameField = (data.client || data.title || '').toLowerCase().trim();
                         if (nameField.includes(matchName) || matchName.includes(nameField)) {
                             updateJobs.push(
-                                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
-                                .then(({updateDoc, doc: docRef}) =>
-                                    updateDoc(docRef(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
-                                )
+                                updateDoc(doc(db, colName, d.id), { deleted: true, deletedAt: new Date().toISOString() })
                             );
                         }
                     });
@@ -1821,29 +2046,30 @@ window.scheduleReminder = function(rem) {
 // ═══════════════════════════════════════════════════════
 //  OVERDUE POPUP — Show overdue tasks/reminders on login
 // ═══════════════════════════════════════════════════════
-window.overduePopupShown = false; // Flag to prevent re-show until re-login
+window.overduePopupShown = false;
 
 function showOverduePopup() {
     if(window.overduePopupShown) return;
     const now = new Date();
 
-    // Collect overdue tasks (Pending + past due date)
+    // Collect overdue tasks: Pending status + (dueDate OR timestamp) is in the past
     const overdueTasks = allTasks.filter(t => {
-        if(t.status === 'Done') return false;
-        if(!t.dueDate) return false;
-        return new Date(t.dueDate) < now;
+        if(t.status === 'Done' || t.status === 'Finished') return false;
+        const dateToCheck = t.dueDate ? new Date(t.dueDate) : (t.timestamp ? new Date(t.timestamp) : null);
+        return dateToCheck && dateToCheck < now;
     }).map(t => ({
         type: 'task',
         title: t.title,
         client: t.client || '',
-        dueDate: t.dueDate,
+        dueDate: t.dueDate || t.timestamp,
         priority: t.priority,
         _docId: t._docId,
         collection: 'tasks'
     }));
 
-    // Collect overdue reminders (past time, valid date only)
+    // Collect overdue reminders (past time, valid date only, not already Closed)
     const overdueReminders = allReminders.filter(r => {
+        if(r.status === 'Closed') return false;
         if(!r.time || r.time === 'Manual' || r.time === 'जल्द') return false;
         const d = new Date(r.time);
         return !isNaN(d) && d < now;
@@ -1856,7 +2082,7 @@ function showOverduePopup() {
         collection: 'reminders'
     }));
 
-    // Merge and sort by due date (oldest overdue first)
+    // Merge and sort (oldest overdue first)
     const overdueItems = [...overdueTasks, ...overdueReminders].sort((a,b) =>
         new Date(a.dueDate) - new Date(b.dueDate)
     );
@@ -1872,16 +2098,15 @@ function showOverduePopup() {
     const counter = document.getElementById('overdue-counter');
     const skipBtn = document.getElementById('overdue-skip-btn');
     const finishBtn = document.getElementById('overdue-finish-btn');
-    const allDone = document.getElementById('overdue-alldone');
+    const allDoneEl = document.getElementById('overdue-alldone');
     const closeBtn = document.getElementById('overdue-close-btn');
     const actionBtns = skipBtn.parentElement;
 
     function renderCurrentItem() {
         if(currentIndex >= overdueItems.length) {
-            // All items handled
             itemArea.classList.add('hidden');
             actionBtns.classList.add('hidden');
-            allDone.classList.remove('hidden');
+            allDoneEl.classList.remove('hidden');
             progressBar.style.width = '100%';
             counter.textContent = overdueItems.length + '/' + overdueItems.length;
             return;
@@ -1889,11 +2114,11 @@ function showOverduePopup() {
 
         itemArea.classList.remove('hidden');
         actionBtns.classList.remove('hidden');
-        allDone.classList.add('hidden');
+        allDoneEl.classList.add('hidden');
 
         const item = overdueItems[currentIndex];
         const dueDate = new Date(item.dueDate);
-        const daysAgo = Math.ceil((now - dueDate) / (1000*60*60*24));
+        const daysAgo = Math.max(1, Math.ceil((now - dueDate) / (1000*60*60*24)));
         const dateStr = dueDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
         const timeStr = dueDate.getHours() || dueDate.getMinutes()
             ? ' — ' + dueDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})
@@ -1924,14 +2149,12 @@ function showOverduePopup() {
                 </div>
             </div>`;
 
-        // Update progress
         const progress = Math.round((currentIndex / overdueItems.length) * 100);
         progressBar.style.width = progress + '%';
         counter.textContent = (currentIndex + 1) + '/' + overdueItems.length;
     }
 
-    // Skip — move to next item (don't delete)
-    const skipHandler = () => {
+    function animateNext() {
         const card = itemArea.querySelector('.overdue-item-card');
         if(card) {
             card.style.animation = 'overdueFadeOut .25s ease forwards';
@@ -1940,43 +2163,38 @@ function showOverduePopup() {
             currentIndex++;
             renderCurrentItem();
         }
-    };
+    }
 
-    // Finish — soft delete from Firestore permanently
+    // Skip — move to next item
+    const skipHandler = () => animateNext();
+
+    // Finish — mark as Finished/Closed in Firestore (NOT delete)
     const finishHandler = async () => {
         const item = overdueItems[currentIndex];
         if(item && item._docId) {
             finishBtn.disabled = true;
             finishBtn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Finishing...';
             try {
-                const { updateDoc, doc: docRef } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-                await updateDoc(docRef(db, item.collection, item._docId), {
-                    deleted: true,
-                    deletedAt: new Date().toISOString(),
+                const newStatus = item.type === 'task' ? 'Finished' : 'Closed';
+                await updateDoc(doc(db, item.collection, item._docId), {
+                    status: newStatus,
+                    finishedAt: new Date().toISOString(),
                     completedViaOverduePopup: true
                 });
-                if(window.showToast) showToast(item.type, '✅ Finished', item.title);
+                if(window.showToast) showToast(item.type, '✅ ' + newStatus, item.title);
             } catch(err) {
                 console.error('Overdue finish error:', err);
             }
             finishBtn.disabled = false;
             finishBtn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Finish';
         }
-        const card = itemArea.querySelector('.overdue-item-card');
-        if(card) {
-            card.style.animation = 'overdueFadeOut .25s ease forwards';
-            setTimeout(() => { currentIndex++; renderCurrentItem(); }, 250);
-        } else {
-            currentIndex++;
-            renderCurrentItem();
-        }
+        animateNext();
     };
 
     // Close popup
     const closeHandler = () => {
         popup.classList.add('hidden');
         popup.classList.remove('show');
-        // Clean up listeners
         skipBtn.removeEventListener('click', skipHandler);
         finishBtn.removeEventListener('click', finishHandler);
         closeBtn.removeEventListener('click', closeHandler);
@@ -1992,18 +2210,16 @@ function showOverduePopup() {
     renderCurrentItem();
 }
 
-// Trigger overdue popup after data loads — wait for first snapshots
+// Trigger overdue popup after data loads
 window._overdueTasksReady = false;
 window._overdueRemReady = false;
 
 function _checkOverdueReady() {
     if(window._overdueTasksReady && window._overdueRemReady && !window.overduePopupShown) {
-        // Small delay to let UI settle after login
-        setTimeout(() => showOverduePopup(), 600);
+        setTimeout(() => showOverduePopup(), 800);
     }
 }
 
-// Hook into snapshot listeners — called from within loadAppListeners
 window._onTasksLoaded = function() { window._overdueTasksReady = true; _checkOverdueReady(); };
 window._onRemindersLoaded = function() { window._overdueRemReady = true; _checkOverdueReady(); };
 
