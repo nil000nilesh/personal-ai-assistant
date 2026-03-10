@@ -342,6 +342,44 @@ body { font-family: 'Inter', sans-serif; }
     flex: 1;
 }
 
+/* ═══ OVERDUE POPUP ═══ */
+#overdue-popup.show { display:flex; }
+#overdue-popup .overdue-item-card {
+    background: #fff; border: 1.5px solid #fecaca; border-radius: 20px;
+    padding: 18px 20px; position: relative; overflow: hidden;
+    animation: overdueSlideIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+#overdue-popup .overdue-item-card.type-reminder { border-color: #fed7aa; }
+@keyframes overdueSlideIn {
+    from { opacity:0; transform:translateX(40px) scale(.95); }
+    to   { opacity:1; transform:translateX(0) scale(1); }
+}
+@keyframes overdueFadeOut {
+    to { opacity:0; transform:translateX(-40px) scale(.95); }
+}
+.overdue-item-card .overdue-type-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.5px;
+    padding:3px 10px; border-radius:8px;
+}
+.overdue-item-card .overdue-type-badge.task { background:#fef2f2; color:#dc2626; }
+.overdue-item-card .overdue-type-badge.reminder { background:#fff7ed; color:#ea580c; }
+.overdue-item-card .overdue-days-badge {
+    font-size:10px; font-weight:900; color:#ef4444; background:#fef2f2;
+    padding:3px 8px; border-radius:8px; white-space:nowrap;
+}
+.overdue-item-card .overdue-title {
+    font-size:15px; font-weight:800; color:#1e293b; line-height:1.4;
+    margin-top:10px; font-family:'Noto Sans Devanagari','Inter',sans-serif;
+}
+.overdue-item-card .overdue-meta {
+    display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;
+}
+.overdue-item-card .overdue-meta span {
+    font-size:10px; font-weight:700; padding:3px 8px;
+    border-radius:8px; background:#f8fafc; color:#64748b;
+}
+
 /* Admin responsive grid */
 @media (max-width: 500px) {
     .admin-form-grid { grid-template-columns: 1fr !important; }

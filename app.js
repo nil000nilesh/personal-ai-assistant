@@ -425,12 +425,16 @@ async function fetchPinWidgetCounts() {
     } catch(e) { /* silent fail */ }
 }
 
-const doLogout = () => { 
-    isPinVerified = false; 
-    DYNAMIC_OPENAI_KEY = ""; 
+const doLogout = () => {
+    isPinVerified = false;
+    DYNAMIC_OPENAI_KEY = "";
     currentUserPin = "";
     currentUserRole = "user";
     currentUserEmail = "";
+    // Reset overdue popup so it shows again on next login
+    window.overduePopupShown = false;
+    window._overdueTasksReady = false;
+    window._overdueRemReady = false;
     // Clear PIN boxes
     document.querySelectorAll('.pin-box').forEach(b => { b.value = ''; b.classList.remove('filled','error'); });
     document.getElementById('pin-input').value = '';
@@ -841,7 +845,7 @@ function loadAppListeners() {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
             if(data.deleted) return;
-            allTasks.push(data);
+            allTasks.push({ ...data, _docId: d.id });
         });
         // Client-side sort: timestamp desc (newest first)
         allTasks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
@@ -849,6 +853,8 @@ function loadAppListeners() {
         // Update notif panel task counter
         const tn = document.getElementById('np-task-num');
         if(tn) tn.textContent = pending;
+        // Notify overdue popup system that tasks are ready
+        if(window._onTasksLoaded) window._onTasksLoaded();
     });
 
     // Task search
@@ -971,7 +977,7 @@ function loadAppListeners() {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
             if(data.deleted) return;
-            allReminders.push(data);
+            allReminders.push({ ...data, _docId: d.id });
         });
         // Client-side sort: timestamp desc
         allReminders.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
@@ -984,6 +990,8 @@ function loadAppListeners() {
         }).length;
         const rn = document.getElementById('np-rem-num');
         if(rn) rn.textContent = upcomingCount;
+        // Notify overdue popup system that reminders are ready
+        if(window._onRemindersLoaded) window._onRemindersLoaded();
     });
 
     // Reminders search
@@ -1809,6 +1817,195 @@ window.scheduleReminder = function(rem) {
 };
 
 
+
+// ═══════════════════════════════════════════════════════
+//  OVERDUE POPUP — Show overdue tasks/reminders on login
+// ═══════════════════════════════════════════════════════
+window.overduePopupShown = false; // Flag to prevent re-show until re-login
+
+function showOverduePopup() {
+    if(window.overduePopupShown) return;
+    const now = new Date();
+
+    // Collect overdue tasks (Pending + past due date)
+    const overdueTasks = allTasks.filter(t => {
+        if(t.status === 'Done') return false;
+        if(!t.dueDate) return false;
+        return new Date(t.dueDate) < now;
+    }).map(t => ({
+        type: 'task',
+        title: t.title,
+        client: t.client || '',
+        dueDate: t.dueDate,
+        priority: t.priority,
+        _docId: t._docId,
+        collection: 'tasks'
+    }));
+
+    // Collect overdue reminders (past time, valid date only)
+    const overdueReminders = allReminders.filter(r => {
+        if(!r.time || r.time === 'Manual' || r.time === 'जल्द') return false;
+        const d = new Date(r.time);
+        return !isNaN(d) && d < now;
+    }).map(r => ({
+        type: 'reminder',
+        title: r.title,
+        client: r.client || '',
+        dueDate: r.time,
+        _docId: r._docId,
+        collection: 'reminders'
+    }));
+
+    // Merge and sort by due date (oldest overdue first)
+    const overdueItems = [...overdueTasks, ...overdueReminders].sort((a,b) =>
+        new Date(a.dueDate) - new Date(b.dueDate)
+    );
+
+    if(overdueItems.length === 0) return;
+
+    window.overduePopupShown = true;
+    let currentIndex = 0;
+
+    const popup = document.getElementById('overdue-popup');
+    const itemArea = document.getElementById('overdue-item-area');
+    const progressBar = document.getElementById('overdue-progress-bar');
+    const counter = document.getElementById('overdue-counter');
+    const skipBtn = document.getElementById('overdue-skip-btn');
+    const finishBtn = document.getElementById('overdue-finish-btn');
+    const allDone = document.getElementById('overdue-alldone');
+    const closeBtn = document.getElementById('overdue-close-btn');
+    const actionBtns = skipBtn.parentElement;
+
+    function renderCurrentItem() {
+        if(currentIndex >= overdueItems.length) {
+            // All items handled
+            itemArea.classList.add('hidden');
+            actionBtns.classList.add('hidden');
+            allDone.classList.remove('hidden');
+            progressBar.style.width = '100%';
+            counter.textContent = overdueItems.length + '/' + overdueItems.length;
+            return;
+        }
+
+        itemArea.classList.remove('hidden');
+        actionBtns.classList.remove('hidden');
+        allDone.classList.add('hidden');
+
+        const item = overdueItems[currentIndex];
+        const dueDate = new Date(item.dueDate);
+        const daysAgo = Math.ceil((now - dueDate) / (1000*60*60*24));
+        const dateStr = dueDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        const timeStr = dueDate.getHours() || dueDate.getMinutes()
+            ? ' — ' + dueDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})
+            : '';
+
+        const isTask = item.type === 'task';
+        const typeBadgeClass = isTask ? 'task' : 'reminder';
+        const typeIcon = isTask ? '📋' : '⏰';
+        const typeLabel = isTask ? 'Task' : 'Reminder';
+        const borderClass = isTask ? '' : 'type-reminder';
+
+        const priorityHtml = item.priority === 'Urgent'
+            ? '<span style="background:#fef2f2;color:#dc2626;">🚨 Urgent</span>'
+            : '';
+
+        itemArea.innerHTML = `
+            <div class="overdue-item-card ${borderClass}">
+                <div class="absolute -right-3 -top-3 text-5xl opacity-[0.05] select-none">${typeIcon}</div>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="overdue-type-badge ${typeBadgeClass}">${typeIcon} ${typeLabel}</span>
+                    <span class="overdue-days-badge">🔴 ${daysAgo}d overdue</span>
+                </div>
+                <div class="overdue-title">${item.title}</div>
+                <div class="overdue-meta">
+                    <span>📅 ${dateStr}${timeStr}</span>
+                    ${item.client ? `<span>👤 ${item.client}</span>` : ''}
+                    ${priorityHtml}
+                </div>
+            </div>`;
+
+        // Update progress
+        const progress = Math.round((currentIndex / overdueItems.length) * 100);
+        progressBar.style.width = progress + '%';
+        counter.textContent = (currentIndex + 1) + '/' + overdueItems.length;
+    }
+
+    // Skip — move to next item (don't delete)
+    const skipHandler = () => {
+        const card = itemArea.querySelector('.overdue-item-card');
+        if(card) {
+            card.style.animation = 'overdueFadeOut .25s ease forwards';
+            setTimeout(() => { currentIndex++; renderCurrentItem(); }, 250);
+        } else {
+            currentIndex++;
+            renderCurrentItem();
+        }
+    };
+
+    // Finish — soft delete from Firestore permanently
+    const finishHandler = async () => {
+        const item = overdueItems[currentIndex];
+        if(item && item._docId) {
+            finishBtn.disabled = true;
+            finishBtn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Finishing...';
+            try {
+                const { updateDoc, doc: docRef } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+                await updateDoc(docRef(db, item.collection, item._docId), {
+                    deleted: true,
+                    deletedAt: new Date().toISOString(),
+                    completedViaOverduePopup: true
+                });
+                if(window.showToast) showToast(item.type, '✅ Finished', item.title);
+            } catch(err) {
+                console.error('Overdue finish error:', err);
+            }
+            finishBtn.disabled = false;
+            finishBtn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Finish';
+        }
+        const card = itemArea.querySelector('.overdue-item-card');
+        if(card) {
+            card.style.animation = 'overdueFadeOut .25s ease forwards';
+            setTimeout(() => { currentIndex++; renderCurrentItem(); }, 250);
+        } else {
+            currentIndex++;
+            renderCurrentItem();
+        }
+    };
+
+    // Close popup
+    const closeHandler = () => {
+        popup.classList.add('hidden');
+        popup.classList.remove('show');
+        // Clean up listeners
+        skipBtn.removeEventListener('click', skipHandler);
+        finishBtn.removeEventListener('click', finishHandler);
+        closeBtn.removeEventListener('click', closeHandler);
+    };
+
+    skipBtn.addEventListener('click', skipHandler);
+    finishBtn.addEventListener('click', finishHandler);
+    closeBtn.addEventListener('click', closeHandler);
+
+    // Show popup
+    popup.classList.remove('hidden');
+    popup.classList.add('show');
+    renderCurrentItem();
+}
+
+// Trigger overdue popup after data loads — wait for first snapshots
+window._overdueTasksReady = false;
+window._overdueRemReady = false;
+
+function _checkOverdueReady() {
+    if(window._overdueTasksReady && window._overdueRemReady && !window.overduePopupShown) {
+        // Small delay to let UI settle after login
+        setTimeout(() => showOverduePopup(), 600);
+    }
+}
+
+// Hook into snapshot listeners — called from within loadAppListeners
+window._onTasksLoaded = function() { window._overdueTasksReady = true; _checkOverdueReady(); };
+window._onRemindersLoaded = function() { window._overdueRemReady = true; _checkOverdueReady(); };
 
 // ═══════════════════════════════════════════════════════
 //  ADMIN PANEL — User Management
