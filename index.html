@@ -479,15 +479,32 @@
                                 <option value="az">🔤 A → Z</option>
                                 <option value="za">🔤 Z → A</option>
                             </select>
-                            <select id="notes-status-filter" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:border-blue-400">
-                                <option value="all">📊 All Status</option>
-                                <option value="Active">🔵 Active</option>
-                                <option value="Pending">⏳ Pending</option>
-                                <option value="Processing">🔄 Processing</option>
-                                <option value="Sanctioned">✔️ Sanctioned</option>
-                                <option value="Disbursed">✅ Disbursed</option>
-                                <option value="Rejected">❌ Rejected</option>
-                            </select>
+                            <!-- Custom Status Filter Dropdown -->
+                            <div class="custom-select-wrap" id="status-filter-wrap">
+                                <button type="button" class="custom-select-btn" id="status-filter-btn" onclick="toggleStatusDropdown()">
+                                    <span id="status-filter-label">📊 All Status</span>
+                                    <svg class="custom-select-arrow" id="status-filter-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div class="custom-select-dropdown" id="status-filter-dropdown">
+                                    <div class="custom-select-option selected" data-value="all" onclick="selectStatus('all','📊 All Status',this)">📊 All Status</div>
+                                    <div class="custom-select-option" data-value="Active" onclick="selectStatus('Active','🔵 Active',this)">🔵 Active</div>
+                                    <div class="custom-select-option" data-value="Pending" onclick="selectStatus('Pending','⏳ Pending',this)">⏳ Pending</div>
+                                    <div class="custom-select-option" data-value="Processing" onclick="selectStatus('Processing','🔄 Processing',this)">🔄 Processing</div>
+                                    <div class="custom-select-option" data-value="Sanctioned" onclick="selectStatus('Sanctioned','✔️ Sanctioned',this)">✔️ Sanctioned</div>
+                                    <div class="custom-select-option" data-value="Disbursed" onclick="selectStatus('Disbursed','✅ Disbursed',this)">✅ Disbursed</div>
+                                    <div class="custom-select-option" data-value="Rejected" onclick="selectStatus('Rejected','❌ Rejected',this)">❌ Rejected</div>
+                                </div>
+                                <!-- Hidden native select for app.js compatibility -->
+                                <select id="notes-status-filter" style="display:none;">
+                                    <option value="all">All Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Processing">Processing</option>
+                                    <option value="Sanctioned">Sanctioned</option>
+                                    <option value="Disbursed">Disbursed</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -663,6 +680,10 @@
                 <button id="toggle-activity-btn" title="Live Activity" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.1)'">
                     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </button>
+                <!-- New Chat / Clear Session -->
+                <button id="clear-chat-btn" title="Nayi Chat Session" style="width:30px;height:30px;border-radius:8px;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.4);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseenter="this.style.background='rgba(99,102,241,0.45)'" onmouseleave="this.style.background='rgba(99,102,241,0.25)'">
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                </button>
                 <!-- Minimize -->
                 <button id="minimise-chat-btn" title="Minimize" style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='rgba(255,255,255,0.1)'">
                     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -833,6 +854,54 @@
             <button id="enable-push-btn" style="font-size:10px;font-weight:800;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">Enable</button>
         </div>
     </div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  CUSTOM STATUS FILTER DROPDOWN
+// ══════════════════════════════════════════════════
+function toggleStatusDropdown() {
+    const dd = document.getElementById('status-filter-dropdown');
+    const arrow = document.getElementById('status-filter-arrow');
+    const btn = document.getElementById('status-filter-btn');
+    const isOpen = dd.classList.contains('open');
+    if (isOpen) {
+        dd.classList.remove('open');
+        arrow.style.transform = 'rotate(0deg)';
+        btn.classList.remove('active');
+    } else {
+        dd.classList.add('open');
+        arrow.style.transform = 'rotate(180deg)';
+        btn.classList.add('active');
+    }
+}
+
+function selectStatus(value, label, el) {
+    // Update label
+    document.getElementById('status-filter-label').textContent = label;
+    // Update hidden native select (app.js listens to this)
+    const nativeSel = document.getElementById('notes-status-filter');
+    nativeSel.value = value;
+    nativeSel.dispatchEvent(new Event('change'));
+    // Update selected class
+    document.querySelectorAll('#status-filter-dropdown .custom-select-option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    // Close dropdown
+    toggleStatusDropdown();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('status-filter-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        const dd = document.getElementById('status-filter-dropdown');
+        const arrow = document.getElementById('status-filter-arrow');
+        const btn = document.getElementById('status-filter-btn');
+        if (dd) { dd.classList.remove('open'); }
+        if (arrow) { arrow.style.transform = 'rotate(0deg)'; }
+        if (btn) { btn.classList.remove('active'); }
+    }
+});
+</script>
 
 </body>
 </html>
