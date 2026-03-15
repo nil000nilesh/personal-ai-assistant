@@ -6,7 +6,13 @@ body { font-family: 'Inter', sans-serif; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 .tab-btn.active { color: #60a5fa; font-weight: 700; }
-.tab-btn-mob.active { color: #3b82f6; font-weight: bold; }
+.tab-btn-mob { color: #94a3b8; transition: color 0.2s; }
+.tab-btn-mob.active {
+    color: #4f46e5;
+    font-weight: 800;
+}
+.tab-btn-mob.active svg { stroke: #4f46e5; }
+.tab-btn-mob svg { transition: stroke 0.2s; }
 
 @keyframes pulse-ring {
     0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
@@ -402,6 +408,46 @@ body { font-family: 'Inter', sans-serif; }
     .admin-form-grid { grid-template-columns: 1fr !important; }
     .pin-card { width: calc(100vw - 32px); }
     .pin-notif-widget { right: 8px; top: 8px; min-width: 160px; max-width: 200px; padding: 10px 12px; }
+}
+
+/* ══ MOBILE RESPONSIVE — Chat panel & FAB ══ */
+@media (max-width: 767px) {
+    /* Chat panel on mobile: full width, above bottom nav */
+    #chat-panel {
+        border-radius: 16px !important;
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important;
+        bottom: 78px !important;
+    }
+
+    /* FAB above bottom nav */
+    #chat-fab {
+        bottom: 76px !important;
+        right: 16px !important;
+    }
+
+    /* Toolbar wrapping on mobile */
+    #view-notes .toolbar-glass .flex.gap-2.flex-wrap,
+    #view-tasks .toolbar-glass .flex.gap-2.flex-wrap,
+    #view-reminders .toolbar-glass .flex.gap-2.flex-wrap,
+    #view-notebook .toolbar-glass .flex.gap-2.flex-wrap {
+        gap: 8px;
+    }
+
+    /* Bottom nav labels smaller */
+    nav.md\:hidden button span:last-child {
+        font-size: 9px;
+    }
+
+    /* Mobile header padding */
+    #view-notes .toolbar-glass,
+    #view-tasks .toolbar-glass,
+    #view-reminders .toolbar-glass,
+    #view-notebook .toolbar-glass {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
 }
 
 /* ══════════════════════════════════════════════════
