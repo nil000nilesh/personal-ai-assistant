@@ -20,10 +20,11 @@ const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
 let chatHistory = [];
-let allSavedNotes = []; 
+let allSavedNotes = [];
 let allTasks = [];
 let allReminders = [];
 let allNotebooks = [];
+let allGroupedNotes = {}; // global — needed for client popup
 
 let isPinVerified = false;
 let DYNAMIC_OPENAI_KEY = "";
@@ -704,7 +705,7 @@ function loadAppListeners() {
 
     // ── Notes state for search/sort/filter ──────────────────────────────
     let notesSearchQ = '', notesSortQ = 'new', notesStatusFilter = 'all';
-    let allGroupedNotes = {}; // persistent grouped data
+    // allGroupedNotes is global (declared at top)
 
     function getStatus(latestContent) {
         const c = latestContent.toLowerCase();
@@ -1055,6 +1056,8 @@ function loadAppListeners() {
         if(tn) tn.textContent = pendingForNotif;
         // Notify overdue popup system that tasks are ready
         if(window._onTasksLoaded) window._onTasksLoaded();
+        // Refresh live notification counters
+        if(typeof refreshCounters === 'function') refreshCounters();
     });
 
     // Task search
@@ -1230,6 +1233,8 @@ function loadAppListeners() {
         if(rn) rn.textContent = upcomingCount;
         // Notify overdue popup system that reminders are ready
         if(window._onRemindersLoaded) window._onRemindersLoaded();
+        // Refresh live notification counters
+        if(typeof refreshCounters === 'function') refreshCounters();
     });
 
     // Reminders search
@@ -1266,6 +1271,7 @@ function loadAppListeners() {
         const hash = (name||'').split('').reduce((acc,c) => acc + c.charCodeAt(0), 0);
         return CARD_PALETTES[hash % CARD_PALETTES.length];
     }
+    window._getCardPalette = getCardPalette;
 
     // ── LANGUAGE SUPPORT ─────────────────────────────────────────────────
     let currentLang = localStorage.getItem('casedesk_lang') || 'en';
@@ -2054,6 +2060,231 @@ ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMe
 
 
 // ╔══════════════════════════════════════════════════════════════╗
+// ║  TASK / REMINDER DETAIL POPUP                                ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+window.closeItemDetailPopup = function() {
+    document.getElementById('item-detail-popup').classList.add('hidden');
+};
+
+window.showItemDetailPopup = function(item, type) {
+    const popup  = document.getElementById('item-detail-popup');
+    const header = document.getElementById('item-detail-header');
+    const body   = document.getElementById('item-detail-body');
+    const actions= document.getElementById('item-detail-actions');
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const isTask = type === 'task';
+
+    const isOverdue = isTask
+        ? (item.dueDate ? new Date(item.dueDate) : new Date(item.timestamp)) < todayStart && item.status !== 'Done' && item.status !== 'Finished'
+        : (item.time && item.time !== 'Manual' && item.time !== 'जल्द' && new Date(item.time) < now && item.status !== 'Closed');
+
+    const grad = isTask
+        ? (isOverdue ? 'linear-gradient(135deg,#dc2626,#ef4444)' : 'linear-gradient(135deg,#f59e0b,#f97316)')
+        : (isOverdue ? 'linear-gradient(135deg,#dc2626,#ef4444)' : 'linear-gradient(135deg,#7c3aed,#6366f1)');
+
+    const icon = isTask ? '✅' : '⏰';
+    const typeLabel = isTask ? 'Task' : 'Reminder';
+    const statusBadge = isTask
+        ? (item.status === 'Done' ? '✅ Done' : item.status === 'Finished' ? '🏆 Finished' : isOverdue ? '🔴 Overdue' : '⏳ Pending')
+        : (item.status === 'Closed' ? '✅ Closed' : isOverdue ? '🔴 Overdue' : '🟢 Active');
+
+    header.style.cssText = 'background:' + grad + ';padding:20px;position:relative;overflow:hidden;';
+    header.innerHTML = `
+        <div style="position:absolute;right:-16px;top:-16px;width:70px;height:70px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+        <div style="display:flex;align-items:flex-start;gap:12px;position:relative;">
+            <div style="width:44px;height:44px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${icon}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:9px;font-weight:900;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">${typeLabel}</div>
+                <div style="font-weight:900;font-size:16px;color:white;line-height:1.3;">${item.title || 'Untitled'}</div>
+                <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+                    <span style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.2);color:white;">${statusBadge}</span>
+                    ${item.client ? '<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);">👤 '+item.client+'</span>' : ''}
+                </div>
+            </div>
+            <button onclick="closeItemDetailPopup()" style="width:28px;height:28px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;cursor:pointer;color:white;font-size:14px;flex-shrink:0;">✕</button>
+        </div>`;
+
+    // Body details
+    const rows = [];
+    if(isTask) {
+        if(item.dueDate) rows.push(['📅 Due Date', new Date(item.dueDate).toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'long',year:'numeric'})]);
+        if(item.priority) rows.push(['🚨 Priority', item.priority]);
+        rows.push(['📋 Status', item.status || 'Pending']);
+        rows.push(['🕐 Created', new Date(item.timestamp).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})]);
+    } else {
+        if(item.time && item.time !== 'Manual' && item.time !== 'जल्द') {
+            const d = new Date(item.time);
+            rows.push(['⏰ Scheduled', isNaN(d) ? item.time : d.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'long'}) + ' · ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})]);
+        } else {
+            rows.push(['⏰ Time', item.time || 'Not set']);
+        }
+        rows.push(['📋 Status', item.status || 'Active']);
+        rows.push(['🕐 Created', new Date(item.timestamp||Date.now()).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})]);
+    }
+
+    body.innerHTML = rows.map(([label, val]) =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+            <span style="font-size:11px;font-weight:700;color:#94a3b8;min-width:100px;">${label}</span>
+            <span style="font-size:12px;font-weight:600;color:#334155;">${val}</span>
+        </div>`
+    ).join('');
+
+    // Action buttons
+    actions.innerHTML = '';
+    if(isTask && item._docId && item.status !== 'Done' && item.status !== 'Finished') {
+        const doneBtn = document.createElement('button');
+        doneBtn.style.cssText = 'flex:1;padding:12px;border-radius:14px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;';
+        doneBtn.textContent = '✅ Mark Done';
+        doneBtn.onclick = async () => {
+            item.status = 'Done';
+            try { await updateDoc(doc(db, 'tasks', item._docId), { status: 'Done' }); } catch(e) {}
+            closeItemDetailPopup();
+        };
+        actions.appendChild(doneBtn);
+    }
+    if(!isTask && item._docId && item.status !== 'Closed') {
+        const closeBtn = document.createElement('button');
+        closeBtn.style.cssText = 'flex:1;padding:12px;border-radius:14px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;';
+        closeBtn.textContent = '✅ Mark Closed';
+        closeBtn.onclick = async () => {
+            item.status = 'Closed';
+            try { await updateDoc(doc(db, 'reminders', item._docId), { status: 'Closed' }); } catch(e) {}
+            closeItemDetailPopup();
+        };
+        actions.appendChild(closeBtn);
+    }
+    const dismissBtn = document.createElement('button');
+    dismissBtn.style.cssText = 'flex:1;padding:12px;border-radius:14px;background:#f1f5f9;color:#475569;font-weight:700;font-size:13px;border:none;cursor:pointer;';
+    dismissBtn.textContent = '✕ Dismiss';
+    dismissBtn.onclick = closeItemDetailPopup;
+    actions.appendChild(dismissBtn);
+
+    popup.classList.remove('hidden');
+};
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CLIENT DETAIL POPUP + CLIENT LIST                           ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+window.closeClientDetailPopup = function() {
+    document.getElementById('client-detail-popup').classList.add('hidden');
+};
+
+window.showClientDetailPopup = function(clientName) {
+    const popup   = document.getElementById('client-detail-popup');
+    const content = document.getElementById('client-detail-content');
+    const key = clientName.toUpperCase();
+    const group = allGroupedNotes[key];
+    if(!group) return;
+
+    const pal = (window._getCardPalette || (n => ({ grad:'linear-gradient(135deg,#6366f1,#3b82f6)', border:'#6366f1', light:'#ede9fe', text:'#4f46e5' })))(group.displayTitle);
+    const sortedUpdates = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+    const latestUpdate = sortedUpdates[0];
+    const initials = group.displayTitle.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
+
+    function fmtD(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+    function fmtT(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+
+    const infoRows = [];
+    if(group.mobile)  infoRows.push(['📱 Mobile',  group.mobile]);
+    if(group.account) infoRows.push(['🏦 Account', group.account]);
+    if(group.address) infoRows.push(['📍 Address', group.address]);
+    infoRows.push(['📋 Updates', group.updates.length]);
+    infoRows.push(['🕐 Last Updated', fmtD(latestUpdate.timestamp)]);
+
+    const updatesHTML = sortedUpdates.map((u,idx) => {
+        const isLatest = idx === 0;
+        return `<div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;last-child:border-bottom:none;${isLatest?'background:'+pal.light+'30;':''}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                <span style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:20px;${isLatest?'background:'+pal.light+';color:'+pal.text+';':'background:#f1f5f9;color:#64748b;'}">📅 ${fmtD(u.timestamp)} ⏰ ${fmtT(u.timestamp)}</span>
+                ${isLatest ? '<span style="font-size:8px;font-weight:900;color:white;padding:2px 8px;border-radius:20px;background:'+pal.border+';">LATEST</span>' : ''}
+                <span style="font-size:9px;color:#cbd5e1;margin-left:auto;">#${sortedUpdates.length-idx}</span>
+            </div>
+            <p style="font-size:13px;color:#334155;font-weight:500;white-space:pre-wrap;margin:0;line-height:1.6;" class="devanagari">${u.content||''}</p>
+        </div>`;
+    }).join('');
+
+    content.innerHTML = `
+        <div style="background:${pal.grad};padding:18px 20px 14px;position:relative;overflow:hidden;flex-shrink:0;">
+            <div style="position:absolute;right:-20px;top:-20px;width:80px;height:80px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+            <div style="display:flex;align-items:flex-start;gap:12px;position:relative;">
+                <div style="width:48px;height:48px;background:rgba(255,255,255,0.22);border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:white;border:1.5px solid rgba(255,255,255,0.3);flex-shrink:0;">${initials}</div>
+                <div style="flex:1;">
+                    <div style="font-size:9px;font-weight:900;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">👤 CLIENT PROFILE</div>
+                    <div style="font-weight:900;font-size:18px;color:white;line-height:1.2;">${group.displayTitle}</div>
+                </div>
+                <button onclick="closeClientDetailPopup()" style="width:30px;height:30px;background:rgba(255,255,255,0.15);border:none;border-radius:9px;cursor:pointer;color:white;font-size:15px;flex-shrink:0;">✕</button>
+            </div>
+        </div>
+        <div style="background:#f8fafc;border-left:4px solid ${pal.border};padding:10px 16px;">
+            ${infoRows.map(([l,v])=>`<div style="display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid #f1f5f9;"><span style="font-size:10px;font-weight:700;color:#94a3b8;min-width:110px;">${l}</span><span style="font-size:11px;font-weight:600;color:#334155;">${v}</span></div>`).join('')}
+        </div>
+        <div style="overflow-y:auto;max-height:50vh;">${updatesHTML}</div>`;
+    popup.classList.remove('hidden');
+};
+
+window.openClientListPopup = function() {
+    const popup = document.getElementById('client-list-popup');
+    const body  = document.getElementById('client-list-body');
+    const count = document.getElementById('client-list-count');
+    const entries = Object.values(allGroupedNotes);
+    if(count) count.textContent = entries.length + ' client' + (entries.length !== 1 ? 's' : '');
+    renderClientList(entries, body);
+    popup.classList.remove('hidden');
+};
+
+window.closeClientListPopup = function() {
+    document.getElementById('client-list-popup').classList.add('hidden');
+};
+
+function renderClientList(entries, body) {
+    body.innerHTML = '';
+    if(entries.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px;">No clients found</div>';
+        return;
+    }
+    const sorted = [...entries].sort((a,b) => {
+        const aT = Math.max(...a.updates.map(u => new Date(u.timestamp)));
+        const bT = Math.max(...b.updates.map(u => new Date(u.timestamp)));
+        return bT - aT;
+    });
+    sorted.forEach((group, idx) => {
+        const pal = (window._getCardPalette || (n => ({ border:'#6366f1', light:'#ede9fe', text:'#4f46e5' })))(group.displayTitle);
+        const initials = group.displayTitle.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
+        const latest = [...group.updates].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''))[0];
+        const latestDate = new Date(latest?.timestamp||Date.now()).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:12px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid #f8fafc;';
+        row.innerHTML = `
+            <div style="width:38px;height:38px;border-radius:12px;background:${pal.light};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:${pal.text};border:2px solid ${pal.border}20;flex-shrink:0;">${initials}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:800;font-size:13px;color:#0f172a;margin-bottom:2px;">${group.displayTitle}</div>
+                <div style="font-size:10px;color:#94a3b8;font-weight:600;">${group.updates.length} update${group.updates.length>1?'s':''} · ${latestDate}</div>
+            </div>
+            ${group.mobile ? '<div style="font-size:10px;font-weight:700;color:#64748b;">📱 '+group.mobile+'</div>' : ''}
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#cbd5e1" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>`;
+        row.onmouseenter = () => row.style.background = '#f8fafc';
+        row.onmouseleave = () => row.style.background = '';
+        row.onclick = () => {
+            closeClientListPopup();
+            setTimeout(() => showClientDetailPopup(group.displayTitle), 100);
+        };
+        body.appendChild(row);
+    });
+}
+
+window.filterClientList = function(q) {
+    const entries = Object.values(allGroupedNotes).filter(g =>
+        g.displayTitle.toLowerCase().includes(q.toLowerCase()) ||
+        (g.mobile||'').includes(q)
+    );
+    renderClientList(entries, document.getElementById('client-list-body'));
+};
+
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  PAGE VISIT BADGE CLEARING (Update Panel Removed)            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
@@ -2165,8 +2396,8 @@ function refreshBadges() {
     const remUnread  = NS.items.filter(i => i.type === 'reminder' && !i.read).length;
     const total      = NS.items.filter(i => !i.read).length;
 
-    // Bell badge (sidebar + mobile)
-    ['bell-badge','bell-badge-mob'].forEach(id => {
+    // Bell badge (sidebar + mobile + fixed top-right)
+    ['bell-badge','bell-badge-mob','bell-badge-fixed'].forEach(id => {
         const el = document.getElementById(id);
         if(!el) return;
         if(total > 0) { el.textContent = total > 9 ? '9+' : total; el.style.display = 'flex'; }
@@ -2176,13 +2407,13 @@ function refreshBadges() {
     const dot = document.getElementById('bell-dot');
     if(dot) dot.style.display = total > 0 ? '' : 'none';
 
-    // Task badge on sidebar — only unread task notifications
+    // Task badge on sidebar
     const tb = document.getElementById('task-badge');
     if(tb) {
         if(taskUnread > 0) { tb.textContent = taskUnread>9?'9+':taskUnread; tb.style.display='flex'; }
         else tb.style.display='none';
     }
-    // Reminder badge on sidebar — only unread reminder notifications
+    // Reminder badge on sidebar
     const rb = document.getElementById('rem-badge');
     if(rb) {
         if(remUnread > 0) { rb.textContent = remUnread>9?'9+':remUnread; rb.style.display='flex'; }
@@ -2193,56 +2424,106 @@ function refreshBadges() {
     if(ub) { if(total>0){ub.textContent=total;ub.style.display='';} else ub.style.display='none'; }
 }
 
-// ─── Refresh summary counters in panel header ────────────────────
+// ─── Refresh summary counters in panel header — uses live data ──
 function refreshCounters() {
     const now = new Date();
-    // Count pending tasks in NS
-    const taskCount = NS.items.filter(i=>i.type==='task').length;
-    // Count upcoming reminders from NS
-    const remCount  = NS.items.filter(i=>i.type==='reminder').length;
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Live counts from global arrays
+    const pendingTasks  = allTasks.filter(t => t.status !== 'Done' && t.status !== 'Finished').length;
+    const overdueCount  = allTasks.filter(t => {
+        if(t.status === 'Done' || t.status === 'Finished') return false;
+        const d = t.dueDate ? new Date(t.dueDate) : new Date(t.timestamp);
+        return d < todayStart;
+    }).length;
+    const activeRem = allReminders.filter(r => r.status !== 'Closed').length;
 
     const tn = document.getElementById('np-task-num');
     const rn = document.getElementById('np-rem-num');
     const sn = document.getElementById('np-saved-num');
-    if(tn) tn.textContent = taskCount;
-    if(rn) rn.textContent = remCount;
+    if(tn) { tn.textContent = pendingTasks; tn.title = overdueCount > 0 ? overdueCount + ' overdue' : ''; tn.style.color = overdueCount > 0 ? '#ef4444' : '#fbbf24'; }
+    if(rn) rn.textContent = activeRem;
     if(sn) sn.textContent = NS.savedToday;
 }
 
-// ─── Render notification list ────────────────────────────────────
+// ─── Render notification list ─────────────────────────────────────
 function renderNotifList() {
     const list  = document.getElementById('notif-list');
     const empty = document.getElementById('notif-empty');
     refreshCounters();
-
-    const show = NS.filter === 'all'
-        ? NS.items
-        : NS.items.filter(i => i.type === NS.filter);
-
-    if(show.length === 0) {
-        list.innerHTML = '';
-        list.appendChild(empty);
-        empty.style.display = 'block';
-        return;
-    }
-    empty.style.display = 'none';
     list.innerHTML = '';
 
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // ── LIVE PENDING SECTION ─────────────────────────────────────
+    const showLive = NS.filter === 'all' || NS.filter === 'task' || NS.filter === 'reminder';
+    if(showLive) {
+        const pendingTasks = allTasks.filter(t => t.status !== 'Done' && t.status !== 'Finished');
+        const activeRem    = allReminders.filter(r => r.status !== 'Closed');
+
+        if(pendingTasks.length > 0 || activeRem.length > 0) {
+            const sec = document.createElement('div');
+            sec.style.cssText = 'margin-bottom:8px;';
+            sec.innerHTML = '<div style="font-size:9px;font-weight:900;color:#6366f1;text-transform:uppercase;letter-spacing:1px;padding:6px 4px 4px;">⚡ Live Pending</div>';
+
+            const showItems = [
+                ...(NS.filter !== 'reminder' ? pendingTasks.slice(0, 5) : []).map(t => ({ ...t, _liveType: 'task' })),
+                ...(NS.filter !== 'task'     ? activeRem.slice(0, 5)   : []).map(r => ({ ...r, _liveType: 'reminder' }))
+            ];
+
+            showItems.forEach(item => {
+                const isOverdue = item._liveType === 'task'
+                    ? (item.dueDate ? new Date(item.dueDate) : new Date(item.timestamp)) < todayStart
+                    : (item.time && item.time !== 'Manual' && item.time !== 'जल्द' && new Date(item.time) < now);
+                const row = document.createElement('div');
+                row.className = 'nitem unread';
+                row.style.cssText = isOverdue ? 'background:#fef2f2;border-color:#fecaca;cursor:pointer;' : 'cursor:pointer;';
+                const icon = item._liveType === 'task' ? '✅' : '⏰';
+                const iconBg = item._liveType === 'task' ? '#fbbf24' : '#ef4444';
+                const titleText = item.title || item.client || 'Untitled';
+                const subText   = item.client ? '👤 ' + item.client : '';
+                const timeInfo  = item.dueDate ? '📅 ' + new Date(item.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) :
+                                  item.time && item.time !== 'Manual' ? '⏰ ' + item.time.substring(0,16) : '';
+                row.innerHTML =
+                    '<div class="nicon" style="background:' + iconBg + '20;color:' + iconBg + ';font-size:15px;">' + icon + '</div>' +
+                    '<div style="flex:1;min-width:0;">' +
+                        '<div class="ntitle">' + titleText + (isOverdue ? ' <span style="color:#ef4444;font-size:9px;font-weight:900;">OVERDUE</span>' : '') + '</div>' +
+                        (subText ? '<div class="nsub">' + subText + '</div>' : '') +
+                        (timeInfo ? '<div class="ntime">' + timeInfo + '</div>' : '') +
+                    '</div>' +
+                    '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+                row.onclick = () => showItemDetailPopup(item, item._liveType);
+                sec.appendChild(row);
+            });
+            list.appendChild(sec);
+            // Divider
+            const divider = document.createElement('div');
+            divider.style.cssText = 'font-size:9px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;padding:6px 4px 4px;border-top:1px solid #f1f5f9;margin-bottom:4px;';
+            divider.textContent = '📋 Recent Activity';
+            list.appendChild(divider);
+        }
+    }
+
+    // ── NOTIFICATION HISTORY ────────────────────────────────────
     const cfg = {
-        task:     { bg:'#fbbf24', label:'✅ Task' },
-        reminder: { bg:'#ef4444', label:'⏰ Reminder' },
-        notebook: { bg:'#6366f1', label:'📓 Notebook' },
-        case:     { bg:'#0891b2', label:'📂 Case' },
+        task:     { bg:'#fbbf24', icon:'✅', label:'Task' },
+        reminder: { bg:'#ef4444', icon:'⏰', label:'Reminder' },
+        notebook: { bg:'#6366f1', icon:'📓', label:'Notebook' },
+        case:     { bg:'#0891b2', icon:'👤', label:'Client' },
     };
+    const show = NS.filter === 'all' ? NS.items : NS.items.filter(i => i.type === NS.filter);
+
+    if(show.length === 0 && list.childElementCount === 0) {
+        list.appendChild(empty); empty.style.display = 'block'; return;
+    }
+    empty.style.display = 'none';
 
     [...show].reverse().forEach(item => {
         const c = cfg[item.type] || cfg.notebook;
         const d = document.createElement('div');
         d.className = 'nitem ' + (item.read ? 'read' : 'unread');
         d.innerHTML =
-            '<div class="nicon" style="background:' + c.bg + '20;color:' + c.bg + ';font-size:16px;">' +
-                (item.type==='task'?'✅':item.type==='reminder'?'⏰':item.type==='notebook'?'📓':'📂') +
-            '</div>' +
+            '<div class="nicon" style="background:' + c.bg + '20;color:' + c.bg + ';font-size:15px;">' + c.icon + '</div>' +
             '<div style="flex:1;min-width:0;">' +
                 '<div class="ntitle">' + item.title + '</div>' +
                 (item.sub ? '<div class="nsub">' + item.sub + '</div>' : '') +
@@ -2252,6 +2533,7 @@ function renderNotifList() {
         d.onclick = () => { item.read = true; NS.unread = Math.max(0, NS.unread-1); refreshBadges(); renderNotifList(); };
         list.appendChild(d);
     });
+    if(list.childElementCount === 0) { list.appendChild(empty); empty.style.display = 'block'; }
 }
 
 // ─── Add notification (called everywhere) ────────────────────────
@@ -2275,7 +2557,7 @@ function showToast(type, title, sub) {
     if(!wrap) return; // null guard
     const t = document.createElement('div');
     t.className = 'toast t-' + type;
-    const icons = {task:'✅',reminder:'⏰',notebook:'📓',case:'📂'};
+    const icons = {task:'✅',reminder:'⏰',notebook:'📓',case:'👤'};
     const colors = {task:'#f59e0b',reminder:'#ef4444',notebook:'#6366f1',case:'#0891b2'};
     t.innerHTML =
         '<div style="width:28px;height:28px;border-radius:8px;background:' + (colors[type]||'#6366f1') + ';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">' + (icons[type]||'🔔') + '</div>' +
@@ -2294,7 +2576,7 @@ function showToast(type, title, sub) {
 // ─── Browser push notification ────────────────────────────────────
 function browserPush(type, title, body) {
     try {
-        const labels = {task:'Task',reminder:'Reminder',notebook:'Notebook',case:'Case'};
+        const labels = {task:'Task',reminder:'Reminder',notebook:'Notebook',case:'Client'};
         new Notification('CaseDesk AI — ' + (labels[type]||'Update'), {
             body: title + (body ? '\n' + body : ''),
             icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='11' fill='%236366f1'/><rect x='10' y='8' width='20' height='26' rx='4' fill='white' fill-opacity='0.25' stroke='white' stroke-width='1.5'/><path d='M14 16h12M14 21h12M14 26h8' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>",
