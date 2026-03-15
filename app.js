@@ -877,9 +877,10 @@ function loadAppListeners() {
     // Notes status filter
     document.getElementById('notes-status-filter')?.addEventListener('change', e => { notesStatusFilter = e.target.value; renderNotes(); });
 
-    // TASKS — with search, filter, status toggle, priority, due date
-    let taskCurrentFilter = 'all';
+    // TASKS — with search, filter (pending/done/all), sort
+    let taskCurrentFilter = 'pending'; // default: show overdue + today's tasks
     let taskSearchQuery = '';
+    let taskSortOrder = 'new';
 
     function renderTasks() {
         const list = document.getElementById('tasks-list');
@@ -889,32 +890,61 @@ function loadAppListeners() {
         const finishedCount = document.getElementById('task-finished-count');
         list.innerHTML = '';
 
-        // Active tasks = not Finished
-        const activeTasks = allTasks.filter(t => t.status !== 'Finished');
-        const finishedTasks = allTasks.filter(t => t.status === 'Finished');
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const todayEnd   = new Date(todayStart.getTime() + 86400000);
+
+        function taskEffectiveDate(t) {
+            return t.dueDate ? new Date(t.dueDate) : new Date(t.timestamp);
+        }
+        function isIncomplete(t) { return t.status !== 'Done' && t.status !== 'Finished'; }
 
         let filtered;
-        if(taskCurrentFilter === 'Finished') {
-            filtered = finishedTasks.filter(t => {
-                const matchSearch = !taskSearchQuery || (t.title||'').toLowerCase().includes(taskSearchQuery) ||
-                    (t.client||'').toLowerCase().includes(taskSearchQuery);
-                return matchSearch;
+        if(taskCurrentFilter === 'pending') {
+            // Show overdue + today's + no-dueDate incomplete tasks
+            filtered = allTasks.filter(t => {
+                if(!isIncomplete(t)) return false;
+                const d = taskEffectiveDate(t);
+                const isOverdue  = d < todayStart;
+                const isToday    = d >= todayStart && d < todayEnd;
+                const noDueDate  = !t.dueDate; // always show pending tasks without a future dueDate
+                return isOverdue || isToday || noDueDate;
             });
-        } else {
-            filtered = activeTasks.filter(t => {
-                const matchFilter = taskCurrentFilter === 'all' || t.status === taskCurrentFilter ||
-                    (taskCurrentFilter === 'Urgent' && t.priority === 'Urgent');
-                const matchSearch = !taskSearchQuery || (t.title||'').toLowerCase().includes(taskSearchQuery) ||
-                    (t.client||'').toLowerCase().includes(taskSearchQuery);
-                return matchFilter && matchSearch;
-            });
+        } else if(taskCurrentFilter === 'done') {
+            filtered = allTasks.filter(t => t.status === 'Done' || t.status === 'Finished');
+        } else { // 'all'
+            filtered = [...allTasks];
         }
 
-        const pending = activeTasks.filter(t => t.status !== 'Done').length;
-        const done    = activeTasks.filter(t => t.status === 'Done').length;
-        if(pendingCount) pendingCount.textContent = pending + ' Pending';
-        if(doneCount) doneCount.textContent = done + ' Done';
-        if(finishedCount) finishedCount.textContent = finishedTasks.length + ' Finished';
+        // Search
+        if(taskSearchQuery) {
+            filtered = filtered.filter(t =>
+                (t.title||'').toLowerCase().includes(taskSearchQuery) ||
+                (t.client||'').toLowerCase().includes(taskSearchQuery)
+            );
+        }
+
+        // Sort
+        filtered.sort((a, b) => {
+            const aD = (a.dueDate || a.timestamp || '');
+            const bD = (b.dueDate || b.timestamp || '');
+            if(taskSortOrder === 'old') return aD.localeCompare(bD);
+            if(taskSortOrder === 'due') {
+                // Overdue first, then today, then no dueDate, then future
+                const aE = taskEffectiveDate(a), bE = taskEffectiveDate(b);
+                return aE - bE;
+            }
+            return bD.localeCompare(aD); // newest first (default)
+        });
+
+        // Badge counts
+        const totalPending  = allTasks.filter(t => isIncomplete(t)).length;
+        const totalOverdue  = allTasks.filter(t => isIncomplete(t) && taskEffectiveDate(t) < todayStart).length;
+        const totalDone     = allTasks.filter(t => t.status === 'Done').length;
+        const totalFinished = allTasks.filter(t => t.status === 'Finished').length;
+        if(pendingCount) pendingCount.textContent = totalOverdue > 0 ? `${totalPending} Pending · ${totalOverdue} Overdue` : `${totalPending} Pending`;
+        if(doneCount)    doneCount.textContent    = totalDone + ' Done';
+        if(finishedCount) finishedCount.textContent = totalFinished + ' Finished';
 
         if(filtered.length === 0) { empty.classList.remove('hidden'); return; }
         empty.classList.add('hidden');
@@ -923,10 +953,7 @@ function loadAppListeners() {
             const isDone = task.status === 'Done';
             const isFinished = task.status === 'Finished';
             const isUrgent = task.priority === 'Urgent';
-            const now = new Date();
-            const isOverdue = task.dueDate ? new Date(task.dueDate) < now && !isDone && !isFinished
-                : task.timestamp ? new Date(task.timestamp) < now && !isDone && !isFinished
-                : false;
+            const isOverdue = !isDone && !isFinished && taskEffectiveDate(task) < todayStart;
             const d = new Date(task.timestamp);
             const dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
             const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
@@ -1036,18 +1063,36 @@ function loadAppListeners() {
         renderTasks();
     });
 
-    // Task filter buttons
-    document.getElementById('task-filter-btns')?.addEventListener('click', e => {
-        const btn = e.target.closest('[data-filter]');
-        if(!btn) return;
-        taskCurrentFilter = btn.dataset.filter;
+    // Task sort
+    document.getElementById('task-sort')?.addEventListener('change', e => {
+        taskSortOrder = e.target.value;
+        renderTasks();
+    });
+
+    // Task filter buttons — Pending / Done / All
+    function setTaskFilter(filterVal) {
+        taskCurrentFilter = filterVal;
+        const filterColors = {
+            pending: 'bg-orange-500 text-white border-orange-500',
+            done:    'bg-green-600 text-white border-green-600',
+            all:     'bg-blue-600 text-white border-blue-600',
+        };
         document.querySelectorAll('.task-filter-btn').forEach(b => {
-            b.className = b === btn
-                ? 'task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600'
+            b.className = b.dataset.filter === filterVal
+                ? 'task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border ' + (filterColors[filterVal] || 'bg-blue-600 text-white border-blue-600')
                 : 'task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50';
         });
         renderTasks();
+    }
+
+    document.getElementById('task-filter-btns')?.addEventListener('click', e => {
+        const btn = e.target.closest('[data-filter]');
+        if(!btn) return;
+        setTaskFilter(btn.dataset.filter);
     });
+
+    // Reset to pending view when tasks tab is clicked
+    window._resetTaskFilter = function() { setTaskFilter('pending'); };
 
     // REMINDERS — with search, filter, overdue detection, countdown
     let remCurrentFilter = 'all';
@@ -1265,18 +1310,30 @@ function loadAppListeners() {
     };
 
     // ── DELETE HELPERS ────────────────────────────────────────────────────
+    // Fetch all docs user can see — same logic as onSnapshot queries (handles old docs without userId)
+    async function _fetchAllUserDocs(colName) {
+        const q = isAdminUser
+            ? query(collection(db, colName))
+            : query(collection(db, colName), where("userId", "==", currentUserEmail));
+        const snap = await getDocs(q);
+        const results = [];
+        snap.forEach(d => {
+            const data = d.data();
+            // Admin: skip other users' data but keep old docs without userId
+            if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
+            results.push({ id: d.id, data });
+        });
+        return results;
+    }
+
     window.deleteNotebookClient = async function(clientName) {
         const msg = t('confirmNb') + ' "' + clientName + '"?\n\nThis will permanently remove all entries.';
         if(!confirm(msg)) return;
         try {
-            const qSnap = await getDocs(query(collection(db, "notebooks"), where("userId", "==", currentUserEmail)));
-            const jobs = [];
-            qSnap.forEach(d => {
-                const data = d.data();
-                if((data.client||'').toUpperCase() === clientName.toUpperCase()) {
-                    jobs.push(updateDoc(doc(db, "notebooks", d.id), { deleted: true, deletedAt: new Date().toISOString() }));
-                }
-            });
+            const docs = await _fetchAllUserDocs("notebooks");
+            const jobs = docs
+                .filter(({ data }) => !data.deleted && (data.client || data.title || '').toUpperCase().trim() === clientName.toUpperCase().trim())
+                .map(({ id }) => updateDoc(doc(db, "notebooks", id), { deleted: true, deletedAt: new Date().toISOString() }));
             await Promise.all(jobs);
         } catch(e) { alert('Delete failed: ' + e.message); }
     };
@@ -1285,14 +1342,10 @@ function loadAppListeners() {
         const msg = t('confirmProfile') + ' "' + clientName + '"?\n\nThis will permanently remove all records.';
         if(!confirm(msg)) return;
         try {
-            const qSnap = await getDocs(query(collection(db, "notes"), where("userId", "==", currentUserEmail)));
-            const jobs = [];
-            qSnap.forEach(d => {
-                const data = d.data();
-                if((data.client||'').toUpperCase() === clientName.toUpperCase()) {
-                    jobs.push(updateDoc(doc(db, "notes", d.id), { deleted: true, deletedAt: new Date().toISOString() }));
-                }
-            });
+            const docs = await _fetchAllUserDocs("notes");
+            const jobs = docs
+                .filter(({ data }) => !data.deleted && (data.client || data.title || '').toUpperCase().trim() === clientName.toUpperCase().trim())
+                .map(({ id }) => updateDoc(doc(db, "notes", id), { deleted: true, deletedAt: new Date().toISOString() }));
             await Promise.all(jobs);
         } catch(e) { alert('Delete failed: ' + e.message); }
     };
@@ -2043,11 +2096,12 @@ function markPageNotifsRead(page) {
     }
 }
 
-// Wrap switchView to clear badges on page visit
+// Wrap switchView to clear badges on page visit + reset task filter
 const _baseSwitchViewUP = switchView;
 window.switchView = function(targetView) {
     _baseSwitchViewUP(targetView);
     markPageNotifsRead(targetView);
+    if(targetView === 'tasks' && window._resetTaskFilter) window._resetTaskFilter();
 };
 
 // Also hook tab clicks to mark as read
