@@ -777,45 +777,43 @@ function loadAppListeners() {
             'Mortgage':  { badge:'📑 Mortgage',  grad:'from-purple-600 to-violet-700' },
         };
 
-        entries.forEach(group => {
+        entries.forEach((group, gIdx) => {
             const latestUpdate = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''))[0];
             // Use explicit status field if available, else detect from content
             const status = latestUpdate?.status || getStatus(latestUpdate?.content || '');
             const meta = statusMeta[status] || statusMeta['Active'];
             const sortedUpdates = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
-
-            // Info chips: only show if data exists
-            const chips = [];
-            if(group.mobile)  chips.push(`📱 ${group.mobile}`);
-            if(group.account) chips.push(`🏦 ${group.account}`);
-            if(group.address) chips.push(`📍 ${group.address}`);
-            chips.push(`📋 ${group.updates.length} Update${group.updates.length>1?'s':''}`);
-            chips.push(`🕐 ${fmtDateN(latestUpdate.timestamp)}`);
+            const pal = getCardPalette(group.displayTitle);
 
             // Avatar initials from client name
             const initials = group.displayTitle.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2) || '?';
 
+            // Build resume-style info rows
+            const infoRows = [];
+            if(group.mobile)  infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">📱 ${t('mobile')}</span><span class="profile-info-val">${group.mobile}</span></div>`);
+            if(group.account) infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">🏦 ${t('account')}</span><span class="profile-info-val">${group.account}</span></div>`);
+            if(group.address) infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">📍 ${t('address')}</span><span class="profile-info-val">${group.address}</span></div>`);
+            infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">📊 ${t('status')}</span><span class="profile-info-val font-black" style="color:${pal.text};">${meta.badge}</span></div>`);
+            infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">📋 ${t('updates')}</span><span class="profile-info-val">${group.updates.length}</span></div>`);
+            infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">🕐 ${t('lastUpdated')}</span><span class="profile-info-val">${fmtDateN(latestUpdate.timestamp)}</span></div>`);
+
             const headerHTML = `
-                <div class="bg-gradient-to-br ${meta.grad} px-5 py-4 relative overflow-hidden flex-shrink-0">
-                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/5 rounded-full"></div>
-                    <div class="absolute -right-2 -bottom-4 w-16 h-16 bg-white/5 rounded-full"></div>
-                    <div class="flex items-center gap-3 relative">
-                        <!-- Profile Avatar -->
-                        <div class="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0 shadow-inner">
-                            <span class="text-white font-black text-base tracking-tight">${initials}</span>
-                        </div>
-                        <!-- Name + label -->
+                <div class="profile-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:16px 18px 14px;">
+                    <div class="absolute -right-5 -top-5 w-20 h-20 rounded-full" style="background:rgba(255,255,255,0.08);"></div>
+                    <div class="flex items-start gap-3 relative">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg flex-shrink-0" style="background:rgba(255,255,255,0.22);color:white;border:1.5px solid rgba(255,255,255,0.3);">${initials}</div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-white/50 text-[8px] font-black uppercase tracking-widest mb-0.5">👤 CLIENT PROFILE</p>
+                            <div class="text-[9px] font-black uppercase tracking-widest mb-0.5" style="color:rgba(255,255,255,0.6);">👤 ${t('clientInfo')}</div>
                             <h3 class="font-black text-white text-base leading-tight truncate">${group.displayTitle}</h3>
                         </div>
-                        <!-- Status badge -->
-                        <span class="text-[9px] font-black px-2 py-1 rounded-full bg-white/20 text-white border border-white/20 shrink-0 self-start">${meta.badge}</span>
+                        <button onclick="deleteClientProfile('${group.displayTitle.replace(/'/g,"\\'")}');"
+                            class="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
+                            style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
+                            title="${t('deleteBtn')}">${t('deleteBtn')}</button>
                     </div>
-                    <!-- Info chips -->
-                    <div class="flex flex-wrap gap-1 text-[9px] font-bold relative mt-3">
-                        ${chips.map(c=>`<span class="bg-white/10 border border-white/10 text-white/80 px-2 py-0.5 rounded-full">${c}</span>`).join('')}
-                    </div>
+                </div>
+                <div class="profile-info-section" style="border-left:4px solid ${pal.border};">
+                    ${infoRows.join('')}
                 </div>`;
 
             const updatesHTML = sortedUpdates.map((u, idx) => {
@@ -825,10 +823,10 @@ function loadAppListeners() {
                     const rx = new RegExp('(' + notesSearchQ.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
                     displayContent = displayContent.replace(rx, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
                 }
-                return `<div class="px-4 py-3 border-b border-slate-50 last:border-0 ${isLatest ? 'bg-blue-50/30' : ''}">
-                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span class="text-[9px] font-black px-2 py-0.5 rounded-full ${isLatest ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}">📅 ${fmtDateN(u.timestamp)} ⏰ ${fmtTimeN(u.timestamp)}</span>
-                        ${isLatest ? '<span class="text-[8px] font-black text-white bg-blue-500 px-2 py-0.5 rounded-full">LATEST</span>' : ''}
+                return `<div class="px-4 py-3.5 border-b border-slate-50 last:border-0" style="${isLatest ? 'background:'+pal.light+'30;' : ''}">
+                    <div class="flex items-center gap-2 mb-2 flex-wrap">
+                        <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="${isLatest ? 'background:'+pal.light+';color:'+pal.text+';' : 'background:#f1f5f9;color:#64748b;'}">📅 ${fmtDateN(u.timestamp)} ⏰ ${fmtTimeN(u.timestamp)}</span>
+                        ${isLatest ? `<span class="text-[8px] font-black text-white px-2 py-0.5 rounded-full" style="background:${pal.border};">${t('latest')}</span>` : ''}
                         <span class="text-[9px] text-slate-300 ml-auto">#${sortedUpdates.length - idx}</span>
                     </div>
                     <p class="text-slate-700 text-sm leading-relaxed font-medium whitespace-pre-wrap devanagari">${displayContent}</p>
@@ -836,7 +834,8 @@ function loadAppListeners() {
             }).join('');
 
             const card = document.createElement('div');
-            card.className = 'bg-white rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 overflow-hidden transition-all duration-200 flex flex-col';
+            card.className = 'profile-card bg-white rounded-2xl overflow-hidden transition-all duration-200 flex flex-col';
+            card.style.cssText = `box-shadow:0 4px 20px rgba(0,0,0,0.09);border:1px solid #e2e8f0;`;
             card.innerHTML = headerHTML + `<div class="overflow-y-auto max-h-[280px] client-updates-scroll divide-y divide-slate-50">${updatesHTML}</div>`;
             grid.appendChild(card);
         });
@@ -849,7 +848,7 @@ function loadAppListeners() {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
             if(data.deleted) return;
-            docs.push(data);
+            docs.push({ ...data, _docId: d.id });
         });
         docs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
         docs.forEach(note => {
@@ -1207,6 +1206,106 @@ function loadAppListeners() {
         });
     });
 
+    // ── CARD COLOR PALETTE ────────────────────────────────────────────────
+    const CARD_PALETTES = [
+        { grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: '#6366f1', light: '#ede9fe', text: '#4f46e5' },
+        { grad: 'linear-gradient(135deg,#0891b2,#2563eb)', border: '#0891b2', light: '#cffafe', text: '#0e7490' },
+        { grad: 'linear-gradient(135deg,#059669,#0d9488)', border: '#059669', light: '#d1fae5', text: '#047857' },
+        { grad: 'linear-gradient(135deg,#dc2626,#db2777)', border: '#dc2626', light: '#fee2e2', text: '#b91c1c' },
+        { grad: 'linear-gradient(135deg,#d97706,#f59e0b)', border: '#d97706', light: '#fef3c7', text: '#b45309' },
+        { grad: 'linear-gradient(135deg,#7c3aed,#a855f7)', border: '#7c3aed', light: '#f3e8ff', text: '#6d28d9' },
+        { grad: 'linear-gradient(135deg,#0f766e,#065f46)', border: '#0f766e', light: '#ccfbf1', text: '#0f766e' },
+        { grad: 'linear-gradient(135deg,#be185d,#9d174d)', border: '#be185d', light: '#fce7f3', text: '#be185d' },
+    ];
+    function getCardPalette(name) {
+        const hash = (name||'').split('').reduce((acc,c) => acc + c.charCodeAt(0), 0);
+        return CARD_PALETTES[hash % CARD_PALETTES.length];
+    }
+
+    // ── LANGUAGE SUPPORT ─────────────────────────────────────────────────
+    let currentLang = localStorage.getItem('casedesk_lang') || 'en';
+    const L = {
+        en: {
+            notebook: 'My Notebook', notes: 'notes', clientProfiles: 'Client Profiles',
+            profiles: 'Profiles', profile: 'Profile',
+            secretaryDraft: 'Secretary Draft', totalUpdates: 'Total Updates',
+            updates: 'Updates', update: 'Update', latest: 'LATEST',
+            deleteBtn: '🗑️ Delete', confirmNb: 'Delete all notebook entries for',
+            confirmProfile: 'Delete all records for client',
+            clientInfo: 'CLIENT INFORMATION', draftNote: 'DRAFT NOTE',
+            tasks: 'TASKS', reminders: 'REMINDERS', pending: 'PENDING',
+            mobile: 'Mobile', account: 'Account', address: 'Address',
+            status: 'Status', name: 'Name', lastUpdated: 'Last Updated',
+        },
+        hi: {
+            notebook: 'मेरी नोटबुक', notes: 'नोट्स', clientProfiles: 'क्लाइंट प्रोफाइल',
+            profiles: 'प्रोफाइल', profile: 'प्रोफाइल',
+            secretaryDraft: 'सचिव ड्राफ्ट', totalUpdates: 'कुल अपडेट',
+            updates: 'अपडेट', update: 'अपडेट', latest: 'नवीनतम',
+            deleteBtn: '🗑️ हटाएं', confirmNb: 'सभी नोट्स हटाएं:',
+            confirmProfile: 'क्लाइंट का डेटा हटाएं:',
+            clientInfo: 'क्लाइंट जानकारी', draftNote: 'ड्राफ्ट नोट',
+            tasks: 'कार्य', reminders: 'अनुस्मारक', pending: 'लंबित',
+            mobile: 'मोबाइल', account: 'खाता', address: 'पता',
+            status: 'स्थिति', name: 'नाम', lastUpdated: 'अंतिम अपडेट',
+        }
+    };
+    function t(key) { return (L[currentLang] || L['en'])[key] || key; }
+
+    window.toggleLanguage = function() {
+        currentLang = currentLang === 'en' ? 'hi' : 'en';
+        localStorage.setItem('casedesk_lang', currentLang);
+        const label = currentLang === 'en' ? 'हिं' : 'EN';
+        ['lang-toggle-btn','lang-toggle-btn-desk'].forEach(id => {
+            const btn = document.getElementById(id);
+            if(btn) btn.textContent = label;
+        });
+        renderNotebook();
+        renderNotes();
+    };
+
+    // ── DELETE HELPERS ────────────────────────────────────────────────────
+    window.deleteNotebookClient = async function(clientName) {
+        const msg = t('confirmNb') + ' "' + clientName + '"?\n\nThis will permanently remove all entries.';
+        if(!confirm(msg)) return;
+        try {
+            const qSnap = await getDocs(query(collection(db, "notebooks"), where("userId", "==", currentUserEmail)));
+            const jobs = [];
+            qSnap.forEach(d => {
+                const data = d.data();
+                if((data.client||'').toUpperCase() === clientName.toUpperCase()) {
+                    jobs.push(updateDoc(doc(db, "notebooks", d.id), { deleted: true, deletedAt: new Date().toISOString() }));
+                }
+            });
+            await Promise.all(jobs);
+        } catch(e) { alert('Delete failed: ' + e.message); }
+    };
+
+    window.deleteClientProfile = async function(clientName) {
+        const msg = t('confirmProfile') + ' "' + clientName + '"?\n\nThis will permanently remove all records.';
+        if(!confirm(msg)) return;
+        try {
+            const qSnap = await getDocs(query(collection(db, "notes"), where("userId", "==", currentUserEmail)));
+            const jobs = [];
+            qSnap.forEach(d => {
+                const data = d.data();
+                if((data.client||'').toUpperCase() === clientName.toUpperCase()) {
+                    jobs.push(updateDoc(doc(db, "notes", d.id), { deleted: true, deletedAt: new Date().toISOString() }));
+                }
+            });
+            await Promise.all(jobs);
+        } catch(e) { alert('Delete failed: ' + e.message); }
+    };
+
+    // Set initial lang button text
+    setTimeout(() => {
+        const label = currentLang === 'en' ? 'हिं' : 'EN';
+        ['lang-toggle-btn','lang-toggle-btn-desk'].forEach(id => {
+            const btn = document.getElementById(id);
+            if(btn) btn.textContent = label;
+        });
+    }, 100);
+
     // NOTEBOOK — grouped by client, search, sort, filter, grid/list toggle
     let nbSearchQuery = '';
     let nbSort = 'new';
@@ -1223,8 +1322,8 @@ function loadAppListeners() {
         let grouped = {};
         let allClientNames = new Set();
         allNotebooks.forEach(page => {
-            const key = (page.client || page.title || 'सामान्य').toUpperCase();
-            const name = page.client || page.title || 'सामान्य';
+            const key = (page.client || page.title || 'General').toUpperCase();
+            const name = page.client || page.title || 'General';
             allClientNames.add(name);
             if(!grouped[key]) grouped[key] = { displayName: name, updates: [] };
             grouped[key].updates.push(page);
@@ -1232,7 +1331,9 @@ function loadAppListeners() {
 
         // Populate client filter dropdown
         const filterEl = document.getElementById('nb-filter');
-        if(filterEl && filterEl.options.length <= 1) {
+        if(filterEl) {
+            // Rebuild dropdown to keep it up to date
+            while(filterEl.options.length > 1) filterEl.remove(1);
             allClientNames.forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = name; opt.textContent = '👤 ' + name;
@@ -1258,7 +1359,7 @@ function loadAppListeners() {
             return 0;
         });
 
-        if(countEl) countEl.textContent = allNotebooks.length + ' notes';
+        if(countEl) countEl.textContent = entries.length + ' ' + t('notes');
         grid.className = nbViewGrid
             ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20 items-start'
             : 'flex flex-col gap-4 pb-20';
@@ -1266,50 +1367,71 @@ function loadAppListeners() {
         if(entries.length === 0) { empty.classList.remove('hidden'); return; }
         empty.classList.add('hidden');
 
-        entries.forEach(group => {
+        function fmtDate(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+        function fmtTime(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+
+        entries.forEach((group, gIdx) => {
+            const pal = getCardPalette(group.displayName);
             const card = document.createElement('div');
-            card.className = "bg-white rounded-[1.5rem] shadow-sm hover:shadow-xl border border-l-[8px] border-yellow-400 border-slate-200 relative transition-all duration-300 overflow-hidden group";
+            card.className = "nb-card bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-300";
+            card.style.cssText = `box-shadow:0 4px 24px rgba(0,0,0,0.10);border:1px solid #e2e8f0;border-left:5px solid ${pal.border};`;
 
             const sortedUpdates = [...group.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             const latest = sortedUpdates[0];
+            const initials = group.displayName.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
 
-            function fmtDate(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
-            function fmtTime(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+            // Detect profession/type from content
+            let professionTag = t('secretaryDraft');
+            const latestContent = (latest?.content || '').toLowerCase();
+            if(/banking|bank|loan|cc|account|ऋण|खाता/.test(latestContent)) professionTag = 'Banking Case';
+            else if(/insurance|bima|बीमा/.test(latestContent)) professionTag = 'Insurance';
+            else if(/property|mortgage|मॉर्गेज|सम्पत्ति/.test(latestContent)) professionTag = 'Property / Mortgage';
+            else if(/ca|audit|tax|gst|कर/.test(latestContent)) professionTag = 'CA / Tax';
 
             const headerHTML = `
-                <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-                    <div>
-                        <div class="text-[10px] text-yellow-400 font-black uppercase tracking-widest mb-0.5">📋 क्लाइंट नोट</div>
-                        <h3 class="font-black text-xl tracking-tight">${group.displayName}</h3>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-[10px] text-slate-400 mb-0.5">कुल अपडेट</div>
-                        <div class="text-yellow-400 text-2xl font-black">${group.updates.length}</div>
+                <div class="nb-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:18px 20px 14px;">
+                    <div class="absolute -right-5 -top-5 w-20 h-20 rounded-full" style="background:rgba(255,255,255,0.08);"></div>
+                    <div class="absolute right-4 bottom-2 w-12 h-12 rounded-full" style="background:rgba(255,255,255,0.05);"></div>
+                    <div class="flex items-start justify-between gap-3 relative">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-base" style="background:rgba(255,255,255,0.22);color:white;border:1.5px solid rgba(255,255,255,0.3);">${initials}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[9px] font-black uppercase tracking-widest mb-0.5" style="color:rgba(255,255,255,0.65);">📋 ${professionTag}</div>
+                                <h3 class="font-black text-white text-base leading-tight truncate">${group.displayName}</h3>
+                                <div class="text-[9px] mt-0.5" style="color:rgba(255,255,255,0.6);">📅 ${fmtDate(latest.timestamp)} &nbsp;⏰ ${fmtTime(latest.timestamp)}</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                            <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.9);">
+                                ${group.updates.length} ${group.updates.length > 1 ? t('updates') : t('update')}
+                            </span>
+                            <button onclick="deleteNotebookClient('${group.displayName.replace(/'/g,"\\'")}');"
+                                class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
+                                style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
+                                title="${t('deleteBtn')}">${t('deleteBtn')}</button>
+                        </div>
                     </div>
                 </div>`;
 
             const updatesHTML = sortedUpdates.map((page, idx) => {
                 let displayContent = page.content || '';
                 if(nbSearchQuery) {
-                    const regex = new RegExp('(' + nbSearchQuery + ')', 'gi');
-                    displayContent = displayContent.replace(regex, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
+                    const rx = new RegExp('(' + nbSearchQuery.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+                    displayContent = displayContent.replace(rx, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
                 }
                 const isLatest = idx === 0;
-                const dDate = new Date(page.timestamp).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-                const dTime = new Date(page.timestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
                 const updateNum = group.updates.length - idx;
-                const badgeClass = isLatest ? 'bg-yellow-400 text-slate-900 font-black' : 'bg-slate-100 text-slate-400';
-                return '<div class="px-6 py-4 border-b border-slate-50 last:border-b-0 ' + (isLatest ? 'bg-yellow-50/30' : '') + '">' +
-                    '<div class="flex items-center gap-2 mb-2 flex-wrap">' +
-                    '<span class="text-[10px] font-black px-2 py-0.5 rounded-full ' + (isLatest ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-500') + '">📅 ' + dDate + '</span>' +
-                    '<span class="text-[10px] font-bold text-slate-400">⏰ ' + dTime + '</span>' +
-                    '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto ' + badgeClass + '">#' + updateNum + '</span>' +
-                    '</div>' +
-                    '<div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap">' + displayContent + '</div>' +
-                    '</div>';
+                return `<div class="px-5 py-3.5 border-b border-slate-50 last:border-b-0 ${isLatest ? '' : ''}" style="${isLatest ? 'background:'+pal.light+'40;' : ''}">
+                    <div class="flex items-center gap-2 mb-2 flex-wrap">
+                        <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="${isLatest ? 'background:'+pal.light+';color:'+pal.text+';' : 'background:#f1f5f9;color:#64748b;'}">📅 ${fmtDate(page.timestamp)} ⏰ ${fmtTime(page.timestamp)}</span>
+                        ${isLatest ? `<span class="text-[8px] font-black text-white px-2 py-0.5 rounded-full" style="background:${pal.border};">${t('latest')}</span>` : ''}
+                        <span class="text-[9px] text-slate-300 ml-auto">#${updateNum}</span>
+                    </div>
+                    <div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap nb-note-content">${displayContent}</div>
+                </div>`;
             }).join('');
 
-            card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50 max-h-[300px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
+            card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50 max-h-[320px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
             grid.appendChild(card);
         });
     }
@@ -1325,7 +1447,7 @@ function loadAppListeners() {
             const data = d.data();
             if(isAdminUser && data.userId && data.userId !== ADMIN_EMAIL) return;
             if(data.deleted) return;
-            allNotebooks.push(data);
+            allNotebooks.push({ ...data, _docId: d.id });
         });
         // Client-side sort: timestamp desc
         allNotebooks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
