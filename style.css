@@ -403,3 +403,113 @@ body { font-family: 'Inter', sans-serif; }
     .pin-card { width: calc(100vw - 32px); }
     .pin-notif-widget { right: 8px; top: 8px; min-width: 160px; max-width: 200px; padding: 10px 12px; }
 }
+
+/* ══════════════════════════════════════════════════
+   CUSTOM STATUS FILTER DROPDOWN
+══════════════════════════════════════════════════ */
+.custom-select-wrap {
+    position: relative;
+    display: inline-block;
+    user-select: none;
+}
+.custom-select-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+    outline: none;
+    min-width: 130px;
+    justify-content: space-between;
+}
+.custom-select-btn:hover,
+.custom-select-btn.active {
+    border-color: #6366f1;
+    background: #eef2ff;
+    color: #4338ca;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+.custom-select-arrow {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    color: #94a3b8;
+}
+.custom-select-btn.active .custom-select-arrow {
+    color: #6366f1;
+}
+.custom-select-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 160px;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 999;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.custom-select-dropdown.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: all;
+}
+.custom-select-option {
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: background 0.12s;
+    border-bottom: 1px solid #f1f5f9;
+}
+.custom-select-option:last-child { border-bottom: none; }
+.custom-select-option:hover {
+    background: #eef2ff;
+    color: #4338ca;
+}
+.custom-select-option.selected {
+    background: #f0f4ff;
+    color: #4338ca;
+    font-weight: 800;
+}
+.custom-select-option.selected::before {
+    content: '✓ ';
+    color: #6366f1;
+}
+
+/* ══════════════════════════════════════════════════
+   CLEAR CHAT BUTTON TOOLTIP
+══════════════════════════════════════════════════ */
+#clear-chat-btn { position: relative; }
+#clear-chat-btn::after {
+    content: 'New Chat';
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 100;
+}
+#clear-chat-btn:hover::after { opacity: 1; }
