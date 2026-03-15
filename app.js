@@ -50,7 +50,7 @@ const ui = {
     chatModalContent: document.getElementById('chat-modal-content')
 };
 
-const views = ['notes', 'tasks', 'reminders', 'notebook'];
+const views = ['notebook', 'notes', 'tasks', 'reminders'];
 
 // ERROR FIXED HERE: Removing flex class so it hides properly
 function hideAllStates() {
@@ -96,14 +96,34 @@ let panelVisible = false;
 function showPanel() {
     if(!chatPanel) return;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const pw = Math.min(390, vw - 40);
-    const ph = Math.min(580, vh - 120);
+    const isMobile = vw < 768;
+
+    let pw, ph, right, bottom, left, borderRadius;
+    if (isMobile) {
+        // Mobile: full-width panel above bottom nav (65px) + FAB area (80px)
+        pw = vw - 16;          // 8px each side margin
+        ph = vh - 160;         // top header + bottom nav + some padding
+        right = '8px';
+        bottom = '80px';       // above bottom nav (65px) + some gap
+        left = 'auto';
+        borderRadius = '16px';
+    } else {
+        // Desktop: floating panel
+        pw = Math.min(390, vw - 40);
+        ph = Math.min(580, vh - 120);
+        right = '20px';
+        bottom = Math.min(100, vh - ph - 20) + 'px';
+        left = 'auto';
+        borderRadius = '20px';
+    }
+
     chatPanel.style.width = pw + 'px';
     chatPanel.style.height = ph + 'px';
-    chatPanel.style.right = '20px';
-    chatPanel.style.bottom = Math.min(100, vh - ph - 20) + 'px';
-    chatPanel.style.left = 'auto';
+    chatPanel.style.right = right;
+    chatPanel.style.bottom = bottom;
+    chatPanel.style.left = left;
     chatPanel.style.top = 'auto';
+    chatPanel.style.borderRadius = borderRadius;
     chatPanel.style.display = 'flex';
     chatPanel.style.opacity = '0';
     chatPanel.style.transform = 'translateY(16px) scale(0.97)';
@@ -634,7 +654,7 @@ async function checkAndLoadApp() {
                 if (adminNav) adminNav.style.display = 'block';
             }
             
-            switchView('notebook');
+            switchView('notebook');  // Notebook sabse pehle dikhega login ke baad
             loadAppListeners();
             setupAdminPanel();
         } else { 
@@ -744,7 +764,7 @@ function loadAppListeners() {
             return 0;
         });
 
-        if(countEl) countEl.textContent = entries.length + ' Case' + (entries.length !== 1 ? 's' : '');
+        if(countEl) countEl.textContent = entries.length + ' Profile' + (entries.length !== 1 ? 's' : '');
         if(emptyEl) { if(entries.length === 0) emptyEl.classList.remove('hidden'); else emptyEl.classList.add('hidden'); }
 
         const statusMeta = {
@@ -772,18 +792,29 @@ function loadAppListeners() {
             chips.push(`📋 ${group.updates.length} Update${group.updates.length>1?'s':''}`);
             chips.push(`🕐 ${fmtDateN(latestUpdate.timestamp)}`);
 
+            // Avatar initials from client name
+            const initials = group.displayTitle.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2) || '?';
+
             const headerHTML = `
                 <div class="bg-gradient-to-br ${meta.grad} px-5 py-4 relative overflow-hidden flex-shrink-0">
-                    <div class="absolute -right-4 -top-4 w-20 h-20 bg-white/5 rounded-full"></div>
-                    <div class="flex items-start justify-between gap-2 mb-2 relative">
-                        <div>
-                            <p class="text-white/40 text-[9px] font-black uppercase tracking-widest">📁 CLIENT CASE</p>
-                            <h3 class="font-black text-white text-lg leading-tight">${group.displayTitle}</h3>
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/5 rounded-full"></div>
+                    <div class="absolute -right-2 -bottom-4 w-16 h-16 bg-white/5 rounded-full"></div>
+                    <div class="flex items-center gap-3 relative">
+                        <!-- Profile Avatar -->
+                        <div class="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0 shadow-inner">
+                            <span class="text-white font-black text-base tracking-tight">${initials}</span>
                         </div>
-                        <span class="text-[9px] font-black px-2 py-1 rounded-full bg-white/20 text-white border border-white/20 shrink-0">${meta.badge}</span>
+                        <!-- Name + label -->
+                        <div class="flex-1 min-w-0">
+                            <p class="text-white/50 text-[8px] font-black uppercase tracking-widest mb-0.5">👤 CLIENT PROFILE</p>
+                            <h3 class="font-black text-white text-base leading-tight truncate">${group.displayTitle}</h3>
+                        </div>
+                        <!-- Status badge -->
+                        <span class="text-[9px] font-black px-2 py-1 rounded-full bg-white/20 text-white border border-white/20 shrink-0 self-start">${meta.badge}</span>
                     </div>
-                    <div class="flex flex-wrap gap-1 text-[9px] font-bold relative">
-                        ${chips.map(c=>`<span class="bg-white/10 border border-white/10 text-white/70 px-2 py-0.5 rounded-full">${c}</span>`).join('')}
+                    <!-- Info chips -->
+                    <div class="flex flex-wrap gap-1 text-[9px] font-bold relative mt-3">
+                        ${chips.map(c=>`<span class="bg-white/10 border border-white/10 text-white/80 px-2 py-0.5 rounded-full">${c}</span>`).join('')}
                     </div>
                 </div>`;
 
