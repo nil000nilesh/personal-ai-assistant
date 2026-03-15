@@ -536,17 +536,20 @@
                                 <span id="task-finished-count" class="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">0 Finished</span>
                             </div>
                         </div>
-                        <div class="flex gap-2 flex-wrap">
+                        <div class="flex gap-2 flex-wrap items-center">
                             <div class="relative flex-1 min-w-[160px]">
                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
                                 <input id="task-search" type="text" placeholder="Search tasks..." class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-400 focus:bg-white transition"/>
                             </div>
+                            <select id="task-sort" class="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:border-blue-400 text-slate-600">
+                                <option value="new">🕐 Newest First</option>
+                                <option value="old">📅 Oldest First</option>
+                                <option value="due">📆 By Due Date</option>
+                            </select>
                             <div id="task-filter-btns" class="flex gap-1.5">
-                                <button data-filter="all" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-blue-600 text-white border-blue-600">All</button>
-                                <button data-filter="Pending" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700">⏳ Pending</button>
-                                <button data-filter="Done" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-green-50 hover:border-green-200 hover:text-green-700">✅ Done</button>
-                                <button data-filter="Urgent" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-red-50 hover:border-red-200 hover:text-red-700">🚨 Urgent</button>
-                                <button data-filter="Finished" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700">🏆 Finished</button>
+                                <button data-filter="pending" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border bg-orange-500 text-white border-orange-500">⏳ Pending</button>
+                                <button data-filter="done" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50">✅ Done</button>
+                                <button data-filter="all" class="task-filter-btn text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-200 text-slate-600 bg-slate-50">📋 All</button>
                             </div>
                         </div>
                     </div>
