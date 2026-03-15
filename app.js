@@ -2377,7 +2377,7 @@ window.markAllRead = function() {
     renderNotifList();
 }
 
-document.getElementById('notif-bell-btn').addEventListener('click', openNotifPanel);
+document.getElementById('notif-bell-btn')?.addEventListener('click', openNotifPanel);
 document.getElementById('notif-bell-mob')?.addEventListener('click', openNotifPanel);
 
 // ─── Filter tabs ─────────────────────────────────────────────────
@@ -2502,6 +2502,39 @@ function renderNotifList() {
             divider.textContent = '📋 Recent Activity';
             list.appendChild(divider);
         }
+    }
+
+    // ── CLIENTS TAB: show all clients from allGroupedNotes ────────
+    if(NS.filter === 'case') {
+        const entries = Object.values(allGroupedNotes).sort((a,b) => (a.displayTitle||'').localeCompare(b.displayTitle||''));
+        if(entries.length === 0) {
+            list.appendChild(empty); empty.style.display = 'block'; return;
+        }
+        empty.style.display = 'none';
+        const sec = document.createElement('div');
+        sec.innerHTML = '<div style="font-size:9px;font-weight:900;color:#0891b2;text-transform:uppercase;letter-spacing:1px;padding:6px 4px 8px;">👤 All Clients (' + entries.length + ')</div>';
+        entries.forEach((group, idx) => {
+            const pal = (window._getCardPalette || (() => ({ border:'#0891b2', light:'#cffafe', text:'#0e7490' })))(group.displayTitle);
+            const initials = (group.displayTitle||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2) || '?';
+            const sortedUp = [...(group.updates||[])].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+            const latest = sortedUp[0];
+            const latestText = latest ? (latest.updates||latest.info||latest.notes||'').toString().slice(0,50) : '';
+            const row = document.createElement('div');
+            row.className = 'nitem';
+            row.style.cssText = 'cursor:pointer;';
+            row.innerHTML =
+                '<div style="width:30px;height:30px;border-radius:9px;background:' + pal.light + ';border:1.5px solid ' + pal.border + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:' + pal.text + ';flex-shrink:0;">' + initials + '</div>' +
+                '<div style="flex:1;min-width:0;">' +
+                    '<div class="ntitle">' + (idx+1) + '. ' + group.displayTitle + '</div>' +
+                    (group.mobile ? '<div class="nsub">📞 ' + group.mobile + '</div>' : '') +
+                    (latestText ? '<div class="ntime" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + latestText + '</div>' : '') +
+                '</div>' +
+                '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+            row.onclick = () => { closeNotifPanel(); setTimeout(() => showClientDetailPopup(group.displayTitle), 200); };
+            sec.appendChild(row);
+        });
+        list.appendChild(sec);
+        return;
     }
 
     // ── NOTIFICATION HISTORY ────────────────────────────────────
