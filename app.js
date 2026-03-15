@@ -133,6 +133,29 @@ fabBtn.addEventListener('click', (e) => {
 document.getElementById('minimise-chat-btn').addEventListener('click', hidePanel);
 document.getElementById('close-chat-btn').addEventListener('click', hidePanel);
 
+// ── CLEAR CHAT — New session start karo ──────────────────────────
+document.getElementById('clear-chat-btn')?.addEventListener('click', async () => {
+    if(!confirm('Nayi chat session shuru karein?\n\nPurani history screen se hat jayegi (data Firestore mein safe rahega).')) return;
+    // Reset session timestamp — sirf nayi messages dikhegi
+    sessionStartTime = new Date().toISOString();
+    chatHistory = [];
+    // Clear chat box UI, welcome message raho
+    if(ui.chatBox) {
+        const welcome = ui.chatBox.firstElementChild;
+        ui.chatBox.innerHTML = '';
+        if(welcome) ui.chatBox.appendChild(welcome);
+    }
+    // New session greeting save to Firestore
+    try {
+        await addDoc(collection(db, "chats"), {
+            role: "assistant",
+            content: "✨ Nayi chat session shuru hui! Ab fresh start — boliye, kya kaam hai? 😊",
+            timestamp: new Date().toISOString(),
+            userId: currentUserEmail
+        });
+    } catch(e) { console.warn('Session reset save failed:', e); }
+});
+
 // Activity bar toggle
 document.getElementById('toggle-activity-btn').addEventListener('click', () => {
     const bar = document.getElementById('activity-bar');
@@ -665,12 +688,17 @@ function loadAppListeners() {
 
     function getStatus(latestContent) {
         const c = latestContent.toLowerCase();
-        if(/disburse ho gaya|disbursed|वितरण हो गया|वितरण पूर्ण/.test(c)) return 'Disbursed';
-        if(/rejected|अस्वीकृत/.test(c)) return 'Rejected';
-        if(/sanctioned|sanction ho gaya|स्वीकृत हो गया|ऋण स्वीकृत/.test(c)) return 'Sanctioned';
+        // Priority order — most specific first
+        if(/disburse ho gaya|disbursed|वितरण हो गया|वितरण पूर्ण|loan disbursed|ऋण वितरित/.test(c)) return 'Disbursed';
+        if(/\brejected\b|अस्वीकृत|loan rejected|ऋण अस्वीकृत/.test(c)) return 'Rejected';
+        // Sanctioned — strict: must be "Sanctioned" as status, not just "sanction process"
+        if(/status:\s*sanctioned|\bsanctioned\b|sanction ho gaya|स्वीकृत हो गया|ऋण स्वीकृत है/.test(c)) return 'Sanctioned';
         if(/mortgage|मॉर्गेज/.test(c)) return 'Mortgage';
-        if(/processing start|processing ho|प्रोसेसिंग/.test(c)) return 'Processing';
-        if(/pending|लंबित/.test(c)) return 'Pending';
+        if(/processing start|processing ho raha|प्रोसेसिंग में है/.test(c)) return 'Processing';
+        // Pending — strict: only if "status: pending" or "स्थिति: लंबित" — NOT "pending documents"
+        if(/status:\s*pending|स्थिति[:\s]*लंबित|case.*pending|application.*pending/.test(c)) return 'Pending';
+        // Active — check explicit status field first
+        if(/status:\s*active/.test(c)) return 'Active';
         return 'Active';
     }
 
@@ -731,7 +759,8 @@ function loadAppListeners() {
 
         entries.forEach(group => {
             const latestUpdate = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''))[0];
-            const status = getStatus(latestUpdate?.content || '');
+            // Use explicit status field if available, else detect from content
+            const status = latestUpdate?.status || getStatus(latestUpdate?.content || '');
             const meta = statusMeta[status] || statusMeta['Active'];
             const sortedUpdates = [...group.updates].sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
 
@@ -1501,6 +1530,10 @@ CONVERSATION RULES — Follow these STRICTLY:
    • case.mobile = 10-digit phone number (e.g. "9753332926")
    • case.account = CC/account number (e.g. "389005/614")
    • case.address = address/location (if available)
+   • case.status = EXACTLY ONE of: "Active" / "Pending" / "Processing" / "Sanctioned" / "Disbursed" / "Rejected" / "Mortgage"
+     → Extract from user's words: "Active hai", "Pending hai", "Sanctioned ho gaya", "Disburse ho gaya" etc.
+     → If user mentions "Active" → "Active"; "Pending" → "Pending"; default = "Active"
+     → NEVER leave blank — always set one of the 7 values above
 
    ═══ ALSO AUTO-EXTRACT TASKS & REMINDERS ═══
    - Jab case save karo, content mein se tasks/reminders EXTRACT karo:
@@ -1569,7 +1602,13 @@ CONVERSATION RULES — Follow these STRICTLY:
      → Reply: "Maafi chahta hoon 🙏 Yeh meri expertise se bahar hai. Main aapka case manager hoon — client cases, tasks, reminders mein madad kar sakta hoon. Kaise help karun? 😊"
      → All save flags = false
 
-9. NO REPETITION: Sirf naya content save karo. Same data dubara save mat karo.
+9. UPDATES — ALWAYS SAVE AS NEW ENTRY:
+   - Jab bhi user kisi existing client ke baare mein NEW information deta hai → ALWAYS case.save = true karo
+   - Har update ek ALAG naya document hota hai Firestore mein — purana delete ya merge NAHI hota
+   - "Same client ka data already hai" — yeh save karne se NAHI rokta
+   - Sirf exact same sentence repeat hone par (copy-paste) hi save mat karo
+   - Har naya update: alag timestamp, alag content, same client name → case.save = true HAMESHA
+   - Example: Ramesh Patidar ka pehle case bana → ab uska CIBIL score bata rahe ho → PHIR BHI case.save = true
 
 RESPONSE FORMAT — ALWAYS valid JSON only, NO backticks, NO extra text outside JSON:
 {
@@ -1577,7 +1616,7 @@ RESPONSE FORMAT — ALWAYS valid JSON only, NO backticks, NO extra text outside 
   "softDelete": { "action": false, "collection": "", "clientName": "", "title": "" },
   "update": { "action": false, "collection": "", "matchTitle": "", "matchClient": "", "fields": {} },
   "notebook": { "save": false, "client": "", "content": "" },
-  "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "content": "" },
+  "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "status": "", "content": "" },
   "task": { "save": false, "client": "", "title": "", "dueDate": "", "priority": "" },
   "reminder": { "save": false, "client": "", "title": "", "time": "" }
 }
@@ -1656,6 +1695,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                 mobile: aiResponse.case.mobile || null,
                 account: aiResponse.case.account || null,
                 address: aiResponse.case.address || null,
+                status: aiResponse.case.status || null,   // ← explicit status field
                 timestamp: now,
                 userId: currentUserEmail          // ← User isolation
             }));
@@ -1674,7 +1714,11 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             };
             if(aiResponse.task.dueDate) taskObj.dueDate = aiResponse.task.dueDate;
             if(aiResponse.task.priority) taskObj.priority = aiResponse.task.priority;
-            savePromises.push(addDoc(collection(db, "tasks"), taskObj));
+            const taskDocRef = addDoc(collection(db, "tasks"), taskObj);
+            savePromises.push(taskDocRef);
+            // Optimistic local push — onSnapshot will sync shortly
+            allTasks.unshift({ ...taskObj, _docId: '_pending_' + now });
+            if(typeof renderTasks === 'function') renderTasks();
             if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
             addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
             if(window.registerUpdate) registerUpdate('task', aiResponse.task.client || '');
@@ -1689,6 +1733,9 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                 userId: currentUserEmail
             };
             savePromises.push(addDoc(collection(db, "reminders"), remObj));
+            // Optimistic local push — onSnapshot will sync shortly
+            allReminders.unshift({ ...remObj, _docId: '_pending_' + now });
+            if(typeof renderReminders === 'function') renderReminders();
             if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
             scheduleReminder(remObj);
