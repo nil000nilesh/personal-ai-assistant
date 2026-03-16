@@ -2625,12 +2625,15 @@ function refreshCounters() {
     if(sn) sn.textContent = NS.savedToday;
 }
 
+// Cache notif-empty element ONCE — prevents null after list.innerHTML='' removes it
+const _notifEmpty = document.getElementById('notif-empty');
+
 // ─── Render notification list ─────────────────────────────────────
 function renderNotifList() {
     const list  = document.getElementById('notif-list');
-    const empty = document.getElementById('notif-empty');
+    const empty = _notifEmpty;  // use cached reference — never null
     refreshCounters();
-    list.innerHTML = '';
+    list.innerHTML = '';  // removes children including #notif-empty, but 'empty' ref stays valid
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
