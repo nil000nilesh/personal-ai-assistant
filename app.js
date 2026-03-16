@@ -836,8 +836,12 @@ function loadAppListeners() {
 
             const card = document.createElement('div');
             card.className = 'profile-card bg-white rounded-2xl overflow-hidden transition-all duration-200 flex flex-col';
-            card.style.cssText = `box-shadow:0 4px 20px rgba(0,0,0,0.09);border:1px solid #e2e8f0;`;
+            card.style.cssText = `box-shadow:0 4px 20px rgba(0,0,0,0.09);border:1px solid #e2e8f0;cursor:pointer;`;
             card.innerHTML = headerHTML + `<div class="overflow-y-auto max-h-[280px] client-updates-scroll divide-y divide-slate-50">${updatesHTML}</div>`;
+            card.addEventListener('click', (e) => {
+                if(e.target.closest('button')) return; // skip button clicks inside card
+                openFocusMode('client', group);
+            });
             grid.appendChild(card);
         });
     }
@@ -1013,6 +1017,10 @@ function loadAppListeners() {
                     <!-- Status badge -->
                     <div class="flex-shrink-0">${statusBadge}</div>
                 </div>`;
+            div.addEventListener('click', (e) => {
+                if(e.target.closest('.task-check-btn')) return;
+                openFocusMode('task', task);
+            });
             list.appendChild(div);
         });
 
@@ -1207,6 +1215,11 @@ function loadAppListeners() {
                     <span class="text-[11px] font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-lg">📅 ${formattedTime}</span>
                     ${rem.client ? `<span class="text-[10px] font-bold text-blue-600 bg-white/60 px-2 py-0.5 rounded-lg">👤 ${rem.client}</span>` : ''}
                 </div>`;
+            div.style.cursor = 'pointer';
+            div.addEventListener('click', (e) => {
+                if(e.target.closest('button')) return;
+                openFocusMode('reminder', rem);
+            });
             list.appendChild(div);
         });
     }
@@ -1495,6 +1508,11 @@ function loadAppListeners() {
             }).join('');
 
             card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50 max-h-[320px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', (e) => {
+                if(e.target.closest('button')) return;
+                openFocusMode('notebook', group);
+            });
             grid.appendChild(card);
         });
     }
@@ -2289,6 +2307,164 @@ window.filterClientList = function(q) {
 };
 
 // ╔══════════════════════════════════════════════════════════════╗
+// ║  FOCUS MODE — Full-screen read popup for any card            ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+window.openFocusMode = function(type, data) {
+    const overlay = document.getElementById('focus-overlay');
+    const popup   = document.getElementById('focus-popup');
+    const body    = document.getElementById('focus-body');
+    if(!overlay || !popup || !body) return;
+
+    const PALETTES = [
+        { grad:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'#6366f1', light:'#ede9fe', text:'#4f46e5' },
+        { grad:'linear-gradient(135deg,#0891b2,#2563eb)', border:'#0891b2', light:'#cffafe', text:'#0e7490' },
+        { grad:'linear-gradient(135deg,#059669,#0d9488)', border:'#059669', light:'#d1fae5', text:'#047857' },
+        { grad:'linear-gradient(135deg,#dc2626,#db2777)', border:'#dc2626', light:'#fee2e2', text:'#b91c1c' },
+        { grad:'linear-gradient(135deg,#d97706,#f59e0b)', border:'#d97706', light:'#fef3c7', text:'#b45309' },
+        { grad:'linear-gradient(135deg,#7c3aed,#a855f7)', border:'#7c3aed', light:'#f3e8ff', text:'#6d28d9' },
+        { grad:'linear-gradient(135deg,#0f766e,#065f46)', border:'#0f766e', light:'#ccfbf1', text:'#0f766e' },
+        { grad:'linear-gradient(135deg,#be185d,#9d174d)', border:'#be185d', light:'#fce7f3', text:'#be185d' },
+    ];
+    function getPal(name) {
+        const h = (name||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+        return PALETTES[h % PALETTES.length];
+    }
+    function fmt(ts) {
+        if(!ts) return '';
+        const d = new Date(ts);
+        return isNaN(d) ? ts : d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    }
+    function esc(str) {
+        const div = document.createElement('div'); div.textContent = str||''; return div.innerHTML;
+    }
+
+    body.innerHTML = '';
+    let html = '';
+
+    if(type === 'client') {
+        // data = group object { displayTitle, mobile, account, address, updates[] }
+        const pal = getPal(data.displayTitle);
+        const words = (data.displayTitle||'').trim().split(/\s+/);
+        const initials = ((words[0]?.[0]||'') + (words[1]?.[0]||'')).toUpperCase();
+        const sorted = [...(data.updates||[])].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+        html = `
+        <div style="background:${pal.grad};padding:24px 24px 20px;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07);"></div>
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div style="width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;flex-shrink:0;">${esc(initials)||'?'}</div>
+                <div>
+                    <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">👤 CLIENT PROFILE</div>
+                    <div style="font-size:20px;font-weight:900;color:#fff;">${esc(data.displayTitle)}</div>
+                    ${data.mobile ? `<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:3px;">📞 ${esc(data.mobile)}</div>` : ''}
+                </div>
+            </div>
+            ${data.account ? `<div style="margin-top:10px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);">🏦 Account: ${esc(data.account)}</div>` : ''}
+            ${data.address ? `<div style="margin-top:4px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);">📍 ${esc(data.address)}</div>` : ''}
+        </div>
+        <div style="padding:16px 20px;background:#f8fafc;">
+            <div style="font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">📋 All Updates (${sorted.length})</div>
+            ${sorted.map((u,i) => `
+                <div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:8px;border-left:3px solid ${pal.border};box-shadow:0 1px 6px rgba(0,0,0,.05);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <span style="font-size:9px;font-weight:900;background:${pal.light};color:${pal.text};padding:2px 8px;border-radius:6px;">${i===0?'✨ Latest':'#'+(sorted.length-i)}</span>
+                        <span style="font-size:10px;color:#94a3b8;">${fmt(u.timestamp)}</span>
+                    </div>
+                    <div style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;word-break:break-word;">${esc(u.content||u.info||u.updates||'')}</div>
+                </div>`).join('')}
+        </div>`;
+
+    } else if(type === 'task') {
+        // data = task object
+        const isDone = data.status === 'Done' || data.status === 'Finished';
+        const grad = isDone ? 'linear-gradient(135deg,#059669,#0d9488)' : data.priority === 'Urgent' ? 'linear-gradient(135deg,#dc2626,#db2777)' : 'linear-gradient(135deg,#f59e0b,#d97706)';
+        const d = new Date(data.timestamp);
+        const dateStr = isNaN(d) ? '' : d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        const timeStr = isNaN(d) ? '' : d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+        html = `
+        <div style="background:${grad};padding:24px 24px 20px;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07);"></div>
+            <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">✅ TASK</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;line-height:1.35;">${esc(data.title)}</div>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
+                <span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">${isDone ? '✅ '+data.status : '⏳ '+data.status}</span>
+                ${data.priority === 'Urgent' ? '<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">🚨 URGENT</span>' : ''}
+                ${data.dueDate ? `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">📅 Due: ${new Date(data.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>` : ''}
+            </div>
+        </div>
+        <div style="padding:20px 24px;">
+            ${data.client ? `<div style="margin-bottom:14px;padding:12px 16px;background:#eff6ff;border-radius:12px;border-left:3px solid #3b82f6;"><span style="font-size:11px;font-weight:700;color:#1d4ed8;">👤 Client: ${esc(data.client)}</span></div>` : ''}
+            ${data.notes ? `<div style="margin-bottom:14px;"><div style="font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">📝 Notes</div><div style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;">${esc(data.notes)}</div></div>` : ''}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                <span style="font-size:11px;color:#94a3b8;">🕐 Created: ${dateStr} ${timeStr}</span>
+                ${data.finishedAt ? `<span style="font-size:11px;color:#059669;">🏁 Finished: ${fmt(data.finishedAt)}</span>` : ''}
+            </div>
+        </div>`;
+
+    } else if(type === 'reminder') {
+        // data = reminder object
+        const remDate = data.time && data.time !== 'Manual' && data.time !== 'जल्द' ? new Date(data.time) : null;
+        const isClosed = data.status === 'Closed';
+        const isOverdue = !isClosed && remDate && remDate < new Date();
+        const grad = isClosed ? 'linear-gradient(135deg,#059669,#0d9488)' : isOverdue ? 'linear-gradient(135deg,#dc2626,#db2777)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)';
+        const timeLabel = isClosed ? '🏁 Closed' : isOverdue ? '🔴 Overdue' : '⏰ Upcoming';
+        html = `
+        <div style="background:${grad};padding:24px 24px 20px;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07);"></div>
+            <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⏰ REMINDER</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;line-height:1.35;">${esc(data.title)}</div>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
+                <span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">${timeLabel}</span>
+                ${remDate && !isNaN(remDate) ? `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">📅 ${remDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>` : ''}
+            </div>
+        </div>
+        <div style="padding:20px 24px;">
+            ${data.client ? `<div style="margin-bottom:14px;padding:12px 16px;background:#eff6ff;border-radius:12px;border-left:3px solid #3b82f6;"><span style="font-size:11px;font-weight:700;color:#1d4ed8;">👤 Client: ${esc(data.client)}</span></div>` : ''}
+            ${data.description||data.notes ? `<div style="margin-bottom:14px;"><div style="font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">📝 Details</div><div style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;">${esc(data.description||data.notes)}</div></div>` : ''}
+            ${data.finishedAt ? `<div style="font-size:11px;color:#059669;">🏁 Closed: ${fmt(data.finishedAt)}</div>` : ''}
+            <div style="margin-top:8px;font-size:11px;color:#94a3b8;">🕐 Created: ${fmt(data.timestamp)}</div>
+        </div>`;
+
+    } else if(type === 'notebook') {
+        // data = notebook group { displayName, updates[] }
+        const pal = getPal(data.displayName);
+        const sorted = [...(data.updates||[])].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        html = `
+        <div style="background:${pal.grad};padding:24px 24px 20px;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07);"></div>
+            <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">📓 NOTEBOOK</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;">${esc(data.displayName)}</div>
+            <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,.7);">${sorted.length} page${sorted.length!==1?'s':''}</div>
+        </div>
+        <div style="padding:16px 20px;background:#f8fafc;">
+            ${sorted.map((u,i) => `
+                <div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:8px;border-left:3px solid ${pal.border};box-shadow:0 1px 6px rgba(0,0,0,.05);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <span style="font-size:9px;font-weight:900;background:${pal.light};color:${pal.text};padding:2px 8px;border-radius:6px;">${i===0?'✨ Latest':'Page '+(sorted.length-i)}</span>
+                        <span style="font-size:10px;color:#94a3b8;">${fmt(u.timestamp)}</span>
+                    </div>
+                    <div style="font-size:13px;color:#374151;line-height:1.75;white-space:pre-wrap;word-break:break-word;">${esc(u.content||u.info||'')}</div>
+                </div>`).join('')}
+        </div>`;
+    }
+
+    body.innerHTML = html;
+    overlay.style.display = 'block';
+    popup.classList.add('open');
+    document.addEventListener('keydown', _focusEscHandler);
+};
+
+function _focusEscHandler(e) {
+    if(e.key === 'Escape') closeFocusMode();
+}
+
+window.closeFocusMode = function() {
+    document.getElementById('focus-overlay').style.display = 'none';
+    document.getElementById('focus-popup').classList.remove('open');
+    document.removeEventListener('keydown', _focusEscHandler);
+};
+
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  PAGE VISIT BADGE CLEARING (Update Panel Removed)            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
@@ -2510,34 +2686,89 @@ function renderNotifList() {
 
     // ── CLIENTS TAB: show all clients from allGroupedNotes ────────
     if(NS.filter === 'case') {
-        const entries = Object.values(allGroupedNotes).sort((a,b) => (a.displayTitle||'').localeCompare(b.displayTitle||''));
+        // Rebuild groups from allSavedNotes for reliability
+        const groups = {};
+        (allSavedNotes || []).forEach(note => {
+            const key = (note.client || note.title || 'सामान्य').toUpperCase();
+            const name = note.client || note.title || 'सामान्य';
+            if(!groups[key]) groups[key] = { displayTitle: name, mobile: note.mobile||null, updates: [note] };
+            else groups[key].updates.push(note);
+            if(!groups[key].mobile && note.mobile) groups[key].mobile = note.mobile;
+        });
+        const entries = Object.values(groups).sort((a,b) => (a.displayTitle||'').localeCompare(b.displayTitle||''));
+
         if(entries.length === 0) {
             list.appendChild(empty); empty.style.display = 'block'; return;
         }
         empty.style.display = 'none';
-        const sec = document.createElement('div');
-        sec.innerHTML = '<div style="font-size:9px;font-weight:900;color:#0891b2;text-transform:uppercase;letter-spacing:1px;padding:6px 4px 8px;">👤 All Clients (' + entries.length + ')</div>';
+
+        const header = document.createElement('div');
+        header.style.cssText = 'font-size:9px;font-weight:900;color:#0891b2;text-transform:uppercase;letter-spacing:1px;padding:6px 4px 8px;';
+        header.textContent = '👤 All Clients (' + entries.length + ')';
+        list.appendChild(header);
+
+        const PALETTES = [
+            { border:'#6366f1', light:'#ede9fe', text:'#4f46e5' },
+            { border:'#0891b2', light:'#cffafe', text:'#0e7490' },
+            { border:'#059669', light:'#d1fae5', text:'#047857' },
+            { border:'#dc2626', light:'#fee2e2', text:'#b91c1c' },
+            { border:'#d97706', light:'#fef3c7', text:'#b45309' },
+            { border:'#7c3aed', light:'#f3e8ff', text:'#6d28d9' },
+            { border:'#be185d', light:'#fce7f3', text:'#be185d' },
+        ];
         entries.forEach((group, idx) => {
-            const pal = (window._getCardPalette || (() => ({ border:'#0891b2', light:'#cffafe', text:'#0e7490' })))(group.displayTitle);
-            const initials = (group.displayTitle||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2) || '?';
-            const sortedUp = [...(group.updates||[])].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
-            const latest = sortedUp[0];
-            const latestText = latest ? (latest.updates||latest.info||latest.notes||'').toString().slice(0,50) : '';
+            const pal = PALETTES[group.displayTitle.split('').reduce((a,c)=>a+c.charCodeAt(0),0) % PALETTES.length];
+            const words = group.displayTitle.trim().split(/\s+/);
+            const initials = (words[0]?.[0]||'') + (words[1]?.[0]||'');
+
             const row = document.createElement('div');
             row.className = 'nitem';
             row.style.cssText = 'cursor:pointer;';
-            row.innerHTML =
-                '<div style="width:30px;height:30px;border-radius:9px;background:' + pal.light + ';border:1.5px solid ' + pal.border + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:' + pal.text + ';flex-shrink:0;">' + initials + '</div>' +
-                '<div style="flex:1;min-width:0;">' +
-                    '<div class="ntitle">' + (idx+1) + '. ' + group.displayTitle + '</div>' +
-                    (group.mobile ? '<div class="nsub">📞 ' + group.mobile + '</div>' : '') +
-                    (latestText ? '<div class="ntime" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + latestText + '</div>' : '') +
-                '</div>' +
-                '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="2" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+
+            const avatar = document.createElement('div');
+            avatar.style.cssText = 'width:32px;height:32px;border-radius:9px;background:' + pal.light + ';border:1.5px solid ' + pal.border + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:' + pal.text + ';flex-shrink:0;text-transform:uppercase;';
+            avatar.textContent = initials || '?';
+
+            const info = document.createElement('div');
+            info.style.cssText = 'flex:1;min-width:0;';
+
+            const title = document.createElement('div');
+            title.className = 'ntitle';
+            title.textContent = (idx+1) + '. ' + group.displayTitle;
+
+            const latest = [...group.updates].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''))[0];
+            const latestContent = latest ? (latest.content || latest.info || '') : '';
+
+            info.appendChild(title);
+            if(group.mobile) {
+                const mob = document.createElement('div');
+                mob.className = 'nsub';
+                mob.textContent = '📞 ' + group.mobile;
+                info.appendChild(mob);
+            }
+            if(latestContent) {
+                const lt = document.createElement('div');
+                lt.className = 'ntime';
+                lt.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                lt.textContent = latestContent.toString().slice(0,55);
+                info.appendChild(lt);
+            }
+
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg','svg');
+            arrow.setAttribute('width','14'); arrow.setAttribute('height','14');
+            arrow.setAttribute('fill','none'); arrow.setAttribute('viewBox','0 0 24 24');
+            arrow.setAttribute('stroke','#94a3b8'); arrow.setAttribute('stroke-width','2');
+            arrow.style.flexShrink = '0';
+            const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+            p.setAttribute('stroke-linecap','round'); p.setAttribute('stroke-linejoin','round'); p.setAttribute('d','M9 5l7 7-7 7');
+            arrow.appendChild(p);
+
+            row.appendChild(avatar);
+            row.appendChild(info);
+            row.appendChild(arrow);
             row.onclick = () => { closeNotifPanel(); setTimeout(() => showClientDetailPopup(group.displayTitle), 200); };
-            sec.appendChild(row);
+            list.appendChild(row);
         });
-        list.appendChild(sec);
         return;
     }
 
