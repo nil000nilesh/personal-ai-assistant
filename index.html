@@ -727,13 +727,13 @@
 
         <!-- INPUT AREA -->
         <div style="padding:12px;background:white;border-top:1px solid #e2e8f0;flex-shrink:0;">
-            <div style="display:flex;gap:8px;align-items:center;background:#f1f5f9;border-radius:14px;padding:6px 8px;border:1.5px solid transparent;transition:border-color 0.2s;" id="input-wrapper">
+            <div style="display:flex;gap:8px;align-items:flex-end;background:#f1f5f9;border-radius:14px;padding:6px 8px;border:1.5px solid transparent;transition:border-color 0.2s;" id="input-wrapper">
                 <!-- Mic -->
                 <button id="mic-btn" title="Voice Input" style="width:36px;height:36px;border-radius:10px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;" onmouseenter="this.style.background='#e2e8f0'" onmouseleave="this.style.background='transparent'">
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#64748b" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
                 </button>
                 <!-- Input -->
-                <input type="text" id="user-input" placeholder="Message likhiye ya boliye..." style="flex:1;background:transparent;border:none;outline:none;font-size:13px;color:#1e293b;font-family:inherit;font-weight:500;" />
+                <textarea id="user-input" rows="1" placeholder="Message likhiye... (Shift+Enter for new line)" style="flex:1;background:transparent;border:none;outline:none;font-size:13px;color:#1e293b;font-family:inherit;font-weight:500;resize:none;max-height:80px;overflow-y:auto;line-height:1.4;padding:4px 0;"></textarea>
                 <!-- Send -->
                 <button id="send-btn" style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#2563eb);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 2px 8px rgba(79,70,229,0.35);" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
                     <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>

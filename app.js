@@ -669,6 +669,29 @@ async function checkAndLoadApp() {
     }
 }
 
+// ── Firestore reconnection helper for 503/network errors ─────────────
+let _reconnectTimer = null;
+let _reconnectIndicator = null;
+function handleSnapshotError(err, retryFn) {
+    console.error('Firestore onSnapshot error:', err);
+    // Show reconnecting indicator after 5 seconds
+    if (!_reconnectIndicator) {
+        _reconnectTimer = setTimeout(() => {
+            _reconnectIndicator = document.createElement('div');
+            _reconnectIndicator.id = 'reconnect-indicator';
+            _reconnectIndicator.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#fef3c7;color:#92400e;padding:6px 16px;border-radius:8px;font-size:12px;font-weight:700;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+            _reconnectIndicator.textContent = '🔄 Reconnecting...';
+            document.body.appendChild(_reconnectIndicator);
+        }, 5000);
+    }
+    // Retry after 2 seconds
+    setTimeout(() => {
+        if (_reconnectIndicator) { _reconnectIndicator.remove(); _reconnectIndicator = null; }
+        if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+        if (typeof retryFn === 'function') retryFn();
+    }, 2000);
+}
+
 function loadAppListeners() {
     // ── Data isolation ──────────────────────────────────────────────────
     // Admin: saara data (purana + naya, bina userId field wala bhi)
@@ -682,6 +705,8 @@ function loadAppListeners() {
         : query(collection(db, "chats"), where("userId", "==", uid));
 
     onSnapshot(chatQ, (snapshot) => {
+        if(_reconnectIndicator) { _reconnectIndicator.remove(); _reconnectIndicator = null; }
+        if(_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
         const welcomeMsg = ui.chatBox.firstElementChild;
         ui.chatBox.innerHTML = "";
         if(welcomeMsg) ui.chatBox.appendChild(welcomeMsg);
@@ -694,7 +719,7 @@ function loadAppListeners() {
             renderMessage(msg.role, msg.content);
         });
         ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
-    });
+    }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // ── NOTES (Client Cases) ────────────────────────────────────────────
     // Admin: sirf apna data (userId==adminEmail) + purana data (no userId field)
@@ -805,7 +830,7 @@ function loadAppListeners() {
                         <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg flex-shrink-0" style="background:rgba(255,255,255,0.22);color:white;border:1.5px solid rgba(255,255,255,0.3);">${initials}</div>
                         <div class="flex-1 min-w-0">
                             <div class="text-[9px] font-black uppercase tracking-widest mb-0.5" style="color:rgba(255,255,255,0.6);">👤 ${t('clientInfo')}</div>
-                            <h3 class="font-black text-white text-base leading-tight truncate">${group.displayTitle}</h3>
+                            <h3 class="font-black text-white text-base leading-tight" style="word-break:break-word;">${group.displayTitle}</h3>
                         </div>
                         <button onclick="deleteClientProfile('${group.displayTitle.replace(/'/g,"\\'")}');"
                             class="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
@@ -877,7 +902,7 @@ function loadAppListeners() {
         if(NS.filter === 'case' && document.getElementById('notif-panel')?.classList.contains('open')) {
             renderNotifList();
         }
-    });
+    }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Notes search
     document.getElementById('notes-search')?.addEventListener('input', e => { notesSearchQ = e.target.value.toLowerCase(); renderNotes(); });
@@ -1070,7 +1095,7 @@ function loadAppListeners() {
         if(window._onTasksLoaded) window._onTasksLoaded();
         // Refresh live notification counters
         if(typeof refreshCounters === 'function') refreshCounters();
-    });
+    }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Task search
     document.getElementById('task-search')?.addEventListener('input', e => {
@@ -1252,7 +1277,7 @@ function loadAppListeners() {
         if(window._onRemindersLoaded) window._onRemindersLoaded();
         // Refresh live notification counters
         if(typeof refreshCounters === 'function') refreshCounters();
-    });
+    }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Reminders search
     document.getElementById('rem-search')?.addEventListener('input', e => {
@@ -1296,7 +1321,7 @@ function loadAppListeners() {
         en: {
             notebook: 'My Notebook', notes: 'notes', clientProfiles: 'Client Profiles',
             profiles: 'Profiles', profile: 'Profile',
-            secretaryDraft: 'Secretary Draft', totalUpdates: 'Total Updates',
+            secretaryDraft: 'Case Intake Note', totalUpdates: 'Total Updates',
             updates: 'Updates', update: 'Update', latest: 'LATEST',
             deleteBtn: '🗑️ Delete', confirmNb: 'Delete all notebook entries for',
             confirmProfile: 'Delete all records for client',
@@ -1308,7 +1333,7 @@ function loadAppListeners() {
         hi: {
             notebook: 'मेरी नोटबुक', notes: 'नोट्स', clientProfiles: 'क्लाइंट प्रोफाइल',
             profiles: 'प्रोफाइल', profile: 'प्रोफाइल',
-            secretaryDraft: 'सचिव ड्राफ्ट', totalUpdates: 'कुल अपडेट',
+            secretaryDraft: 'केस इनटेक नोट', totalUpdates: 'कुल अपडेट',
             updates: 'अपडेट', update: 'अपडेट', latest: 'नवीनतम',
             deleteBtn: '🗑️ हटाएं', confirmNb: 'सभी नोट्स हटाएं:',
             confirmProfile: 'क्लाइंट का डेटा हटाएं:',
@@ -1533,7 +1558,7 @@ function loadAppListeners() {
         // Client-side sort: timestamp desc
         allNotebooks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderNotebook();
-    });
+    }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Notebook search
     document.getElementById('nb-search')?.addEventListener('input', e => {
@@ -1718,7 +1743,7 @@ CONVERSATION RULES — Follow these STRICTLY:
    ═══ NOTE PROCESSING FORMAT ═══
    When saving case.content, structure it EXACTLY like this:
 
-   📋 [CLIENT NAME] — Secretary Draft
+   📋 [CLIENT NAME] — Case Intake Note
 
    🏢 CLIENT INFORMATION
    Client Name: [extracted name]
@@ -1757,7 +1782,7 @@ CONVERSATION RULES — Follow these STRICTLY:
    - Each update = SELF-CONTAINED and readable on its own
 
    ═══ EXAMPLE OUTPUT (follow this exact style) ═══
-   "📋 Paawan Bio Energy — Secretary Draft\n\n🏢 CLIENT INFORMATION\nClient Name: Paawan Bio Energy\nContact Person: श्री Pravin Patidar जी\nCC Account No: 389005/614\nCA Status: Final confirmation pending\n\n📝 SECRETARY DRAFT NOTE\nदिनांक: 28 फरवरी 2026 | समय: 12:28 PM\nमॉर्गेज दस्तावेज़ीकरण कार्य सम्पन्न किया गया एवं ऋण स्वीकृति संबंधित आवश्यक कार्यवाही पूर्ण की गई।\n\nदिनांक: 10 मार्च 2026 | समय: 10:33 AM\nPaawan Bio Energy के संदर्भ में सूचित किया जाता है कि CMA verification हेतु प्रस्तुति भेजी जा चुकी है। श्री Pravin Patidar जी से दूरभाष पर प्रारंभिक चर्चा संपन्न हुई है, तथापि उनके CA द्वारा अंतिम अनुमोदन अभी प्रतीक्षित है। CA महोदय के अनुसार आगामी वर्षों में लाभ में उल्लेखनीय वृद्धि अपेक्षित है, जिसके परिणामस्वरूप कर देयता में भी वृद्धि होगी।\n\nUpdated CMA, Estimated Balance Sheet एवं P&L Statement प्राप्त होते ही CC Account सं. 389005/614 हेतु Tejas प्रणाली में स्वीकृति की कार्यवाही प्रारंभ की जाएगी।\n\n✅ TASKS\n1. Updated CMA प्राप्त करें — Pravin Patidar के CA से\n2. Estimated Balance Sheet & P&L प्राप्त करें — CA confirmation के बाद\n3. Tejas में Sanction Process करें — दस्तावेज़ मिलते ही (CC A/c 389005/614)\n\n🔔 REMINDERS\n⏰ आज — 10 Mar 2026, दोपहर 2:00 बजे — Pravin Patidar जी से telephonic follow-up — CA confirmation status\n\n⏳ PENDING\n* CA से final profit projection confirmation\n* Updated CMA / Balance Sheet / P&L documents"
+   "📋 Paawan Bio Energy — Case Intake Note\n\n🏢 CLIENT INFORMATION\nClient Name: Paawan Bio Energy\nContact Person: श्री Pravin Patidar जी\nCC Account No: 389005/614\nCA Status: Final confirmation pending\n\n📝 SECRETARY DRAFT NOTE\nदिनांक: 28 फरवरी 2026 | समय: 12:28 PM\nमॉर्गेज दस्तावेज़ीकरण कार्य सम्पन्न किया गया एवं ऋण स्वीकृति संबंधित आवश्यक कार्यवाही पूर्ण की गई।\n\nदिनांक: 10 मार्च 2026 | समय: 10:33 AM\nPaawan Bio Energy के संदर्भ में सूचित किया जाता है कि CMA verification हेतु प्रस्तुति भेजी जा चुकी है। श्री Pravin Patidar जी से दूरभाष पर प्रारंभिक चर्चा संपन्न हुई है, तथापि उनके CA द्वारा अंतिम अनुमोदन अभी प्रतीक्षित है। CA महोदय के अनुसार आगामी वर्षों में लाभ में उल्लेखनीय वृद्धि अपेक्षित है, जिसके परिणामस्वरूप कर देयता में भी वृद्धि होगी।\n\nUpdated CMA, Estimated Balance Sheet एवं P&L Statement प्राप्त होते ही CC Account सं. 389005/614 हेतु Tejas प्रणाली में स्वीकृति की कार्यवाही प्रारंभ की जाएगी।\n\n✅ TASKS\n1. Updated CMA प्राप्त करें — Pravin Patidar के CA से\n2. Estimated Balance Sheet & P&L प्राप्त करें — CA confirmation के बाद\n3. Tejas में Sanction Process करें — दस्तावेज़ मिलते ही (CC A/c 389005/614)\n\n🔔 REMINDERS\n⏰ आज — 10 Mar 2026, दोपहर 2:00 बजे — Pravin Patidar जी से telephonic follow-up — CA confirmation status\n\n⏳ PENDING\n* CA से final profit projection confirmation\n* Updated CMA / Balance Sheet / P&L documents"
 
    ═══ FIELD EXTRACTION (CRITICAL) ═══
    • case.client = client/company name (ALWAYS fill — e.g. "Paawan Bio Energy")
@@ -1775,6 +1800,17 @@ CONVERSATION RULES — Follow these STRICTLY:
      → Time-bound items (kal 2 baje call, next week meeting) → reminder.save = true bhi set karo
    - Ek message mein case + task + reminder TEENO simultaneously save ho sakte hain!
 
+   ═══ TOOL CALLING — AUTOMATIC MULTI-JOB ═══
+   - You have tools available: create_note, create_client_profile, create_task, create_reminder
+   - When user provides RAW BANKING CASE INFO, you MUST call ALL relevant tools SIMULTANEOUSLY:
+     → create_note: Save structured case note to notebook
+     → create_client_profile: Create/update client profile
+     → create_task: Call ONCE per individual task (multiple calls for multiple tasks)
+     → create_reminder: Call ONCE per deadline/follow-up (multiple calls for multiple reminders)
+   - Do NOT ask for permission. Execute ALL tool calls automatically.
+   - After tool execution, reply with brief Hinglish confirmation like: "✅ Case processed! Note save ho gaya, profile create hua, X tasks aur Y reminders set ho gaye."
+   - For simple conversations (greetings, questions, searches) — NO tool calls needed, respond normally via JSON format.
+
    ═══ NOTEBOOK vs CASE ═══
    - Client personal info + banking/loan updates → case.save = true
    - General notes/observations/non-client content → notebook.save = true
@@ -1786,21 +1822,22 @@ CONVERSATION RULES — Follow these STRICTLY:
    - Mention extracted tasks & reminders in reply
    - Agar same client ki pehle se entry hai, naya update add karo (purana mat hatao)
 
-2. TASKS → PEHLE PUCHO, PHIR SAVE KARO:
-   - Jab user koi kaam bataye ya information se task ban sakta ho → PEHLE pucho:
-     "Yeh task bana doon? 📋 [task title] — Client: [name] — Deadline: [suggested date]. Haan ya nahi?"
-   - task.save = false rakhna jab tak user confirm na kare
-   - Jab user "haan/yes/bana do/kar do/ok/theek hai" bole → TAB task.save = true karo
+2. TASKS → AUTO-SAVE (bina puche):
+   - Jab user koi kaam bataye ya raw banking info se tasks ban sakte hain → AUTOMATICALLY task.save = true karo
+   - Har actionable item ke liye SEPARATE task banao — ek message mein MULTIPLE tasks allowed hain
+   - Agar multiple tasks hain → "tasks" array use karo (see JSON format below)
    - Suggest a realistic dueDate based on context (agar user ne date nahi batai)
-   - Agar user explicitly bole "task bana do" ya "task save karo" → directly save (no need to ask)
+   - Permission ya confirmation KABHI mat maango — seedha save karo
+   - IMPORTANT: task.dueDate MUST be valid ISO 8601 (e.g. "2026-03-15T00:00:00")
 
-3. REMINDERS → SMART SAVE:
-   - Agar user EXPLICITLY bole "reminder set karo" / "yaad dila dena" / "remind karo" / "reminder bana do" / "reminder add karo" → DIRECTLY save (reminder.save = true), puche bina!
+3. REMINDERS → AUTO-SAVE (bina puche):
+   - Jab user information deta hai jismein date/time-bound actions hain → AUTOMATICALLY reminder.save = true karo
+   - Har deadline/follow-up ke liye SEPARATE reminder banao — ek message mein MULTIPLE reminders allowed hain
+   - Agar multiple reminders hain → "reminders" array use karo (see JSON format below)
    - Agar user ne time bhi bataya hai (jaise "2 baje", "kal subah", "15 March ko") → ISO 8601 format mein convert karke reminder.time mein daalo
-   - Agar user ne time nahi bataya → time = "Manual" set karo, but STILL save karo
-   - Sirf jab information se INDIRECTLY reminder ban sakta ho (user ne nahi bola) → TAB pucho:
-     "Iska reminder set karun? ⏰ [title] — Time: [suggested time]. Haan ya nahi?"
-   - Jab user confirm kare ("haan/yes/ok/theek hai") → TAB reminder.save = true karo
+   - Agar user ne time nahi bataya lekin deadline implied hai → reasonable time estimate lagao
+   - Agar koi time context nahi → time = "Manual" set karo, but STILL save karo
+   - Permission ya confirmation KABHI mat maango — seedha save karo
    - IMPORTANT: reminder.time MUST be valid ISO 8601 (e.g. "2026-03-15T14:00:00") ya "Manual"
 
 4. UPDATE EXISTING DATA:
@@ -1852,8 +1889,18 @@ RESPONSE FORMAT — ALWAYS valid JSON only, NO backticks, NO extra text outside 
   "notebook": { "save": false, "client": "", "content": "" },
   "case": { "save": false, "client": "", "mobile": null, "account": null, "address": null, "status": "", "content": "" },
   "task": { "save": false, "client": "", "title": "", "dueDate": "", "priority": "" },
-  "reminder": { "save": false, "client": "", "title": "", "time": "" }
+  "reminder": { "save": false, "client": "", "title": "", "time": "" },
+  "tasks": [],
+  "reminders": []
 }
+
+MULTIPLE TASKS/REMINDERS:
+- For SINGLE task → use "task" field as before
+- For MULTIPLE tasks → use "tasks" array: [{"save":true,"client":"Name","title":"Task 1","dueDate":"ISO","priority":"Urgent"},{"save":true,...}]
+- For SINGLE reminder → use "reminder" field as before
+- For MULTIPLE reminders → use "reminders" array: [{"save":true,"client":"Name","title":"Reminder 1","time":"ISO"},{"save":true,...}]
+- When raw banking info comes → ALWAYS use arrays for tasks and reminders (usually 3-6 tasks and 1-3 reminders per case)
+- EVERY item in tasks/reminders array MUST have save:true
 
 softDelete.collection = "notes" / "tasks" / "reminders" / "notebooks"
 update.collection = "tasks" / "reminders" / "notes" / "notebooks"
@@ -1868,6 +1915,86 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             ...chatHistory.slice(-16) // last 16 messages for better conversation context
         ];
 
+        // Tool definitions for automatic Firestore writes
+        const toolDefinitions = [
+            {
+                type: "function",
+                function: {
+                    name: "create_note",
+                    description: "Save a structured banking case note to Notebook",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            title: { type: "string" },
+                            content: { type: "string", description: "Full structured case summary in Hinglish" },
+                            client_name: { type: "string" },
+                            product: { type: "string", description: "KCC/TL/CC/AIF/OD etc" },
+                            tags: { type: "array", items: { type: "string" } }
+                        },
+                        required: ["title", "content", "client_name"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "create_client_profile",
+                    description: "Create or update a client profile with banking case details",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            name: { type: "string" },
+                            mobile: { type: "string" },
+                            address: { type: "string" },
+                            product: { type: "string" },
+                            limit_amount: { type: "string" },
+                            cibil_score: { type: "number" },
+                            co_applicant: { type: "string" },
+                            land_details: { type: "string" },
+                            dob: { type: "string" },
+                            status: { type: "string", enum: ["Active", "Pending", "Processing", "Sanctioned", "Disbursed", "Rejected", "Mortgage"] }
+                        },
+                        required: ["name", "product"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "create_task",
+                    description: "Create a single actionable task. Call this ONCE per task — for multiple tasks, call multiple times.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            title: { type: "string" },
+                            client_name: { type: "string" },
+                            priority: { type: "string", enum: ["Urgent", "High", "Medium", "Low"] },
+                            due_date: { type: "string", description: "ISO 8601 date string" },
+                            category: { type: "string", enum: ["document", "inspection", "followup", "sanction", "disbursement", "other"] }
+                        },
+                        required: ["title", "client_name", "priority"]
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "create_reminder",
+                    description: "Create a dated reminder for follow-up or deadline. Call ONCE per reminder.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            title: { type: "string" },
+                            client_name: { type: "string" },
+                            reminder_date: { type: "string", description: "ISO 8601 date string" },
+                            type: { type: "string", enum: ["document", "deadline", "followup", "inspection"] }
+                        },
+                        required: ["title", "client_name", "reminder_date"]
+                    }
+                }
+            }
+        ];
+
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -1878,7 +2005,9 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                 model: OPENAI_MODEL,
                 messages: messages,
                 temperature: 0.4,
-                max_tokens: 1500
+                max_tokens: 2500,
+                tools: toolDefinitions,
+                tool_choice: "auto"
             })
         });
 
@@ -1888,25 +2017,159 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
         }
 
         const openaiData = await openaiRes.json();
-        const rawContent = openaiData.choices[0].message.content.trim();
+        const assistantMessage = openaiData.choices[0].message;
+        const toolCalls = assistantMessage.tool_calls || [];
+        const rawContent = (assistantMessage.content || '').trim();
 
-        // ── 4. PARSE AI RESPONSE ────────────────────────────────────
-        let aiResponse;
-        try {
-            // Strip code fences if any
-            const clean = rawContent.replace(/```json|```/g, '').trim();
-            aiResponse = JSON.parse(clean);
-        } catch(e) {
-            // If AI returned plain text (not JSON), show it directly
-            aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false }, update: { action: false }, softDelete: { action: false } };
-        }
-
-        const replyText = aiResponse.reply || "कार्य सम्पन्न हुआ।";
-        chatHistory.push({ role: 'assistant', content: replyText });
-
-        // ── 5. SAVE TO FIREBASE BASED ON AI DECISION ───────────────
+        // ── 4. PROCESS TOOL CALLS (if any) ────────────────────────────
         const now = new Date().toISOString();
         const savePromises = [];
+        let toolCallResults = [];
+        let toolSummary = { notes: 0, profiles: 0, tasks: 0, reminders: 0 };
+
+        if (toolCalls.length > 0) {
+            for (const tc of toolCalls) {
+                let args;
+                try { args = JSON.parse(tc.function.arguments); } catch(e) { continue; }
+                const fnName = tc.function.name;
+                let result = "done";
+
+                if (fnName === 'create_note') {
+                    savePromises.push(addDoc(collection(db, "notebooks"), {
+                        title: args.client_name || "सामान्य",
+                        content: args.content,
+                        client: args.client_name || "सामान्य",
+                        product: args.product || null,
+                        tags: args.tags || [],
+                        timestamp: now,
+                        userId: currentUserEmail
+                    }));
+                    toolSummary.notes++;
+                    if(window.addActivity) addActivity('📓', 'Notebook saved: ' + (args.client_name || 'General'), '#4f46e5');
+                    addNotif('notebook', '📓 Notebook saved — ' + (args.client_name || 'General'), 'AI ne automatically save kiya');
+                    if(window.registerUpdate) registerUpdate('notebook', args.client_name || '');
+                    result = "Note saved for " + args.client_name;
+                }
+                else if (fnName === 'create_client_profile') {
+                    const profileContent = `📋 ${args.name} — Case Intake Note\n\n🏢 CLIENT INFORMATION\nClient Name: ${args.name}\nProduct: ${args.product || '-'}\nMobile: ${args.mobile || '-'}\nAddress: ${args.address || '-'}\nLimit: ${args.limit_amount || '-'}\nCIBIL: ${args.cibil_score || '-'}\nCo-Applicant: ${args.co_applicant || '-'}\nLand Details: ${args.land_details || '-'}`;
+                    savePromises.push(addDoc(collection(db, "notes"), {
+                        title: args.name,
+                        content: profileContent,
+                        client: args.name,
+                        mobile: args.mobile || null,
+                        account: null,
+                        address: args.address || null,
+                        status: args.status || "Active",
+                        timestamp: now,
+                        userId: currentUserEmail
+                    }));
+                    toolSummary.profiles++;
+                    if(window.addActivity) addActivity('📂', 'Client profile saved: ' + args.name, '#0891b2');
+                    addNotif('case', '📂 Client Profile — ' + args.name, args.mobile ? '📱 ' + args.mobile : 'Profile saved');
+                    if(window.registerUpdate) registerUpdate('case', args.name || '');
+                    result = "Profile created for " + args.name;
+                }
+                else if (fnName === 'create_task') {
+                    const taskObj = {
+                        title: args.title,
+                        status: "Pending",
+                        client: args.client_name || "सामान्य",
+                        timestamp: now,
+                        userId: currentUserEmail
+                    };
+                    if(args.due_date) taskObj.dueDate = args.due_date;
+                    if(args.priority) taskObj.priority = args.priority;
+                    if(args.category) taskObj.category = args.category;
+                    savePromises.push(addDoc(collection(db, "tasks"), taskObj));
+                    allTasks.unshift({ ...taskObj, _docId: '_pending_' + now + '_' + toolSummary.tasks });
+                    toolSummary.tasks++;
+                    if(window.addActivity) addActivity('✅', 'Task created: ' + args.title.substring(0,30), '#d97706');
+                    addNotif('task', '✅ New Task — ' + args.title.substring(0,45), 'Client: ' + (args.client_name || 'General'));
+                    if(window.registerUpdate) registerUpdate('task', args.client_name || '');
+                    result = "Task created: " + args.title;
+                }
+                else if (fnName === 'create_reminder') {
+                    const remObj = {
+                        title: args.title,
+                        time: args.reminder_date || "Manual",
+                        client: args.client_name || "सामान्य",
+                        type: args.type || "followup",
+                        timestamp: now,
+                        userId: currentUserEmail
+                    };
+                    savePromises.push(addDoc(collection(db, "reminders"), remObj));
+                    allReminders.unshift({ ...remObj, _docId: '_pending_' + now + '_' + toolSummary.reminders });
+                    toolSummary.reminders++;
+                    if(window.addActivity) addActivity('⏰', 'Reminder set: ' + args.title.substring(0,30), '#dc2626');
+                    addNotif('reminder', '⏰ Reminder set — ' + args.title.substring(0,40), '📅 ' + (args.reminder_date || 'Manual'));
+                    if(typeof scheduleReminder === 'function') scheduleReminder(remObj);
+                    if(window.registerUpdate) registerUpdate('reminder', args.client_name || '');
+                    result = "Reminder set: " + args.title;
+                }
+
+                toolCallResults.push({ tool_call_id: tc.id, role: "tool", content: result });
+            }
+
+            // Re-render UI after tool calls
+            if(toolSummary.tasks > 0 && typeof renderTasks === 'function') renderTasks();
+            if(toolSummary.reminders > 0 && typeof renderReminders === 'function') renderReminders();
+        }
+
+        // ── 4b. GET FINAL TEXT RESPONSE ────────────────────────────
+        let replyText;
+        if (toolCalls.length > 0 && toolCallResults.length > 0) {
+            // Send tool results back to get a final conversational reply
+            const followUpMessages = [
+                ...messages,
+                assistantMessage,
+                ...toolCallResults
+            ];
+            try {
+                const followUpRes = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${DYNAMIC_OPENAI_KEY}` },
+                    body: JSON.stringify({ model: OPENAI_MODEL, messages: followUpMessages, temperature: 0.4, max_tokens: 800 })
+                });
+                if (followUpRes.ok) {
+                    const followUpData = await followUpRes.json();
+                    const followUpContent = (followUpData.choices[0].message.content || '').trim();
+                    // Try parsing as JSON (existing format), else use as plain text
+                    try {
+                        const clean = followUpContent.replace(/```json|```/g, '').trim();
+                        const parsed = JSON.parse(clean);
+                        replyText = parsed.reply || followUpContent;
+                    } catch(e) {
+                        replyText = followUpContent;
+                    }
+                } else {
+                    // Fallback confirmation
+                    const parts = [];
+                    if(toolSummary.notes > 0) parts.push(`${toolSummary.notes} note saved`);
+                    if(toolSummary.profiles > 0) parts.push(`${toolSummary.profiles} profile created`);
+                    if(toolSummary.tasks > 0) parts.push(`${toolSummary.tasks} tasks created`);
+                    if(toolSummary.reminders > 0) parts.push(`${toolSummary.reminders} reminders set`);
+                    replyText = `✅ Case processed: ${parts.join(', ')}`;
+                }
+            } catch(e) {
+                const parts = [];
+                if(toolSummary.notes > 0) parts.push(`${toolSummary.notes} note saved`);
+                if(toolSummary.profiles > 0) parts.push(`${toolSummary.profiles} profile created`);
+                if(toolSummary.tasks > 0) parts.push(`${toolSummary.tasks} tasks created`);
+                if(toolSummary.reminders > 0) parts.push(`${toolSummary.reminders} reminders set`);
+                replyText = `✅ Case processed: ${parts.join(', ')}`;
+            }
+        } else {
+            // No tool calls — parse JSON response as before
+            let aiResponse;
+            try {
+                const clean = rawContent.replace(/```json|```/g, '').trim();
+                aiResponse = JSON.parse(clean);
+            } catch(e) {
+                aiResponse = { reply: rawContent, notebook: { save: false }, case: { save: false }, task: { save: false }, reminder: { save: false }, tasks: [], reminders: [], update: { action: false }, softDelete: { action: false } };
+            }
+            replyText = aiResponse.reply || "कार्य सम्पन्न हुआ।";
+
+            // ── 5. SAVE TO FIREBASE BASED ON AI JSON DECISION ───────────────
 
         if (aiResponse.notebook?.save && aiResponse.notebook?.content) {
             savePromises.push(addDoc(collection(db, "notebooks"), {
@@ -1967,13 +2230,55 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                 userId: currentUserEmail
             };
             savePromises.push(addDoc(collection(db, "reminders"), remObj));
-            // Optimistic local push — onSnapshot will sync shortly
             allReminders.unshift({ ...remObj, _docId: '_pending_' + now });
             if(typeof renderReminders === 'function') renderReminders();
             if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
             scheduleReminder(remObj);
             if(window.registerUpdate) registerUpdate('reminder', aiResponse.reminder.client || '');
+        }
+
+        // ── MULTIPLE TASKS ARRAY HANDLER ─────────────────────────────────
+        if (Array.isArray(aiResponse.tasks) && aiResponse.tasks.length > 0) {
+            aiResponse.tasks.forEach((t, idx) => {
+                if(!t.save || !t.title) return;
+                const taskObj = {
+                    title: t.title,
+                    status: "Pending",
+                    client: t.client || "सामान्य",
+                    timestamp: now,
+                    userId: currentUserEmail
+                };
+                if(t.dueDate) taskObj.dueDate = t.dueDate;
+                if(t.priority) taskObj.priority = t.priority;
+                savePromises.push(addDoc(collection(db, "tasks"), taskObj));
+                allTasks.unshift({ ...taskObj, _docId: '_pending_' + now + '_' + idx });
+                if(window.addActivity) addActivity('✅', 'Task created: ' + t.title.substring(0,30), '#d97706');
+                addNotif('task', '✅ New Task — ' + t.title.substring(0,45), 'Client: ' + (t.client || 'General'));
+                if(window.registerUpdate) registerUpdate('task', t.client || '');
+            });
+            if(typeof renderTasks === 'function') renderTasks();
+        }
+
+        // ── MULTIPLE REMINDERS ARRAY HANDLER ─────────────────────────────
+        if (Array.isArray(aiResponse.reminders) && aiResponse.reminders.length > 0) {
+            aiResponse.reminders.forEach((r, idx) => {
+                if(!r.save || !r.title) return;
+                const remObj = {
+                    title: r.title,
+                    time: r.time || "Manual",
+                    client: r.client || "सामान्य",
+                    timestamp: now,
+                    userId: currentUserEmail
+                };
+                savePromises.push(addDoc(collection(db, "reminders"), remObj));
+                allReminders.unshift({ ...remObj, _docId: '_pending_' + now + '_' + idx });
+                if(window.addActivity) addActivity('⏰', 'Reminder set: ' + r.title.substring(0,30), '#dc2626');
+                addNotif('reminder', '⏰ Reminder set — ' + r.title.substring(0,40), '📅 ' + (r.time || 'Manual'));
+                if(typeof scheduleReminder === 'function') scheduleReminder(remObj);
+                if(window.registerUpdate) registerUpdate('reminder', r.client || '');
+            });
+            if(typeof renderReminders === 'function') renderReminders();
         }
 
         // ── UPDATE HANDLER — Update existing tasks/reminders/notes/notebooks ─
@@ -2046,6 +2351,10 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             }
         }
 
+        } // ← close else block (no tool calls — JSON path)
+
+        chatHistory.push({ role: 'assistant', content: replyText });
+
         // Save AI reply to chat
         savePromises.push(addDoc(collection(db, "chats"), {
             role: "assistant", content: replyText, timestamp: now,
@@ -2075,7 +2384,18 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
 }
 
 document.getElementById('send-btn').addEventListener('click', sendMessage);
-ui.userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+ui.userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+    // Shift+Enter = default behavior (newline in textarea)
+});
+// Auto-resize textarea as user types
+ui.userInput.addEventListener('input', () => {
+    ui.userInput.style.height = 'auto';
+    ui.userInput.style.height = Math.min(ui.userInput.scrollHeight, 80) + 'px';
+});
 
 
 
@@ -2584,16 +2904,18 @@ function refreshBadges() {
     const dot = document.getElementById('bell-dot');
     if(dot) dot.style.display = total > 0 ? '' : 'none';
 
-    // Task badge on sidebar
+    // Task badge on sidebar — show actual pending task count from Firestore data
     const tb = document.getElementById('task-badge');
     if(tb) {
-        if(taskUnread > 0) { tb.textContent = taskUnread>9?'9+':taskUnread; tb.style.display='flex'; }
+        const pendingTaskCount = (typeof allTasks !== 'undefined' ? allTasks : []).filter(t => t.status !== 'Done' && t.status !== 'Finished').length;
+        if(pendingTaskCount > 0) { tb.textContent = pendingTaskCount > 9 ? '9+' : pendingTaskCount; tb.style.display='flex'; }
         else tb.style.display='none';
     }
-    // Reminder badge on sidebar
+    // Reminder badge on sidebar — show actual upcoming/pending reminder count from Firestore data
     const rb = document.getElementById('rem-badge');
     if(rb) {
-        if(remUnread > 0) { rb.textContent = remUnread>9?'9+':remUnread; rb.style.display='flex'; }
+        const activeRemCount = (typeof allReminders !== 'undefined' ? allReminders : []).filter(r => r.status !== 'Closed' && r.status !== 'Done').length;
+        if(activeRemCount > 0) { rb.textContent = activeRemCount > 9 ? '9+' : activeRemCount; rb.style.display='flex'; }
         else rb.style.display='none';
     }
     // Panel header unread badge
