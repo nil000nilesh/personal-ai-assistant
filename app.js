@@ -2311,10 +2311,9 @@ window.filterClientList = function(q) {
 // ╚══════════════════════════════════════════════════════════════╝
 
 window.openFocusMode = function(type, data) {
-    const overlay = document.getElementById('focus-overlay');
     const popup   = document.getElementById('focus-popup');
     const body    = document.getElementById('focus-body');
-    if(!overlay || !popup || !body) return;
+    if(!popup || !body) return;
 
     const PALETTES = [
         { grad:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'#6366f1', light:'#ede9fe', text:'#4f46e5' },
@@ -2449,8 +2448,7 @@ window.openFocusMode = function(type, data) {
     }
 
     body.innerHTML = html;
-    overlay.style.display = 'block';
-    popup.classList.add('open');
+    popup.classList.remove('hidden');
     document.addEventListener('keydown', _focusEscHandler);
 };
 
@@ -2459,8 +2457,7 @@ function _focusEscHandler(e) {
 }
 
 window.closeFocusMode = function() {
-    document.getElementById('focus-overlay').style.display = 'none';
-    document.getElementById('focus-popup').classList.remove('open');
+    document.getElementById('focus-popup')?.classList.add('hidden');
     document.removeEventListener('keydown', _focusEscHandler);
 };
 
