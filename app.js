@@ -869,6 +869,10 @@ function loadAppListeners() {
             g.updates.push(note);
         });
         renderNotes();
+        // If notification panel is open on Clients tab, refresh it
+        if(NS.filter === 'case' && document.getElementById('notif-panel')?.classList.contains('open')) {
+            renderNotifList();
+        }
     });
 
     // Notes search
