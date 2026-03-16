@@ -2625,12 +2625,15 @@ function refreshCounters() {
     if(sn) sn.textContent = NS.savedToday;
 }
 
+// Cache notif-empty element ONCE — prevents null after list.innerHTML='' removes it
+const _notifEmpty = document.getElementById('notif-empty');
+
 // ─── Render notification list ─────────────────────────────────────
 function renderNotifList() {
     const list  = document.getElementById('notif-list');
-    const empty = document.getElementById('notif-empty');
+    const empty = _notifEmpty;  // use cached reference — never null
     refreshCounters();
-    list.innerHTML = '';
+    list.innerHTML = '';  // removes children including #notif-empty, but 'empty' ref stays valid
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2684,28 +2687,43 @@ function renderNotifList() {
         }
     }
 
-    // ── CLIENTS TAB: show all clients from allGroupedNotes ────────
+    // ── CLIENTS TAB ───────────────────────────────────────────────
     if(NS.filter === 'case') {
-        // Rebuild groups from allSavedNotes for reliability
-        const groups = {};
-        (allSavedNotes || []).forEach(note => {
-            const key = (note.client || note.title || 'सामान्य').toUpperCase();
-            const name = note.client || note.title || 'सामान्य';
-            if(!groups[key]) groups[key] = { displayTitle: name, mobile: note.mobile||null, updates: [note] };
-            else groups[key].updates.push(note);
-            if(!groups[key].mobile && note.mobile) groups[key].mobile = note.mobile;
-        });
-        const entries = Object.values(groups).sort((a,b) => (a.displayTitle||'').localeCompare(b.displayTitle||''));
+        // Use allGroupedNotes (has account extracted already); fallback to rebuilding from allSavedNotes
+        let grpObj = allGroupedNotes;
+        if(!grpObj || Object.keys(grpObj).length === 0) {
+            grpObj = {};
+            (allSavedNotes || []).forEach(note => {
+                const key = (note.client || note.title || 'सामान्य').toUpperCase();
+                const name = note.client || note.title || 'सामान्य';
+                if(!grpObj[key]) grpObj[key] = { displayTitle: name, mobile: null, account: null, updates: [] };
+                const g = grpObj[key];
+                if(!g.mobile && note.mobile) g.mobile = note.mobile;
+                if(!g.mobile) { const m = (note.content||'').match(/\b[6-9]\d{9}\b/); if(m) g.mobile = m[0]; }
+                if(!g.account && note.account) g.account = note.account;
+                if(!g.account) { const a = (note.content||'').match(/(?:account|acc|खाता)[^\d]*(\d[\d\s\-\/]{5,20}\d)/i); if(a) g.account = a[1].trim(); }
+                g.updates.push(note);
+            });
+        }
+        const entries = Object.values(grpObj).sort((a,b) => (a.displayTitle||'').localeCompare(b.displayTitle||''));
+
+        // Hide/show empty state
+        if(empty) empty.style.display = 'none';
 
         if(entries.length === 0) {
-            list.appendChild(empty); empty.style.display = 'block'; return;
+            // Show a friendly empty message directly in list
+            const msg = document.createElement('div');
+            msg.style.cssText = 'text-align:center;padding:40px 20px;color:#94a3b8;';
+            msg.innerHTML = '<div style="font-size:32px;margin-bottom:8px;">👤</div><div style="font-weight:700;font-size:13px;">Koi client nahi mila</div>';
+            list.appendChild(msg);
+            return;
         }
-        empty.style.display = 'none';
 
-        const header = document.createElement('div');
-        header.style.cssText = 'font-size:9px;font-weight:900;color:#0891b2;text-transform:uppercase;letter-spacing:1px;padding:6px 4px 8px;';
-        header.textContent = '👤 All Clients (' + entries.length + ')';
-        list.appendChild(header);
+        // Header
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'font-size:10px;font-weight:900;color:#0891b2;text-transform:uppercase;letter-spacing:1px;padding:8px 6px 10px;border-bottom:1px solid #e0f2fe;margin-bottom:4px;';
+        hdr.textContent = '👥 Total Clients: ' + entries.length;
+        list.appendChild(hdr);
 
         const PALETTES = [
             { border:'#6366f1', light:'#ede9fe', text:'#4f46e5' },
@@ -2716,57 +2734,66 @@ function renderNotifList() {
             { border:'#7c3aed', light:'#f3e8ff', text:'#6d28d9' },
             { border:'#be185d', light:'#fce7f3', text:'#be185d' },
         ];
+
         entries.forEach((group, idx) => {
-            const pal = PALETTES[group.displayTitle.split('').reduce((a,c)=>a+c.charCodeAt(0),0) % PALETTES.length];
-            const words = group.displayTitle.trim().split(/\s+/);
-            const initials = (words[0]?.[0]||'') + (words[1]?.[0]||'');
+            const name = group.displayTitle || '';
+            const hash = name.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+            const pal  = PALETTES[hash % PALETTES.length];
+            const words = name.trim().split(/\s+/);
+            const initials = ((words[0]||'')[0]||'').toUpperCase() + ((words[1]||'')[0]||'').toUpperCase();
 
             const row = document.createElement('div');
-            row.className = 'nitem';
-            row.style.cssText = 'cursor:pointer;';
+            row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .15s;';
+            row.onmouseenter = () => row.style.background = '#f8fafc';
+            row.onmouseleave = () => row.style.background = '';
 
-            const avatar = document.createElement('div');
-            avatar.style.cssText = 'width:32px;height:32px;border-radius:9px;background:' + pal.light + ';border:1.5px solid ' + pal.border + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:' + pal.text + ';flex-shrink:0;text-transform:uppercase;';
-            avatar.textContent = initials || '?';
+            // SL + Avatar
+            const sl = document.createElement('div');
+            sl.style.cssText = 'width:34px;height:34px;border-radius:10px;background:' + pal.light + ';border:1.5px solid ' + pal.border + ';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;';
+            const slNum = document.createElement('div');
+            slNum.style.cssText = 'font-size:8px;font-weight:900;color:' + pal.text + ';line-height:1;';
+            slNum.textContent = String(idx + 1).padStart(2, '0');
+            const slInit = document.createElement('div');
+            slInit.style.cssText = 'font-size:11px;font-weight:900;color:' + pal.text + ';line-height:1;margin-top:1px;';
+            slInit.textContent = initials || '?';
+            sl.appendChild(slNum);
+            sl.appendChild(slInit);
 
+            // Info block
             const info = document.createElement('div');
             info.style.cssText = 'flex:1;min-width:0;';
 
-            const title = document.createElement('div');
-            title.className = 'ntitle';
-            title.textContent = (idx+1) + '. ' + group.displayTitle;
+            const nameEl = document.createElement('div');
+            nameEl.style.cssText = 'font-size:13px;font-weight:800;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+            nameEl.textContent = name;
+            info.appendChild(nameEl);
 
-            const latest = [...group.updates].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''))[0];
-            const latestContent = latest ? (latest.content || latest.info || '') : '';
+            const detailRow = document.createElement('div');
+            detailRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;';
 
-            info.appendChild(title);
             if(group.mobile) {
-                const mob = document.createElement('div');
-                mob.className = 'nsub';
+                const mob = document.createElement('span');
+                mob.style.cssText = 'font-size:10px;font-weight:700;color:#0891b2;background:#e0f2fe;padding:1px 6px;border-radius:5px;';
                 mob.textContent = '📞 ' + group.mobile;
-                info.appendChild(mob);
+                detailRow.appendChild(mob);
             }
-            if(latestContent) {
-                const lt = document.createElement('div');
-                lt.className = 'ntime';
-                lt.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-                lt.textContent = latestContent.toString().slice(0,55);
-                info.appendChild(lt);
+            if(group.account) {
+                const acc = document.createElement('span');
+                acc.style.cssText = 'font-size:10px;font-weight:700;color:#059669;background:#d1fae5;padding:1px 6px;border-radius:5px;';
+                acc.textContent = '🏦 ' + group.account;
+                detailRow.appendChild(acc);
             }
+            if(detailRow.children.length > 0) info.appendChild(detailRow);
 
-            const arrow = document.createElementNS('http://www.w3.org/2000/svg','svg');
-            arrow.setAttribute('width','14'); arrow.setAttribute('height','14');
-            arrow.setAttribute('fill','none'); arrow.setAttribute('viewBox','0 0 24 24');
-            arrow.setAttribute('stroke','#94a3b8'); arrow.setAttribute('stroke-width','2');
-            arrow.style.flexShrink = '0';
-            const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-            p.setAttribute('stroke-linecap','round'); p.setAttribute('stroke-linejoin','round'); p.setAttribute('d','M9 5l7 7-7 7');
-            arrow.appendChild(p);
+            // Arrow
+            const arr = document.createElement('div');
+            arr.style.cssText = 'color:#cbd5e1;font-size:16px;flex-shrink:0;';
+            arr.textContent = '›';
 
-            row.appendChild(avatar);
+            row.appendChild(sl);
             row.appendChild(info);
-            row.appendChild(arrow);
-            row.onclick = () => { closeNotifPanel(); setTimeout(() => showClientDetailPopup(group.displayTitle), 200); };
+            row.appendChild(arr);
+            row.onclick = () => { closeNotifPanel(); setTimeout(() => showClientDetailPopup(name), 200); };
             list.appendChild(row);
         });
         return;
