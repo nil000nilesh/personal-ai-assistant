@@ -1757,18 +1757,8 @@ CONVERSATION RULES — Follow these STRICTLY:
    Rewrite the raw note in FORMAL HINDI (Devanagari script), date-wise chronological order.
    Each entry: दिनांक: [DD माह YYYY] | समय: [HH:MM AM/PM]
    Then formal summary using professional secretary language.
-
-   ✅ TASKS
-   List ALL actionable tasks extracted from the note as numbered items.
-   Each task = clear and actionable (e.g. "1. Updated CMA प्राप्त करें — Pravin Patidar के CA से")
-
-   🔔 REMINDERS
-   List time-sensitive items: ⏰ [Date, Time] — [Action required]
-   (e.g. "⏰ आज — 10 Mar 2026, दोपहर 2:00 बजे — Pravin Patidar जी से telephonic follow-up")
-
-   ⏳ PENDING
-   List items awaiting response/documents/confirmation from external parties.
-   (e.g. "* CA से final profit projection confirmation")
+   STOP HERE — do NOT add tasks list, reminders list, or pending list inside note content.
+   Tasks and reminders must be created as SEPARATE tool calls, NOT written inside this note.
 
    ═══ WRITING RULES ═══
    - FORMAL SARKARI HINDI: "सूचित किया जाता है", "कार्यवाही प्रारंभ की जाएगी", "अनुमोदन प्रतीक्षित है"
@@ -1781,8 +1771,10 @@ CONVERSATION RULES — Follow these STRICTLY:
    - If multiple date entries exist → process each separately in chronological order
    - Each update = SELF-CONTAINED and readable on its own
 
-   ═══ EXAMPLE OUTPUT (follow this exact style) ═══
-   "📋 Paawan Bio Energy — Case Intake Note\n\n🏢 CLIENT INFORMATION\nClient Name: Paawan Bio Energy\nContact Person: श्री Pravin Patidar जी\nCC Account No: 389005/614\nCA Status: Final confirmation pending\n\n📝 SECRETARY DRAFT NOTE\nदिनांक: 28 फरवरी 2026 | समय: 12:28 PM\nमॉर्गेज दस्तावेज़ीकरण कार्य सम्पन्न किया गया एवं ऋण स्वीकृति संबंधित आवश्यक कार्यवाही पूर्ण की गई।\n\nदिनांक: 10 मार्च 2026 | समय: 10:33 AM\nPaawan Bio Energy के संदर्भ में सूचित किया जाता है कि CMA verification हेतु प्रस्तुति भेजी जा चुकी है। श्री Pravin Patidar जी से दूरभाष पर प्रारंभिक चर्चा संपन्न हुई है, तथापि उनके CA द्वारा अंतिम अनुमोदन अभी प्रतीक्षित है। CA महोदय के अनुसार आगामी वर्षों में लाभ में उल्लेखनीय वृद्धि अपेक्षित है, जिसके परिणामस्वरूप कर देयता में भी वृद्धि होगी।\n\nUpdated CMA, Estimated Balance Sheet एवं P&L Statement प्राप्त होते ही CC Account सं. 389005/614 हेतु Tejas प्रणाली में स्वीकृति की कार्यवाही प्रारंभ की जाएगी।\n\n✅ TASKS\n1. Updated CMA प्राप्त करें — Pravin Patidar के CA से\n2. Estimated Balance Sheet & P&L प्राप्त करें — CA confirmation के बाद\n3. Tejas में Sanction Process करें — दस्तावेज़ मिलते ही (CC A/c 389005/614)\n\n🔔 REMINDERS\n⏰ आज — 10 Mar 2026, दोपहर 2:00 बजे — Pravin Patidar जी से telephonic follow-up — CA confirmation status\n\n⏳ PENDING\n* CA से final profit projection confirmation\n* Updated CMA / Balance Sheet / P&L documents"
+   ═══ EXAMPLE NOTE CONTENT (create_note tool — content field only) ═══
+   "📋 Paawan Bio Energy — Case Intake Note\n\n🏢 CLIENT INFORMATION\nClient Name: Paawan Bio Energy\nContact Person: श्री Pravin Patidar जी\nCC Account No: 389005/614\nCA Status: Final confirmation pending\n\n📝 SECRETARY DRAFT NOTE\nदिनांक: 28 फरवरी 2026 | समय: 12:28 PM\nमॉर्गेज दस्तावेज़ीकरण कार्य सम्पन्न किया गया एवं ऋण स्वीकृति संबंधित आवश्यक कार्यवाही पूर्ण की गई।\n\nदिनांक: 10 मार्च 2026 | समय: 10:33 AM\nPaawan Bio Energy के संदर्भ में सूचित किया जाता है कि CMA verification हेतु प्रस्तुति भेजी जा चुकी है। Updated CMA एवं Balance Sheet प्राप्त होते ही Tejas प्रणाली में स्वीकृति की कार्यवाही प्रारंभ की जाएगी।"
+   ← NOTE: No TASKS section, no REMINDERS section, no PENDING section in note content.
+      Those are separate create_task and create_reminder tool calls (see below).
 
    ═══ FIELD EXTRACTION (CRITICAL) ═══
    • case.client = client/company name (ALWAYS fill — e.g. "Paawan Bio Energy")
@@ -1800,16 +1792,30 @@ CONVERSATION RULES — Follow these STRICTLY:
      → Time-bound items (kal 2 baje call, next week meeting) → reminder.save = true bhi set karo
    - Ek message mein case + task + reminder TEENO simultaneously save ho sakte hain!
 
-   ═══ TOOL CALLING — AUTOMATIC MULTI-JOB ═══
-   - You have tools available: create_note, create_client_profile, create_task, create_reminder
-   - When user provides RAW BANKING CASE INFO, you MUST call ALL relevant tools SIMULTANEOUSLY:
-     → create_note: Save structured case note to notebook
-     → create_client_profile: Create/update client profile
-     → create_task: Call ONCE per individual task (multiple calls for multiple tasks)
-     → create_reminder: Call ONCE per deadline/follow-up (multiple calls for multiple reminders)
-   - Do NOT ask for permission. Execute ALL tool calls automatically.
-   - After tool execution, reply with brief Hinglish confirmation like: "✅ Case processed! Note save ho gaya, profile create hua, X tasks aur Y reminders set ho gaye."
-   - For simple conversations (greetings, questions, searches) — NO tool calls needed, respond normally via JSON format.
+   ═══ TOOL CALLING — CRITICAL STRICT RULES ═══
+
+   RULE 1 — create_note: Call ONCE per case.
+     • content field = ONLY brief case summary (CLIENT INFORMATION block + SECRETARY DRAFT NOTE paragraph)
+     • DO NOT write any task list, reminder list, or pending list inside content
+     • WRONG: content has "✅ TASKS\n1. NOC lena\n2. Documents..."
+     • CORRECT: content has only "📋 Ramesh Patel — Case Intake Note\n\n🏢 CLIENT INFORMATION\n..."
+
+   RULE 2 — create_task: Call SEPARATELY for EACH individual task.
+     • If there are 4 tasks → make 4 separate create_task tool calls
+     • Each call has ONE task title only
+     • NEVER combine tasks into a single call or write them inside note content
+     • WRONG: create_note content = "...TASKS: 1. NOC lena 2. Documents..."
+     • CORRECT: create_task(title="SBI se NOC prapt karen"), create_task(title="Documents verify karna"), etc.
+
+   RULE 3 — create_reminder: Call SEPARATELY for EACH deadline/followup.
+     • If there are 2 reminders → make 2 separate create_reminder tool calls
+     • NEVER write reminders inside note content
+
+   RULE 4 — create_client_profile: Call ONCE with all extracted client details.
+
+   EXECUTION: When user gives raw banking case info → call ALL relevant tools automatically, no permission needed.
+   CONFIRMATION: After tool execution, reply: "✅ Case processed! Note save hua, profile create hua, X tasks aur Y reminders set ho gaye."
+   SIMPLE QUERIES: For greetings, questions, searches — no tool calls needed, respond via JSON format.
 
    ═══ NOTEBOOK vs CASE ═══
    - Client personal info + banking/loan updates → case.save = true
@@ -1914,6 +1920,32 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             { role: "system", content: systemPrompt },
             ...chatHistory.slice(-16) // last 16 messages for better conversation context
         ];
+
+        // Helper: convert relative date terms to ISO string
+        function resolveDueDate(dateStr) {
+            if (!dateStr) return null;
+            const s = dateStr.toString().toLowerCase().trim();
+            const base = new Date();
+            base.setHours(0, 0, 0, 0);
+            if (s === 'aaj' || s === 'today') return base.toISOString();
+            if (s === 'kal' || s === 'tomorrow') { base.setDate(base.getDate() + 1); return base.toISOString(); }
+            if (s.includes('agle hafte') || s.includes('next week')) { base.setDate(base.getDate() + 7); return base.toISOString(); }
+            if (s.includes('is week') || s.includes('this week')) {
+                const day = base.getDay(); // 0=Sun
+                base.setDate(base.getDate() + (7 - day) % 7);
+                return base.toISOString();
+            }
+            const dinMatch = s.match(/(\d+)\s*din/);
+            if (dinMatch) { base.setDate(base.getDate() + parseInt(dinMatch[1])); return base.toISOString(); }
+            const dayMatch = s.match(/(\d+)\s*day/);
+            if (dayMatch) { base.setDate(base.getDate() + parseInt(dayMatch[1])); return base.toISOString(); }
+            // If it looks like an ISO date already, return as-is
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return dateStr;
+            // Try parsing as a natural date
+            const parsed = new Date(dateStr);
+            if (!isNaN(parsed.getTime())) return parsed.toISOString();
+            return null;
+        }
 
         // Tool definitions for automatic Firestore writes
         const toolDefinitions = [
@@ -2077,7 +2109,8 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                         timestamp: now,
                         userId: currentUserEmail
                     };
-                    if(args.due_date) taskObj.dueDate = args.due_date;
+                    const resolvedDue = resolveDueDate(args.due_date);
+                    if(resolvedDue) taskObj.dueDate = resolvedDue;
                     if(args.priority) taskObj.priority = args.priority;
                     if(args.category) taskObj.category = args.category;
                     savePromises.push(addDoc(collection(db, "tasks"), taskObj));
@@ -2249,7 +2282,8 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                     timestamp: now,
                     userId: currentUserEmail
                 };
-                if(t.dueDate) taskObj.dueDate = t.dueDate;
+                const resolvedTDue = resolveDueDate(t.dueDate);
+                if(resolvedTDue) taskObj.dueDate = resolvedTDue;
                 if(t.priority) taskObj.priority = t.priority;
                 savePromises.push(addDoc(collection(db, "tasks"), taskObj));
                 allTasks.unshift({ ...taskObj, _docId: '_pending_' + now + '_' + idx });
@@ -2907,7 +2941,7 @@ function refreshBadges() {
     // Task badge on sidebar — show actual pending task count from Firestore data
     const tb = document.getElementById('task-badge');
     if(tb) {
-        const pendingTaskCount = (typeof allTasks !== 'undefined' ? allTasks : []).filter(t => t.status !== 'Done' && t.status !== 'Finished').length;
+        const pendingTaskCount = (typeof allTasks !== 'undefined' ? allTasks : []).filter(t => !t.deleted && (t.status === 'Pending' || t.status === 'pending' || (!t.status))).length;
         if(pendingTaskCount > 0) { tb.textContent = pendingTaskCount > 9 ? '9+' : pendingTaskCount; tb.style.display='flex'; }
         else tb.style.display='none';
     }
