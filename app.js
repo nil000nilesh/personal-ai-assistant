@@ -1464,6 +1464,20 @@ function loadAppListeners() {
         function fmtDate(ts) { return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
         function fmtTime(ts) { return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
 
+        // Strip client-profile data block from notebook content — only show the actual diary/note text
+        function extractNoteContent(raw) {
+            // Extract everything after a "📝 …NOTE / DRAFT / DIARY" section header
+            const noteMatch = raw.match(/📝[^\n]*(?:NOTE|DRAFT|DIARY|OBSERVATION|SUMMARY)[^\n]*\n([\s\S]*)/i);
+            if(noteMatch) return noteMatch[1].trim();
+            // Fallback: remove the 🏢 CLIENT INFORMATION block and known profile-field lines
+            return raw
+                .replace(/🏢[^\n]*\n?/gi, '')
+                .replace(/📋[^\n]*(INTAKE|PROFILE|CASE)[^\n]*\n?/gi, '')
+                .replace(/^(Client Name|Contact Person|Account No|Mobile|Address|Status|Loan A\/C|खाता|मोबाइल|संपर्क)[^\n]*\n?/gim, '')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
+
         entries.forEach((group, gIdx) => {
             const pal = getCardPalette(group.displayName);
             const card = document.createElement('div');
@@ -1482,6 +1496,8 @@ function loadAppListeners() {
             else if(/property|mortgage|मॉर्गेज|सम्पत्ति/.test(latestContent)) professionTag = 'Property / Mortgage';
             else if(/ca|audit|tax|gst|कर/.test(latestContent)) professionTag = 'CA / Tax';
 
+            const hasProfile = typeof allGroupedNotes !== 'undefined' && !!allGroupedNotes[group.displayName.toUpperCase()];
+            const safeClientName = group.displayName.replace(/'/g,"\\'").replace(/"/g,'&quot;');
             const headerHTML = `
                 <div class="nb-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:18px 20px 14px;">
                     <div class="absolute -right-5 -top-5 w-20 h-20 rounded-full" style="background:rgba(255,255,255,0.08);"></div>
@@ -1499,29 +1515,36 @@ function loadAppListeners() {
                             <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.9);">
                                 ${group.updates.length} ${group.updates.length > 1 ? t('updates') : t('update')}
                             </span>
-                            <button onclick="deleteNotebookClient('${group.displayName.replace(/'/g,"\\'")}');"
-                                class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
-                                style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
-                                title="${t('deleteBtn')}">${t('deleteBtn')}</button>
+                            <div class="flex items-center gap-1.5">
+                                ${hasProfile ? `<button onclick="event.stopPropagation();showClientDetailPopup('${safeClientName}');"
+                                    class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
+                                    style="background:rgba(255,255,255,0.25);color:white;border:1px solid rgba(255,255,255,0.45);"
+                                    title="Client Profile">👤 Profile</button>` : ''}
+                                <button onclick="deleteNotebookClient('${safeClientName}');"
+                                    class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
+                                    style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
+                                    title="${t('deleteBtn')}">${t('deleteBtn')}</button>
+                            </div>
                         </div>
                     </div>
                 </div>`;
 
             const updatesHTML = sortedUpdates.map((page, idx) => {
-                let displayContent = page.content || '';
+                // Strip client-profile info block — show only the actual diary/note text
+                let noteText = extractNoteContent(page.content || '');
                 if(nbSearchQuery) {
                     const rx = new RegExp('(' + nbSearchQuery.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
-                    displayContent = displayContent.replace(rx, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
+                    noteText = noteText.replace(rx, '<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');
                 }
                 const isLatest = idx === 0;
                 const updateNum = group.updates.length - idx;
-                return `<div class="px-5 py-3.5 border-b border-slate-50 last:border-b-0 ${isLatest ? '' : ''}" style="${isLatest ? 'background:'+pal.light+'40;' : ''}">
+                return `<div class="px-5 py-3.5 border-b border-slate-50 last:border-b-0" style="${isLatest ? 'background:'+pal.light+'40;' : ''}">
                     <div class="flex items-center gap-2 mb-2 flex-wrap">
                         <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="${isLatest ? 'background:'+pal.light+';color:'+pal.text+';' : 'background:#f1f5f9;color:#64748b;'}">📅 ${fmtDate(page.timestamp)} ⏰ ${fmtTime(page.timestamp)}</span>
                         ${isLatest ? `<span class="text-[8px] font-black text-white px-2 py-0.5 rounded-full" style="background:${pal.border};">${t('latest')}</span>` : ''}
                         <span class="text-[9px] text-slate-300 ml-auto">#${updateNum}</span>
                     </div>
-                    <div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap nb-note-content">${displayContent}</div>
+                    <div class="text-slate-700 text-sm leading-relaxed devanagari font-medium whitespace-pre-wrap nb-note-content">${noteText || '<span class="text-slate-400 text-xs italic">Note content here...</span>'}</div>
                 </div>`;
             }).join('');
 
