@@ -3271,6 +3271,9 @@ async function enablePush() {
         bar.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#16a34a" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span style="flex:1;font-size:11px;font-weight:700;color:#15803d;">✨ PC/Mobile notifications enabled! Ab app band ho tab bhi alert milega.</span>';
         // Test notification
         setTimeout(() => browserPush('notebook', 'CaseDesk AI connected!', 'Ab har task/reminder ka alert milega.'), 500);
+        // Start daily summary schedule now that push is enabled
+        scheduleDailySummaryNotifs();
+        sendOverdueBrowserPush();
     } else {
         document.getElementById('push-bar-text').textContent = 'Permission denied. Browser settings se allow karein.';
         document.getElementById('push-bar-text').style.color = '#ef4444';
@@ -3494,12 +3497,99 @@ window._overdueRemReady = false;
 
 function _checkOverdueReady() {
     if(window._overdueTasksReady && window._overdueRemReady && !window.overduePopupShown) {
-        setTimeout(() => showOverduePopup(), 800);
+        setTimeout(() => {
+            showOverduePopup();
+            sendOverdueBrowserPush();
+            scheduleDailySummaryNotifs();
+        }, 800);
     }
 }
 
 window._onTasksLoaded = function() { window._overdueTasksReady = true; _checkOverdueReady(); };
 window._onRemindersLoaded = function() { window._overdueRemReady = true; _checkOverdueReady(); };
+
+// ═══════════════════════════════════════════════════════
+//  OVERDUE BROWSER PUSH — fires once on login if overdue items exist
+// ═══════════════════════════════════════════════════════
+window._overduePushSent = false;
+
+function sendOverdueBrowserPush() {
+    if(!NS.pushOK || window._overduePushSent) return;
+    window._overduePushSent = true;
+
+    const now        = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const overdueTaskCount = allTasks.filter(t => {
+        if(t.status === 'Done' || t.status === 'Finished') return false;
+        const d = t.dueDate ? new Date(t.dueDate) : (t.timestamp ? new Date(t.timestamp) : null);
+        return d && d < todayStart;
+    }).length;
+
+    const overdueRemCount = allReminders.filter(r => {
+        if(r.status === 'Closed') return false;
+        if(!r.time || r.time === 'Manual' || r.time === 'जल्द') return false;
+        const d = new Date(r.time);
+        return !isNaN(d) && d < now;
+    }).length;
+
+    if(overdueTaskCount === 0 && overdueRemCount === 0) return;
+
+    const parts = [];
+    if(overdueTaskCount > 0) parts.push(overdueTaskCount + ' task' + (overdueTaskCount > 1 ? 's' : '') + ' overdue');
+    if(overdueRemCount  > 0) parts.push(overdueRemCount  + ' reminder' + (overdueRemCount  > 1 ? 's' : '') + ' overdue');
+    browserPush('task', '🔴 Overdue Alert — ' + parts.join(' + '), 'Abhi complete karein!');
+}
+
+// ═══════════════════════════════════════════════════════
+//  DAILY SUMMARY — 3x per day: 9am, 1pm, 6pm
+// ═══════════════════════════════════════════════════════
+const _DAILY_SLOTS = [
+    { hour: 9,  minute: 0, key: 'morning',   label: 'Subah Reminder' },
+    { hour: 13, minute: 0, key: 'afternoon', label: 'Dopahar Reminder' },
+    { hour: 18, minute: 0, key: 'evening',   label: 'Sham Reminder' }
+];
+
+let _summaryScheduled = false;
+
+function scheduleDailySummaryNotifs() {
+    if(!NS.pushOK || _summaryScheduled) return;
+    _summaryScheduled = true;
+
+    const now     = new Date();
+    const dateStr = now.toDateString();
+    const sentSlots = JSON.parse(localStorage.getItem('casedesk_summary_' + dateStr) || '[]');
+
+    _DAILY_SLOTS.forEach(slot => {
+        if(sentSlots.includes(slot.key)) return;
+        const fireAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), slot.hour, slot.minute, 0);
+        const msLeft = fireAt - now;
+        if(msLeft > 0) {
+            setTimeout(() => _sendDailySummary(slot.key, slot.label), msLeft);
+        }
+    });
+}
+
+function _sendDailySummary(slotKey, label) {
+    const dateStr   = new Date().toDateString();
+    const storageKey = 'casedesk_summary_' + dateStr;
+    const sentSlots  = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if(sentSlots.includes(slotKey)) return; // guard against duplicate timeouts
+
+    const pendingCount = allTasks.filter(t => !t.deleted && t.status !== 'Done' && t.status !== 'Finished').length;
+    const remCount     = allReminders.filter(r => r.status !== 'Closed' && r.status !== 'Done').length;
+
+    // Mark sent regardless so it doesn't re-fire
+    sentSlots.push(slotKey);
+    localStorage.setItem(storageKey, JSON.stringify(sentSlots));
+
+    if(!NS.pushOK || (pendingCount === 0 && remCount === 0)) return;
+
+    const parts = [];
+    if(pendingCount > 0) parts.push(pendingCount + ' task' + (pendingCount > 1 ? 's' : '') + ' pending');
+    if(remCount     > 0) parts.push(remCount     + ' reminder' + (remCount     > 1 ? 's' : '') + ' active');
+    browserPush('task', '📋 ' + label + ' — CaseDesk AI', parts.join(' aur ') + ' hain, inhe finish karein! 💪');
+}
 
 // ═══════════════════════════════════════════════════════
 //  ADMIN PANEL — User Management
