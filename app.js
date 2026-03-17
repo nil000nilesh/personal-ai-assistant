@@ -935,15 +935,8 @@ function loadAppListeners() {
 
         let filtered;
         if(taskCurrentFilter === 'pending') {
-            // Show overdue + today's + no-dueDate incomplete tasks
-            filtered = allTasks.filter(t => {
-                if(!isIncomplete(t)) return false;
-                const d = taskEffectiveDate(t);
-                const isOverdue  = d < todayStart;
-                const isToday    = d >= todayStart && d < todayEnd;
-                const noDueDate  = !t.dueDate; // always show pending tasks without a future dueDate
-                return isOverdue || isToday || noDueDate;
-            });
+            // Show all incomplete tasks (pending + overdue + future due)
+            filtered = allTasks.filter(t => isIncomplete(t));
         } else if(taskCurrentFilter === 'done') {
             filtered = allTasks.filter(t => t.status === 'Done' || t.status === 'Finished');
         } else { // 'all'
@@ -2840,6 +2833,10 @@ const PAGE_TO_NOTIF = {
     reminders: ['reminder']
 };
 
+// Track task/reminder IDs seen on last page visit — badge shows only NEW items added after
+let _seenTaskIds = null;   // null = page never visited this session
+let _seenRemIds  = null;
+
 // Mark notifications as read when visiting a page
 function markPageNotifsRead(page) {
     const types = PAGE_TO_NOTIF[page];
@@ -2851,6 +2848,23 @@ function markPageNotifsRead(page) {
             changed = true;
         }
     });
+    // Snapshot current IDs so badge shows 0 until new items arrive
+    if(page === 'tasks') {
+        _seenTaskIds = new Set(
+            (typeof allTasks !== 'undefined' ? allTasks : [])
+                .filter(t => !t.deleted && t.status !== 'Done' && t.status !== 'Finished')
+                .map(t => t._docId)
+        );
+        changed = true;
+    }
+    if(page === 'reminders') {
+        _seenRemIds = new Set(
+            (typeof allReminders !== 'undefined' ? allReminders : [])
+                .filter(r => r.status !== 'Closed' && r.status !== 'Done')
+                .map(r => r._docId)
+        );
+        changed = true;
+    }
     if(changed) {
         NS.unread = NS.items.filter(i => !i.read).length;
         refreshBadges();
@@ -2938,18 +2952,26 @@ function refreshBadges() {
     const dot = document.getElementById('bell-dot');
     if(dot) dot.style.display = total > 0 ? '' : 'none';
 
-    // Task badge on sidebar — show actual pending task count from Firestore data
+    // Task badge on sidebar — show new tasks added since last visit (clears on page visit)
     const tb = document.getElementById('task-badge');
     if(tb) {
-        const pendingTaskCount = (typeof allTasks !== 'undefined' ? allTasks : []).filter(t => !t.deleted && (t.status === 'Pending' || t.status === 'pending' || (!t.status))).length;
-        if(pendingTaskCount > 0) { tb.textContent = pendingTaskCount > 9 ? '9+' : pendingTaskCount; tb.style.display='flex'; }
+        const pendingTasks = (typeof allTasks !== 'undefined' ? allTasks : [])
+            .filter(t => !t.deleted && t.status !== 'Done' && t.status !== 'Finished');
+        const taskBadgeCount = _seenTaskIds === null
+            ? pendingTasks.length
+            : pendingTasks.filter(t => !_seenTaskIds.has(t._docId)).length;
+        if(taskBadgeCount > 0) { tb.textContent = taskBadgeCount > 9 ? '9+' : taskBadgeCount; tb.style.display='flex'; }
         else tb.style.display='none';
     }
-    // Reminder badge on sidebar — show actual upcoming/pending reminder count from Firestore data
+    // Reminder badge on sidebar — show new reminders added since last visit (clears on page visit)
     const rb = document.getElementById('rem-badge');
     if(rb) {
-        const activeRemCount = (typeof allReminders !== 'undefined' ? allReminders : []).filter(r => r.status !== 'Closed' && r.status !== 'Done').length;
-        if(activeRemCount > 0) { rb.textContent = activeRemCount > 9 ? '9+' : activeRemCount; rb.style.display='flex'; }
+        const activeRems = (typeof allReminders !== 'undefined' ? allReminders : [])
+            .filter(r => r.status !== 'Closed' && r.status !== 'Done');
+        const remBadgeCount = _seenRemIds === null
+            ? activeRems.length
+            : activeRems.filter(r => !_seenRemIds.has(r._docId)).length;
+        if(remBadgeCount > 0) { rb.textContent = remBadgeCount > 9 ? '9+' : remBadgeCount; rb.style.display='flex'; }
         else rb.style.display='none';
     }
     // Panel header unread badge
