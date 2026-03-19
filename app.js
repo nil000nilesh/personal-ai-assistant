@@ -3934,12 +3934,13 @@ function showAdminMsg(text, bg, color) {
 // ───────────────────────────────────────────────────────────────
 
 // In-memory vault state
-let _vKey       = null;   // CryptoKey (null = locked)
-let _vEntries   = [];     // Decrypted entries
-let _vEditId    = null;   // docId being edited
-let _vSearch    = '';
-let _vPinHash   = null;   // SHA-256 hex of current vault PIN (for verify)
-let _vResetMode = false;  // true = going through reset flow
+let _vKey          = null;   // CryptoKey (null = locked)
+let _vEntries      = [];     // Decrypted entries
+let _vEditId       = null;   // docId being edited
+let _vSearch       = '';
+let _vPinHash      = null;   // SHA-256 hex of current vault PIN (for verify)
+let _vConfigDocId  = null;   // Firestore docId of the vault_config entry
+let _vResetMode    = false;  // true = going through reset flow
 
 // ── AES-256-GCM helpers ────────────────────────────────────────
 async function _vDeriveKey(pin) {
@@ -4022,10 +4023,21 @@ function _vShowContent() {
 // ── Init (called on first tab click) ──────────────────────────
 window.initVault = async function () {
     _vResetMode = false;
+    _vPinHash = null;
+    _vConfigDocId = null;
     try {
-        // Load vault config (hash stored in Firestore)
-        const cfgSnap = await getDoc(doc(db, 'vault_config', currentUserEmail));
-        _vPinHash = cfgSnap.exists() ? (cfgSnap.data().vaultPinHash || null) : null;
+        // Load vault config stored as a special doc inside vault_entries collection
+        const cfgQ = query(
+            collection(db, 'vault_entries'),
+            where('userId', '==', currentUserEmail),
+            where('_type', '==', 'vault_config')
+        );
+        const cfgSnap = await getDocs(cfgQ);
+        if (!cfgSnap.empty) {
+            const cfgDoc = cfgSnap.docs[0];
+            _vConfigDocId = cfgDoc.id;
+            _vPinHash = cfgDoc.data().vaultPinHash || null;
+        }
     } catch (e) { _vPinHash = null; }
 
     // Check session (already did login PIN today?)
@@ -4069,7 +4081,7 @@ async function _vLoadEntries() {
         const jobs = [];
         snap.forEach(d => {
             const data = d.data();
-            if (data.deleted) return;
+            if (data.deleted || data._type === 'vault_config') return;
             jobs.push((async () => {
                 const pw = await _vDecrypt(data.encryptedPassword || '');
                 return { _docId: d.id, title: data.title||'', username: data.username||'', password: pw||'', url: data.url||'', notes: data.notes||'', timestamp: data.timestamp||'' };
@@ -4359,7 +4371,7 @@ function _vShakeError(boxCls, errId) {
                 const snap = await getDocs(query(collection(db, 'vault_entries'), where('userId','==', currentUserEmail)));
                 const jobs = [];
                 snap.forEach(d => {
-                    if (d.data().deleted) return;
+                    if (d.data().deleted || d.data()._type === 'vault_config') return;
                     jobs.push((async () => {
                         // decrypt with old key, re-encrypt with new key
                         const old = await _vDecrypt(d.data().encryptedPassword || '');
@@ -4376,10 +4388,16 @@ function _vShakeError(boxCls, errId) {
                 await Promise.all(jobs);
             }
 
-            // Save new hash & key
+            // Save new hash & key to vault_entries collection (as a special config doc)
             _vPinHash = hash;
             _vKey = newKey;
-            await setDoc(doc(db, 'vault_config', currentUserEmail), { userId: currentUserEmail, vaultPinHash: hash, updatedAt: new Date().toISOString() }, { merge: true });
+            const cfgData = { userId: currentUserEmail, _type: 'vault_config', vaultPinHash: hash, updatedAt: new Date().toISOString(), deleted: false };
+            if (_vConfigDocId) {
+                await updateDoc(doc(db, 'vault_entries', _vConfigDocId), cfgData);
+            } else {
+                const cfgRef = await addDoc(collection(db, 'vault_entries'), cfgData);
+                _vConfigDocId = cfgRef.id;
+            }
 
             _vResetMode = false;
             await _vLoadEntries();
