@@ -3983,7 +3983,8 @@ function _vShowPanel(name) {
         document.getElementById('vault-panel-' + p)?.classList.toggle('hidden', p !== name);
     });
     document.getElementById('vault-lock-screen')?.classList.remove('hidden');
-    document.getElementById('vault-content')?.classList.add('hidden');
+    const vcEl = document.getElementById('vault-content');
+    if (vcEl) { vcEl.classList.add('hidden'); vcEl.classList.remove('flex'); }
 
     const labels = {
         login:    '🔑 Step 1 — Login PIN verify karein',
@@ -4009,10 +4010,12 @@ function _vShowPanel(name) {
 
 function _vShowContent() {
     document.getElementById('vault-lock-screen')?.classList.add('hidden');
-    document.getElementById('vault-content')?.classList.remove('hidden');
-    // Mark session
+    const vc = document.getElementById('vault-content');
+    if (vc) { vc.classList.remove('hidden'); vc.classList.add('flex'); }
+    // Mark session — preserve loginDone from current session
     const today = new Date().toISOString().slice(0, 10);
-    sessionStorage.setItem('_vaultSess2', JSON.stringify({ date: today, uid: currentUserEmail }));
+    const existingSess = (() => { try { return JSON.parse(sessionStorage.getItem('_vaultSess2')||'{}'); } catch{return{};} })();
+    sessionStorage.setItem('_vaultSess2', JSON.stringify({ ...existingSess, date: today, uid: currentUserEmail, loginDone: true }));
     _vRender();
 }
 
