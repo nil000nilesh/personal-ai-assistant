@@ -629,53 +629,86 @@
             <!-- ═══════════════════════ PASSWORD VAULT ═══════════════════════ -->
             <div id="view-vault" class="hidden absolute inset-0 md:top-0 top-[65px] md:bottom-0 bottom-[65px] flex-col overflow-hidden">
 
-                <!-- VAULT LOCK SCREEN -->
+                <!-- ── VAULT LOCK SCREEN (3 panels) ── -->
                 <div id="vault-lock-screen" class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto" style="background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#0f172a 100%);">
                     <div class="w-full max-w-sm">
-                        <div class="text-center mb-8">
-                            <div class="w-24 h-24 mx-auto mb-5 rounded-3xl flex items-center justify-center" style="background:rgba(99,102,241,0.18);border:2px solid rgba(99,102,241,0.4);">
-                                <svg width="44" height="44" fill="none" viewBox="0 0 24 24" stroke="#a5b4fc" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        <div class="text-center mb-6">
+                            <div class="w-20 h-20 mx-auto mb-4 rounded-3xl flex items-center justify-center" style="background:rgba(99,102,241,0.18);border:2px solid rgba(99,102,241,0.4);">
+                                <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="#a5b4fc" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             </div>
-                            <h2 class="text-3xl font-black text-white mb-2">Password Vault</h2>
-                            <p class="text-slate-400 text-sm">Aaj ka 4-digit PIN enter karein</p>
+                            <h2 class="text-2xl font-black text-white mb-1">Password Vault</h2>
+                            <p id="vault-step-label" class="text-slate-400 text-sm">Secure encrypted vault</p>
                         </div>
 
-                        <!-- Today's PIN hint (hidden by default) -->
-                        <div id="vault-pin-hint" class="hidden mb-6 p-4 rounded-2xl text-center" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);">
-                            <p class="text-indigo-300 text-[10px] font-black mb-2 uppercase tracking-widest">⚠️ Aaj ka Vault PIN (sirf aap ke liye)</p>
-                            <p id="vault-today-pin" class="text-5xl font-black text-white tracking-[0.5em] my-2">----</p>
-                            <p class="text-slate-400 text-[10px] mt-1">Yeh PIN kal midnight ko reset ho jaayega.</p>
+                        <!-- PANEL 1: Login PIN verify (first unlock each day) -->
+                        <div id="vault-panel-login" class="hidden">
+                            <div class="mb-4 p-3 rounded-2xl text-center" style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);">
+                                <p class="text-amber-300 text-xs font-black">🔑 STEP 1 — Aaj ki pehli baar</p>
+                                <p class="text-slate-400 text-[11px] mt-0.5">Apna <strong class="text-white">App Login PIN</strong> darj karein</p>
+                            </div>
+                            <div class="flex gap-3 justify-center mb-3">
+                                <input type="password" maxlength="1" class="vp-login-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-amber-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-login-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-amber-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-login-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-amber-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-login-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-amber-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                            </div>
+                            <p id="vault-login-error" class="hidden text-center text-red-400 text-sm font-bold mb-3">❌ Galat Login PIN — dobara try karein</p>
+                            <button id="vault-login-verify-btn" class="w-full py-3.5 rounded-2xl font-black text-white text-sm transition-all disabled:opacity-30" style="background:linear-gradient(135deg,#f59e0b,#d97706);" disabled>
+                                ✅ Verify Karein → Aage Badho
+                            </button>
                         </div>
 
-                        <!-- 4 PIN boxes -->
-                        <div class="flex gap-3 justify-center mb-4">
-                            <input type="password" maxlength="1" class="vault-pin-box w-16 h-16 text-center text-2xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
-                            <input type="password" maxlength="1" class="vault-pin-box w-16 h-16 text-center text-2xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
-                            <input type="password" maxlength="1" class="vault-pin-box w-16 h-16 text-center text-2xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
-                            <input type="password" maxlength="1" class="vault-pin-box w-16 h-16 text-center text-2xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                        <!-- PANEL 2: Vault PIN enter (same-day) -->
+                        <div id="vault-panel-vaultpin" class="hidden">
+                            <div class="mb-4 p-3 rounded-2xl text-center" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);">
+                                <p class="text-indigo-300 text-xs font-black">🔐 VAULT PIN</p>
+                                <p class="text-slate-400 text-[11px] mt-0.5">Apna <strong class="text-white">Vault PIN</strong> darj karein (App PIN se alag)</p>
+                            </div>
+                            <div class="flex gap-3 justify-center mb-3">
+                                <input type="password" maxlength="1" class="vp-vault-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-vault-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-vault-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-vault-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-indigo-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                            </div>
+                            <p id="vault-vaultpin-error" class="hidden text-center text-red-400 text-sm font-bold mb-3">❌ Galat Vault PIN — dobara try karein</p>
+                            <button id="vault-vaultpin-unlock-btn" class="w-full py-3.5 rounded-2xl font-black text-white text-sm mb-3 transition-all disabled:opacity-30" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);" disabled>
+                                🔓 Vault Kholein
+                            </button>
+                            <button id="vault-reset-trigger-btn" class="w-full py-2 text-slate-500 text-xs font-semibold hover:text-amber-400 transition-colors">
+                                🔄 Vault PIN bhool gaye? Reset karein (Login PIN chahiye)
+                            </button>
                         </div>
 
-                        <p id="vault-pin-error" class="hidden text-center text-red-400 text-sm font-bold mb-3">❌ Galat PIN — dobara try karein</p>
-
-                        <button id="vault-unlock-btn" class="w-full py-4 rounded-2xl font-black text-white text-base mb-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);" disabled>
-                            🔓 Vault Kholein
-                        </button>
-
-                        <button id="vault-show-pin-btn" class="w-full py-2 text-slate-500 text-sm font-semibold hover:text-indigo-400 transition-colors rounded-xl">
-                            👁️ Aaj ka PIN dekhein / chhupayein
-                        </button>
-
-                        <!-- First-time setup note -->
-                        <div id="vault-setup-note" class="hidden mt-5 p-4 rounded-2xl" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);">
-                            <p class="text-emerald-300 text-sm font-black mb-1">🆕 Pehli baar Vault Setup</p>
-                            <p class="text-slate-400 text-xs leading-relaxed">Aaj ka PIN upar "PIN dekhein" button se dekh kar enter karein. Vault ek baar unlock hone ke baad aaj bhar ke liye open rahega.</p>
+                        <!-- PANEL 3: Create / Reset Vault PIN -->
+                        <div id="vault-panel-setup" class="hidden">
+                            <div class="mb-4 p-3 rounded-2xl text-center" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);">
+                                <p id="vault-setup-banner-title" class="text-emerald-300 text-xs font-black">🆕 STEP 2 — Naya Vault PIN Banayein</p>
+                                <p class="text-slate-400 text-[11px] mt-0.5">App PIN se <strong class="text-white">bilkul alag</strong> PIN chunein — note kar lein!</p>
+                            </div>
+                            <p class="text-slate-500 text-[10px] font-black mb-2 text-center uppercase tracking-widest">Naya Vault PIN</p>
+                            <div class="flex gap-3 justify-center mb-4">
+                                <input type="password" maxlength="1" class="vp-new-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-new-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-new-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-new-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                            </div>
+                            <p class="text-slate-500 text-[10px] font-black mb-2 text-center uppercase tracking-widest">Confirm PIN (dobara type karein)</p>
+                            <div class="flex gap-3 justify-center mb-3">
+                                <input type="password" maxlength="1" class="vp-confirm-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-confirm-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-confirm-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                                <input type="password" maxlength="1" class="vp-confirm-box w-14 h-14 text-center text-xl font-black rounded-2xl border-2 border-slate-600 bg-slate-800 text-white focus:border-emerald-400 focus:bg-slate-700 focus:outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                            </div>
+                            <p id="vault-setup-error" class="hidden text-center text-red-400 text-sm font-bold mb-3">❌ PINs match nahi ho rahe</p>
+                            <button id="vault-setup-save-btn" class="w-full py-3.5 rounded-2xl font-black text-white text-sm transition-all disabled:opacity-30" style="background:linear-gradient(135deg,#10b981,#059669);" disabled>
+                                ✅ PIN Set Karein &amp; Vault Kholein
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- VAULT UNLOCKED CONTENT -->
+                <!-- ── VAULT UNLOCKED CONTENT ── -->
                 <div id="vault-content" class="hidden flex-1 flex-col overflow-hidden">
-                    <!-- Toolbar -->
                     <div class="toolbar-glass px-4 md:px-10 py-4 flex-shrink-0">
                         <div class="max-w-4xl mx-auto">
                             <div class="flex items-center justify-between mb-3 gap-3">
@@ -685,7 +718,7 @@
                                     </div>
                                     <div class="min-w-0">
                                         <h2 class="text-xl font-black text-slate-900">Password Vault</h2>
-                                        <p class="text-[10px] text-slate-400 font-semibold">🔐 AES-256 encrypted · <span id="vault-entry-count">0</span> saved</p>
+                                        <p class="text-[10px] text-slate-400 font-semibold">🔐 AES-256 encrypted · <span id="vault-entry-count">0</span> entries</p>
                                     </div>
                                 </div>
                                 <div class="flex gap-2 flex-shrink-0">
@@ -699,7 +732,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Entry list -->
                     <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
                         <div class="max-w-4xl mx-auto">
                             <div id="vault-list" class="flex flex-col gap-3 pb-20"></div>
@@ -712,13 +744,13 @@
                     </div>
                 </div>
 
-                <!-- ADD / EDIT MODAL -->
+                <!-- ── ADD / EDIT MODAL ── -->
                 <div id="vault-entry-modal" class="hidden fixed inset-0 z-[600] flex items-end md:items-center justify-center p-0 md:p-4" style="background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);">
                     <div class="w-full md:max-w-md bg-white md:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[95dvh] flex flex-col">
                         <div class="p-5 flex-shrink-0" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
                             <div class="flex items-center justify-between">
                                 <h3 id="vault-modal-title" class="text-lg font-black text-white">Add Password</h3>
-                                <button id="vault-modal-close" class="w-8 h-8 rounded-xl bg-white/20 text-white font-bold hover:bg-white/30 transition flex items-center justify-center text-base">✕</button>
+                                <button id="vault-modal-close" class="w-8 h-8 rounded-xl bg-white/20 text-white font-bold hover:bg-white/30 transition flex items-center justify-center text-base">&#x2715;</button>
                             </div>
                         </div>
                         <div class="p-5 flex flex-col gap-3 overflow-y-auto">
@@ -734,7 +766,7 @@
                                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Password *</label>
                                 <div class="relative">
                                     <input id="vault-field-password" type="password" placeholder="Password darj karein" autocomplete="new-password" class="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 transition"/>
-                                    <button id="vault-toggle-pw" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-lg leading-none">👁️</button>
+                                    <button id="vault-toggle-pw" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-lg leading-none">&#x1F441;&#xFE0F;</button>
                                 </div>
                             </div>
                             <div>
@@ -746,7 +778,7 @@
                                 <textarea id="vault-field-notes" rows="2" placeholder="Security question, recovery email, etc." class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 transition resize-none"></textarea>
                             </div>
                             <div class="flex gap-3 pt-1">
-                                <button id="vault-save-entry-btn" class="flex-1 py-3 rounded-xl font-black text-white text-sm transition-all hover:opacity-90" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">💾 Save</button>
+                                <button id="vault-save-entry-btn" class="flex-1 py-3 rounded-xl font-black text-white text-sm transition-all hover:opacity-90" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">&#x1F4BE; Save</button>
                                 <button id="vault-cancel-btn" type="button" class="flex-1 py-3 rounded-xl font-black text-slate-600 text-sm bg-slate-100 hover:bg-slate-200 transition-all">Cancel</button>
                             </div>
                         </div>
