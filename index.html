@@ -558,8 +558,18 @@
                 </div>
                 <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
                     <div class="max-w-4xl mx-auto">
+                        <!-- Task guide -->
+                        <div class="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-100 flex gap-3 items-start">
+                            <span class="text-xl">✅</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[11px] font-black text-amber-700 uppercase tracking-wide mb-1">Task kya hai?</p>
+                                <p class="text-[11px] text-amber-600 leading-relaxed">Task = <strong>KARNA WALA KAAM</strong> — action item, to-do. Status: Pending → Done → Finished.<br>
+                                <span class="text-amber-500">Eg: "NOC lena", "Documents verify karna", "Form fill karna", "Client ko call karna"</span></p>
+                                <p class="text-[11px] text-slate-500 mt-1">Time-bound alerts ke liye <strong>Reminders</strong> tab use karo (deadline ya specific date wale kaam).</p>
+                            </div>
+                        </div>
                         <div id="tasks-list" class="flex flex-col gap-3 pb-20"></div>
-                        <div id="task-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🎉</div><p class="font-semibold">Koi task nahi! Sab clear hai.</p></div>
+                        <div id="task-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🎉</div><p class="font-semibold">Koi task nahi! Sab clear hai.</p><p class="text-xs mt-2">AI se kaho: "Ramesh ka NOC lena hai" — task automatic ban jaayega!</p></div>
                     </div>
                 </div>
             </div>
@@ -593,8 +603,18 @@
                 </div>
                 <div class="flex-1 overflow-y-auto px-4 md:px-10 py-6">
                     <div class="max-w-4xl mx-auto">
+                        <!-- Reminder vs Task guide -->
+                        <div class="mb-4 p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex gap-3 items-start">
+                            <span class="text-xl">⏰</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[11px] font-black text-indigo-700 uppercase tracking-wide mb-1">Reminder kya hai?</p>
+                                <p class="text-[11px] text-indigo-600 leading-relaxed">Reminder = <strong>TIME-BOUND ALERT</strong> — koi specific date/time pe hona wali cheez. App automatically notification bhejta hai.<br>
+                                <span class="text-indigo-500">Eg: "15 March court date", "Kal 2 baje meeting", "Next week deadline"</span></p>
+                                <p class="text-[11px] text-slate-500 mt-1">Tasks = Koi <strong>kaam karna hai</strong> (action item). Tasks ke liye <strong>Tasks</strong> tab use karo.</p>
+                            </div>
+                        </div>
                         <div id="reminders-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20"></div>
-                        <div id="rem-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🗓️</div><p class="font-semibold">Koi reminder nahi.</p></div>
+                        <div id="rem-empty" class="hidden text-center py-20 text-slate-400"><div class="text-5xl mb-3">🗓️</div><p class="font-semibold">Koi reminder nahi.</p><p class="text-xs mt-2">AI se kaho: "15 March ko Ramesh ki court date hai" — reminder automatic ban jaayega!</p></div>
                     </div>
                 </div>
             </div>
