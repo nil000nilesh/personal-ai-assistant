@@ -51,7 +51,7 @@ const ui = {
     chatModalContent: document.getElementById('chat-modal-content')
 };
 
-const views = ['notebook', 'notes', 'tasks', 'reminders'];
+const views = ['notebook', 'notes', 'tasks', 'reminders', 'vault'];
 
 // ERROR FIXED HERE: Removing flex class so it hides properly
 function hideAllStates() {
@@ -79,9 +79,22 @@ function switchView(targetView) {
 
 // Store reference to original switchView before notification engine overrides
 const _baseSwitchView = switchView;
+let _vaultTabReady = false;
 views.forEach(v => {
-    document.getElementById(`tab-${v}-desk`)?.addEventListener('click', () => switchView(v));
-    document.getElementById(`tab-${v}-mob`)?.addEventListener('click', () => switchView(v));
+    const handler = () => {
+        switchView(v);
+        if (v === 'vault') {
+            if (!_vaultTabReady) {
+                _vaultTabReady = true;
+                if (window.initVault) window.initVault();
+            } else {
+                // Re-check lock state on each visit
+                if (window._vaultCheckLock) window._vaultCheckLock();
+            }
+        }
+    };
+    document.getElementById(`tab-${v}-desk`)?.addEventListener('click', handler);
+    document.getElementById(`tab-${v}-mob`)?.addEventListener('click', handler);
 });
 
 // ══════════════════════════════════════════════════
@@ -3907,3 +3920,412 @@ function showAdminMsg(text, bg, color) {
     el.textContent = text;
     setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+//  PASSWORD VAULT — AES-256-GCM encrypted, daily PIN rotation
+// ═══════════════════════════════════════════════════════════════
+
+// Vault state (all in-memory — never persisted plaintext)
+let _vaultKey      = null;   // CryptoKey — null = locked
+let _vaultSeed     = null;   // Per-user random seed (stored in Firestore)
+let _vaultEntries  = [];     // Decrypted entries (in memory only while unlocked)
+let _vaultEditId   = null;   // docId of entry being edited
+let _vaultSearch   = '';
+let _vaultNewSeed  = false;  // true = seed not saved yet (first-time setup)
+
+// ── DAILY PIN DERIVATION ─────────────────────────────────────
+// Deterministic 4-digit PIN from seed + today's date.
+// Changes automatically at midnight every day.
+function _getDailyVaultPin(seed) {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const str   = seed + '|||vault|||' + today;
+    // MurmurHash-style 32-bit mix for better distribution
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) {
+        const c = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 2654435761);
+        h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1  = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2  = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const n = (4294967296 * (2097151 & h2) + (h1 >>> 0)) >>> 0;
+    return (n % 10000).toString().padStart(4, '0');
+}
+
+// ── AES-256-GCM HELPERS ──────────────────────────────────────
+async function _vaultDeriveKey(pin) {
+    const enc  = new TextEncoder();
+    const base = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: enc.encode(currentUserEmail + '_vault_v1'), iterations: 120000, hash: 'SHA-256' },
+        base,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function _vaultEncrypt(plaintext) {
+    if (!_vaultKey) throw new Error('Vault locked');
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, _vaultKey, new TextEncoder().encode(plaintext));
+    return btoa(String.fromCharCode(...iv)) + ':' + btoa(String.fromCharCode(...new Uint8Array(ct)));
+}
+
+async function _vaultDecrypt(encrypted) {
+    if (!_vaultKey || !encrypted) return null;
+    try {
+        const [ivB64, ctB64] = encrypted.split(':');
+        const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+        const ct = Uint8Array.from(atob(ctB64), c => c.charCodeAt(0));
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, _vaultKey, ct);
+        return new TextDecoder().decode(pt);
+    } catch { return null; }
+}
+
+// ── VAULT INIT (called on first tab visit) ───────────────────
+window.initVault = async function () {
+    // Try loading vault config from Firestore
+    try {
+        const cfgSnap = await getDoc(doc(db, 'vault_config', currentUserEmail));
+        if (cfgSnap.exists()) {
+            _vaultSeed    = cfgSnap.data().vaultSeed;
+            _vaultNewSeed = false;
+            document.getElementById('vault-setup-note')?.classList.add('hidden');
+        } else {
+            // First time — generate seed but don't save yet
+            _vaultSeed    = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+            _vaultNewSeed = true;
+            document.getElementById('vault-setup-note')?.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('[Vault] Config load error:', e);
+        _vaultSeed = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        _vaultNewSeed = true;
+    }
+
+    // Show today's PIN in hint area
+    document.getElementById('vault-today-pin').textContent = _getDailyVaultPin(_vaultSeed);
+
+    // Check if already unlocked this session (same day)
+    const ss = sessionStorage.getItem('_vaultSess');
+    if (ss) {
+        try {
+            const p = JSON.parse(ss);
+            const today = new Date().toISOString().slice(0, 10);
+            if (p.date === today && p.uid === currentUserEmail) {
+                // Restore session — re-derive key
+                _vaultKey = await _vaultDeriveKey(_getDailyVaultPin(_vaultSeed));
+                await _vaultLoadEntries();
+                _vaultShowContent();
+                return;
+            }
+        } catch (e) { /* ignore */ }
+    }
+    _vaultShowLock();
+};
+
+// Called each time vault tab is visited (after first init)
+window._vaultCheckLock = function () {
+    if (!_vaultKey) _vaultShowLock();
+};
+
+// ── SHOW LOCK / CONTENT ──────────────────────────────────────
+function _vaultShowLock() {
+    document.getElementById('vault-lock-screen').classList.remove('hidden');
+    document.getElementById('vault-content').classList.add('hidden');
+    document.querySelectorAll('.vault-pin-box').forEach(b => { b.value = ''; });
+    document.getElementById('vault-unlock-btn').disabled = true;
+    document.getElementById('vault-pin-error').classList.add('hidden');
+    document.getElementById('vault-pin-hint').classList.add('hidden');
+    document.getElementById('vault-show-pin-btn').textContent = '👁️ Aaj ka PIN dekhein / chhupayein';
+    // Focus first box
+    setTimeout(() => document.querySelector('.vault-pin-box')?.focus(), 150);
+}
+
+function _vaultShowContent() {
+    document.getElementById('vault-lock-screen').classList.add('hidden');
+    document.getElementById('vault-content').classList.remove('hidden');
+    // Save session
+    const today = new Date().toISOString().slice(0, 10);
+    sessionStorage.setItem('_vaultSess', JSON.stringify({ date: today, uid: currentUserEmail }));
+    _vaultRender();
+}
+
+// ── LOAD ENTRIES FROM FIRESTORE ──────────────────────────────
+async function _vaultLoadEntries() {
+    _vaultEntries = [];
+    if (!_vaultKey) return;
+    try {
+        const snap = await getDocs(query(collection(db, 'vault_entries'), where('userId', '==', currentUserEmail)));
+        const jobs = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.deleted) return;
+            jobs.push((async () => {
+                const pw = await _vaultDecrypt(data.encryptedPassword || '');
+                return { _docId: d.id, title: data.title || '', username: data.username || '', password: pw || '', url: data.url || '', notes: data.notes || '', timestamp: data.timestamp || '' };
+            })());
+        });
+        _vaultEntries = (await Promise.all(jobs)).sort((a, b) => (a.title||'').localeCompare(b.title||''));
+        const el = document.getElementById('vault-entry-count');
+        if (el) el.textContent = _vaultEntries.length;
+    } catch (e) { console.error('[Vault] Load error:', e); }
+}
+
+// ── RENDER ENTRY LIST ────────────────────────────────────────
+function _vaultRender() {
+    const list  = document.getElementById('vault-list');
+    const empty = document.getElementById('vault-empty');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const q = _vaultSearch.toLowerCase();
+    const filtered = q
+        ? _vaultEntries.filter(e => (e.title + e.username + e.url).toLowerCase().includes(q))
+        : _vaultEntries;
+
+    if (filtered.length === 0) { empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+
+    filtered.forEach(entry => {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all p-4';
+
+        // Try favicon from URL
+        let faviconHtml = '<span style="font-size:20px;">🔑</span>';
+        if (entry.url) {
+            try {
+                const domain = new URL(entry.url.startsWith('http') ? entry.url : 'https://' + entry.url).hostname;
+                faviconHtml = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=32" width="28" height="28" class="rounded" onerror="this.outerHTML='<span style=\\'font-size:20px;\\'>🔑</span>'" />`;
+            } catch { /* keep default */ }
+        }
+
+        div.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center bg-indigo-50">${faviconHtml}</div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-black text-slate-800 text-base truncate">${_escH(entry.title)}</p>
+                    <p class="text-xs text-slate-400 truncate">${entry.username ? '👤 ' + _escH(entry.username) : ''}</p>
+                </div>
+                <div class="flex gap-1.5 flex-shrink-0">
+                    <button class="vpc-copy w-8 h-8 rounded-xl bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 flex items-center justify-center text-sm transition-all" title="Copy password">📋</button>
+                    <button class="vpc-edit w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-500 hover:text-blue-600 flex items-center justify-center text-sm transition-all" title="Edit">✏️</button>
+                    <button class="vpc-del  w-8 h-8 rounded-xl bg-slate-50 hover:bg-red-50  text-slate-500 hover:text-red-500 flex items-center justify-center text-sm transition-all" title="Delete">🗑️</button>
+                </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+                <div class="flex-1 bg-slate-50 rounded-xl px-3 py-2 flex items-center gap-2 min-w-0">
+                    <span class="vpc-pw font-mono text-sm text-slate-600 flex-1 truncate tracking-widest select-none" data-shown="0">••••••••</span>
+                    <button class="vpc-eye text-sm text-slate-400 hover:text-slate-600 flex-shrink-0">👁️</button>
+                </div>
+                ${entry.url ? `<a href="${_escH(entry.url.startsWith('http') ? entry.url : 'https://' + entry.url)}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-xl bg-slate-50 hover:bg-green-50 text-slate-400 hover:text-green-600 flex items-center justify-center text-sm flex-shrink-0 transition-all">🔗</a>` : ''}
+            </div>
+            ${entry.notes ? `<p class="mt-2 text-xs text-slate-400 pl-1 leading-relaxed">${_escH(entry.notes)}</p>` : ''}`;
+
+        div.querySelector('.vpc-copy').onclick = () => {
+            navigator.clipboard.writeText(entry.password || '').then(() => {
+                if (window.showToast) showToast('reminder', '📋 Password copied!', entry.title);
+            });
+        };
+        div.querySelector('.vpc-eye').addEventListener('click', function () {
+            const pwEl = div.querySelector('.vpc-pw');
+            const shown = pwEl.dataset.shown === '1';
+            pwEl.textContent = shown ? '••••••••' : (entry.password || '(empty)');
+            pwEl.dataset.shown = shown ? '0' : '1';
+            this.textContent = shown ? '👁️' : '🙈';
+        });
+        div.querySelector('.vpc-edit').onclick = () => _vaultOpenModal(entry);
+        div.querySelector('.vpc-del').onclick = async () => {
+            if (!confirm(`"${entry.title}" permanently delete karein?`)) return;
+            try {
+                await updateDoc(doc(db, 'vault_entries', entry._docId), { deleted: true });
+                _vaultEntries = _vaultEntries.filter(e => e._docId !== entry._docId);
+                const el = document.getElementById('vault-entry-count');
+                if (el) el.textContent = _vaultEntries.length;
+                _vaultRender();
+            } catch (e) { console.error('[Vault] Delete error:', e); }
+        };
+        list.appendChild(div);
+    });
+}
+
+function _escH(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// ── MODAL ────────────────────────────────────────────────────
+function _vaultOpenModal(entry = null) {
+    _vaultEditId = entry?._docId || null;
+    document.getElementById('vault-modal-title').textContent = entry ? 'Edit Password' : 'Add Password';
+    document.getElementById('vault-field-title').value    = entry?.title    || '';
+    document.getElementById('vault-field-username').value = entry?.username || '';
+    document.getElementById('vault-field-password').value = entry?.password || '';
+    document.getElementById('vault-field-url').value      = entry?.url      || '';
+    document.getElementById('vault-field-notes').value    = entry?.notes    || '';
+    document.getElementById('vault-field-password').type  = 'password';
+    document.getElementById('vault-toggle-pw').textContent = '👁️';
+    document.getElementById('vault-entry-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('vault-field-title').focus(), 100);
+}
+
+function _vaultCloseModal() {
+    document.getElementById('vault-entry-modal').classList.add('hidden');
+    _vaultEditId = null;
+}
+
+async function _vaultSaveEntry() {
+    const title    = document.getElementById('vault-field-title').value.trim();
+    const username = document.getElementById('vault-field-username').value.trim();
+    const password = document.getElementById('vault-field-password').value;
+    const url      = document.getElementById('vault-field-url').value.trim();
+    const notes    = document.getElementById('vault-field-notes').value.trim();
+
+    if (!title)    { alert('Website/App name zaroori hai!'); return; }
+    if (!password) { alert('Password zaroori hai!'); return; }
+    if (!_vaultKey) { alert('Vault locked hai — page refresh karein.'); return; }
+
+    const btn = document.getElementById('vault-save-entry-btn');
+    btn.disabled = true; btn.textContent = '⏳ Saving...';
+
+    try {
+        const encryptedPassword = await _vaultEncrypt(password);
+        const now = new Date().toISOString();
+        const data = { userId: currentUserEmail, title, username, encryptedPassword, url, notes, timestamp: now, deleted: false };
+
+        if (_vaultEditId) {
+            await updateDoc(doc(db, 'vault_entries', _vaultEditId), data);
+            const idx = _vaultEntries.findIndex(e => e._docId === _vaultEditId);
+            if (idx >= 0) _vaultEntries[idx] = { ..._vaultEntries[idx], title, username, password, url, notes };
+        } else {
+            const ref = await addDoc(collection(db, 'vault_entries'), data);
+            _vaultEntries.push({ _docId: ref.id, title, username, password, url, notes, timestamp: now });
+            _vaultEntries.sort((a, b) => (a.title||'').localeCompare(b.title||''));
+        }
+
+        const el = document.getElementById('vault-entry-count');
+        if (el) el.textContent = _vaultEntries.length;
+        _vaultCloseModal();
+        _vaultRender();
+    } catch (e) {
+        console.error('[Vault] Save error:', e);
+        alert('Save nahi hua. Check console.');
+    } finally {
+        btn.disabled = false; btn.textContent = '💾 Save';
+    }
+}
+
+// ── EVENT LISTENERS (called once after DOM ready) ────────────
+(function _vaultBindUI() {
+    // PIN boxes
+    const pinBoxes  = () => [...document.querySelectorAll('.vault-pin-box')];
+    const unlockBtn = () => document.getElementById('vault-unlock-btn');
+    const pinErr    = () => document.getElementById('vault-pin-error');
+
+    document.addEventListener('input', e => {
+        if (!e.target.classList.contains('vault-pin-box')) return;
+        const boxes = pinBoxes();
+        const idx   = boxes.indexOf(e.target);
+        const val   = e.target.value.replace(/\D/g, '');
+        e.target.value = val.slice(0, 1);
+        if (val && idx < 3) boxes[idx + 1].focus();
+        unlockBtn().disabled = boxes.map(b => b.value).join('').length < 4;
+        pinErr().classList.add('hidden');
+    }, true);
+
+    document.addEventListener('keydown', e => {
+        if (!e.target.classList.contains('vault-pin-box')) return;
+        const boxes = pinBoxes();
+        const idx   = boxes.indexOf(e.target);
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) boxes[idx - 1].focus();
+        if (e.key === 'Enter') unlockBtn().click();
+    });
+
+    // Paste full PIN
+    document.addEventListener('paste', e => {
+        if (!e.target.classList.contains('vault-pin-box')) return;
+        const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        if (paste.length >= 4) {
+            pinBoxes().forEach((b, i) => { b.value = paste[i] || ''; });
+            unlockBtn().disabled = false;
+            e.preventDefault();
+        }
+    });
+
+    // Unlock
+    document.getElementById('vault-unlock-btn')?.addEventListener('click', async () => {
+        const entered    = pinBoxes().map(b => b.value).join('');
+        const correctPin = _getDailyVaultPin(_vaultSeed);
+
+        if (entered !== correctPin) {
+            pinErr().classList.remove('hidden');
+            pinBoxes().forEach(b => {
+                b.classList.add('border-red-500', 'bg-red-900/20');
+                setTimeout(() => b.classList.remove('border-red-500', 'bg-red-900/20'), 700);
+            });
+            setTimeout(() => {
+                pinBoxes().forEach(b => { b.value = ''; });
+                unlockBtn().disabled = true;
+                pinErr().classList.add('hidden');
+                pinBoxes()[0]?.focus();
+            }, 1200);
+            return;
+        }
+
+        const btn = unlockBtn();
+        btn.textContent = '⏳ Unlocking...'; btn.disabled = true;
+        try {
+            _vaultKey = await _vaultDeriveKey(correctPin);
+
+            // Save seed to Firestore on first-time setup
+            if (_vaultNewSeed) {
+                await setDoc(doc(db, 'vault_config', currentUserEmail), { userId: currentUserEmail, vaultSeed: _vaultSeed, createdAt: new Date().toISOString() });
+                _vaultNewSeed = false;
+                document.getElementById('vault-setup-note')?.classList.add('hidden');
+            }
+
+            await _vaultLoadEntries();
+            _vaultShowContent();
+        } catch (e) {
+            console.error('[Vault] Unlock error:', e);
+            btn.textContent = '🔓 Vault Kholein'; btn.disabled = false;
+        }
+    });
+
+    // Show/hide today's PIN
+    document.getElementById('vault-show-pin-btn')?.addEventListener('click', () => {
+        const hint = document.getElementById('vault-pin-hint');
+        const hide = !hint.classList.contains('hidden');
+        hint.classList.toggle('hidden', hide);
+        document.getElementById('vault-show-pin-btn').textContent = hide ? '👁️ Aaj ka PIN dekhein / chhupayein' : '🙈 PIN chhupayein';
+    });
+
+    // Lock
+    document.getElementById('vault-lock-btn')?.addEventListener('click', () => {
+        _vaultKey = null; _vaultEntries = [];
+        sessionStorage.removeItem('_vaultSess');
+        _vaultShowLock();
+    });
+
+    // Add button
+    document.getElementById('vault-add-btn')?.addEventListener('click', () => _vaultOpenModal());
+
+    // Modal
+    document.getElementById('vault-modal-close')?.addEventListener('click', _vaultCloseModal);
+    document.getElementById('vault-cancel-btn')?.addEventListener('click', _vaultCloseModal);
+    document.getElementById('vault-save-entry-btn')?.addEventListener('click', _vaultSaveEntry);
+    document.getElementById('vault-toggle-pw')?.addEventListener('click', () => {
+        const inp = document.getElementById('vault-field-password');
+        const tog = document.getElementById('vault-toggle-pw');
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        tog.textContent = inp.type === 'password' ? '👁️' : '🙈';
+    });
+    document.getElementById('vault-entry-modal')?.addEventListener('click', e => {
+        if (e.target === document.getElementById('vault-entry-modal')) _vaultCloseModal();
+    });
+
+    // Search
+    document.getElementById('vault-search')?.addEventListener('input', e => {
+        _vaultSearch = e.target.value.toLowerCase();
+        _vaultRender();
+    });
+})();
