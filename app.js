@@ -1230,14 +1230,60 @@ function loadAppListeners() {
                 </div>
                 <p class="font-bold ${isClosed ? 'text-slate-400 line-through' : 'text-slate-800'} text-base leading-snug devanagari">${rem.title}</p>
                 <div class="flex flex-wrap gap-2 items-center mt-1">
-                    <span class="text-[11px] font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-lg">📅 ${formattedTime}</span>
+                    <span class="text-[11px] font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-lg">⏰ Deadline: ${formattedTime}</span>
                     ${rem.client ? `<span class="text-[10px] font-bold text-blue-600 bg-white/60 px-2 py-0.5 rounded-lg">👤 ${rem.client}</span>` : ''}
-                </div>`;
+                </div>
+                ${!isClosed ? `<div class="flex gap-2 mt-1">
+                    <button class="rem-close-btn flex-1 text-[11px] font-black py-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white transition-all" data-docid="${rem._docId}">✅ Close Reminder</button>
+                    ${isOverdue ? `<button class="rem-snooze-btn text-[11px] font-black py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-white transition-all" data-docid="${rem._docId}">⏩ Snooze 1 Day</button>` : ''}
+                </div>` : `<div class="text-[10px] font-bold text-emerald-600 mt-1">🏁 Closed ${rem.finishedAt ? new Date(rem.finishedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : ''}</div>`}`;
             div.style.cursor = 'pointer';
             div.addEventListener('click', (e) => {
                 if(e.target.closest('button')) return;
                 openFocusMode('reminder', rem);
             });
+            // Close button handler
+            const closeBtn = div.querySelector('.rem-close-btn');
+            if(closeBtn) {
+                closeBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const docId = closeBtn.dataset.docid;
+                    if(!docId || docId.startsWith('_pending_')) return;
+                    const finishedAt = new Date().toISOString();
+                    rem.status = 'Closed';
+                    rem.finishedAt = finishedAt;
+                    renderReminders();
+                    try {
+                        await updateDoc(doc(db, 'reminders', docId), { status: 'Closed', finishedAt });
+                    } catch(err) {
+                        console.error('Reminder close error:', err);
+                        rem.status = 'Active';
+                        renderReminders();
+                    }
+                });
+            }
+            // Snooze button handler
+            const snoozeBtn = div.querySelector('.rem-snooze-btn');
+            if(snoozeBtn) {
+                snoozeBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const docId = snoozeBtn.dataset.docid;
+                    if(!docId || docId.startsWith('_pending_')) return;
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(9, 0, 0, 0);
+                    const newTime = tomorrow.toISOString();
+                    rem.time = newTime;
+                    renderReminders();
+                    try {
+                        await updateDoc(doc(db, 'reminders', docId), { time: newTime });
+                        if(window.scheduleReminder) scheduleReminder(rem);
+                    } catch(err) {
+                        console.error('Reminder snooze error:', err);
+                        renderReminders();
+                    }
+                });
+            }
             list.appendChild(div);
         });
     }
@@ -1845,6 +1891,13 @@ CONVERSATION RULES — Follow these STRICTLY:
    - Agar same client ki pehle se entry hai, naya update add karo (purana mat hatao)
 
 2. TASKS → AUTO-SAVE (bina puche):
+   ═══ TASK KYA HOTA HAI? ═══
+   - Task = Koi KAAM jo user ko KARNA hai — action item, to-do, checklist item
+   - Task mein STATUS hota hai: Pending → Done → Finished
+   - Task time-bound bhi ho sakta hai (dueDate), lekin MAIN cheez hai KAM KARNA
+   - Examples: "NOC lena", "Documents verify karna", "Client ko call karna", "Form fill karna"
+   - Task ka pura hona = user ne kaam kar diya (checkbox tick kiya)
+
    - Jab user koi kaam bataye ya raw banking info se tasks ban sakte hain → AUTOMATICALLY task.save = true karo
    - Har actionable item ke liye SEPARATE task banao — ek message mein MULTIPLE tasks allowed hain
    - Agar multiple tasks hain → "tasks" array use karo (see JSON format below)
@@ -1853,14 +1906,35 @@ CONVERSATION RULES — Follow these STRICTLY:
    - IMPORTANT: task.dueDate MUST be valid ISO 8601 (e.g. "2026-03-15T00:00:00")
 
 3. REMINDERS → AUTO-SAVE (bina puche):
+   ═══ REMINDER KYA HOTA HAI? ═══
+   - Reminder = Koi YAAD DILAANA — time-bound alert jab koi cheez HONI hai ya YAAD aani chahiye
+   - Reminder mein TIME/DEADLINE hota hai — yahi uski main pehchaan hai
+   - Reminder ka STATUS hai: Active → Closed (user dismiss kare tab)
+   - Examples: "15 March ko court date hai", "Kal 2 baje meeting hai", "Next week tak response chahiye"
+   - Reminder app AUTOMATICALLY notification bhejta hai jab deadline aati hai
+
+   ═══ TASK vs REMINDER — CLEAR DISTINCTION ═══
+   - "Document lana hai" → TASK (kaam karna hai)
+   - "15 March ko document submit karna hai" → TASK + REMINDER dono (kaam bhi + deadline bhi)
+   - "Kal 2 baje call karna" → REMINDER (time-bound event/alert)
+   - "Follow-up karna" → TASK (kaam)
+   - "Next week tak follow-up karna" → REMINDER (specific deadline ke saath)
+   - "KCC ka inspection karna" → TASK (action)
+   - "30 March ko KCC inspection ki deadline hai" → REMINDER (deadline alert)
+
+   RULE: Agar user ne SPECIFIC DATE/TIME bataya hai → REMINDER bhi banao
+         Agar action karna hai bina specific date ke → TASK banao
+         Dono ek saath ban sakte hain ek hi message se!
+
    - Jab user information deta hai jismein date/time-bound actions hain → AUTOMATICALLY reminder.save = true karo
    - Har deadline/follow-up ke liye SEPARATE reminder banao — ek message mein MULTIPLE reminders allowed hain
    - Agar multiple reminders hain → "reminders" array use karo (see JSON format below)
    - Agar user ne time bhi bataya hai (jaise "2 baje", "kal subah", "15 March ko") → ISO 8601 format mein convert karke reminder.time mein daalo
-   - Agar user ne time nahi bataya lekin deadline implied hai → reasonable time estimate lagao
+   - Agar user ne time nahi bataya lekin deadline implied hai → reasonable time estimate lagao (e.g., din ki shaam 6 baje)
    - Agar koi time context nahi → time = "Manual" set karo, but STILL save karo
    - Permission ya confirmation KABHI mat maango — seedha save karo
    - IMPORTANT: reminder.time MUST be valid ISO 8601 (e.g. "2026-03-15T14:00:00") ya "Manual"
+   - IMPORTANT: NEVER set reminder.time to a date in the past — hamesha future date use karo
 
 4. UPDATE EXISTING DATA:
    - Jab user bole "task update karo / status change karo / timeline badh do / reminder ka time badal do":
@@ -2775,8 +2849,17 @@ window.openFocusMode = function(type, data) {
         const remDate = data.time && data.time !== 'Manual' && data.time !== 'जल्द' ? new Date(data.time) : null;
         const isClosed = data.status === 'Closed';
         const isOverdue = !isClosed && remDate && remDate < new Date();
+        const isToday = !isClosed && remDate && remDate.toDateString() === new Date().toDateString();
         const grad = isClosed ? 'linear-gradient(135deg,#059669,#0d9488)' : isOverdue ? 'linear-gradient(135deg,#dc2626,#db2777)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)';
-        const timeLabel = isClosed ? '🏁 Closed' : isOverdue ? '🔴 Overdue' : '⏰ Upcoming';
+        const timeLabel = isClosed ? '🏁 Closed' : isOverdue ? '🔴 Overdue' : isToday ? '🟠 Today' : '⏰ Upcoming';
+        let daysInfo = '';
+        if(remDate && !isClosed) {
+            const diff = Math.ceil((remDate - new Date()) / (1000*60*60*24));
+            if(isOverdue) daysInfo = `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">${Math.abs(diff)}d overdue</span>`;
+            else if(diff === 0) daysInfo = `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">Due Today!</span>`;
+            else daysInfo = `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">in ${diff} day${diff!==1?'s':''}</span>`;
+        }
+        const remDocId = data._docId || '';
         html = `
         <div style="background:${grad};padding:24px 24px 20px;position:relative;overflow:hidden;">
             <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07);"></div>
@@ -2784,14 +2867,20 @@ window.openFocusMode = function(type, data) {
             <div style="font-size:20px;font-weight:900;color:#fff;line-height:1.35;">${esc(data.title)}</div>
             <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
                 <span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">${timeLabel}</span>
-                ${remDate && !isNaN(remDate) ? `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">📅 ${remDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>` : ''}
+                ${remDate && !isNaN(remDate) ? `<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff;">⏰ Deadline: ${remDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}${remDate.getHours()||remDate.getMinutes() ? ' · '+remDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}) : ''}</span>` : ''}
+                ${daysInfo}
             </div>
         </div>
         <div style="padding:20px 24px;">
             ${data.client ? `<div style="margin-bottom:14px;padding:12px 16px;background:#eff6ff;border-radius:12px;border-left:3px solid #3b82f6;"><span style="font-size:11px;font-weight:700;color:#1d4ed8;">👤 Client: ${esc(data.client)}</span></div>` : ''}
+            ${data.type ? `<div style="margin-bottom:10px;"><span style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;">Type: </span><span style="font-size:11px;font-weight:700;color:#334155;">${esc(data.type)}</span></div>` : ''}
             ${data.description||data.notes ? `<div style="margin-bottom:14px;"><div style="font-size:10px;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">📝 Details</div><div style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;">${esc(data.description||data.notes)}</div></div>` : ''}
-            ${data.finishedAt ? `<div style="font-size:11px;color:#059669;">🏁 Closed: ${fmt(data.finishedAt)}</div>` : ''}
-            <div style="margin-top:8px;font-size:11px;color:#94a3b8;">🕐 Created: ${fmt(data.timestamp)}</div>
+            ${data.finishedAt ? `<div style="font-size:11px;color:#059669;margin-bottom:8px;">🏁 Closed: ${fmt(data.finishedAt)}</div>` : ''}
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:16px;">🕐 Created: ${fmt(data.timestamp)}</div>
+            ${!isClosed ? `<div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button id="fm-close-rem-btn" style="flex:1;min-width:120px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;">✅ Close Reminder</button>
+                ${isOverdue ? `<button id="fm-snooze-rem-btn" style="flex:1;min-width:120px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-weight:800;font-size:13px;border:none;cursor:pointer;">⏩ Snooze 1 Day</button>` : ''}
+            </div>` : ''}
         </div>`;
 
     } else if(type === 'notebook') {
@@ -2820,6 +2909,35 @@ window.openFocusMode = function(type, data) {
     body.innerHTML = html;
     popup.classList.remove('hidden');
     document.addEventListener('keydown', _focusEscHandler);
+
+    // Focus mode reminder action buttons
+    const fmCloseBtn = document.getElementById('fm-close-rem-btn');
+    if(fmCloseBtn && type === 'reminder' && data._docId && !data._docId.startsWith('_pending_')) {
+        fmCloseBtn.addEventListener('click', async () => {
+            const finishedAt = new Date().toISOString();
+            data.status = 'Closed';
+            data.finishedAt = finishedAt;
+            closeFocusMode();
+            renderReminders();
+            try { await updateDoc(doc(db, 'reminders', data._docId), { status: 'Closed', finishedAt }); } catch(e) {}
+        });
+    }
+    const fmSnoozeBtn = document.getElementById('fm-snooze-rem-btn');
+    if(fmSnoozeBtn && type === 'reminder' && data._docId && !data._docId.startsWith('_pending_')) {
+        fmSnoozeBtn.addEventListener('click', async () => {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(9, 0, 0, 0);
+            const newTime = tomorrow.toISOString();
+            data.time = newTime;
+            closeFocusMode();
+            renderReminders();
+            try {
+                await updateDoc(doc(db, 'reminders', data._docId), { time: newTime });
+                if(window.scheduleReminder) scheduleReminder(data);
+            } catch(e) {}
+        });
+    }
 };
 
 function _focusEscHandler(e) {
@@ -3320,10 +3438,10 @@ if('Notification' in window) {
 // ─── REMINDER SCHEDULER — fires browser push at exact set time ───
 window.scheduleReminder = function(rem) {
     if(!rem.time || rem.time === 'Manual' || rem.time === 'जल्द') return;
+    if(rem.status === 'Closed') return;
     const fireAt = new Date(rem.time);
     if(isNaN(fireAt)) {
         console.warn('[CaseDesk] Invalid reminder time:', rem.time, 'for:', rem.title);
-        if(window.addNotif) addNotif('reminder', '⚠️ Reminder time invalid: ' + (rem.title||'').substring(0,30), 'Time "' + rem.time + '" parse nahi ho paya');
         return;
     }
     const key = rem.title + '|' + rem.time;
@@ -3334,14 +3452,26 @@ window.scheduleReminder = function(rem) {
     if(msLeft > 0 && msLeft < 7 * 24 * 3600 * 1000) {
         // In-app notification at exact time
         setTimeout(() => {
+            if(rem.status === 'Closed') return; // Skip if closed by then
             addNotif('reminder', '⏰ ' + rem.title, rem.client ? 'Client: ' + rem.client : 'Reminder time!');
-            // Force browser push even if tab open
             if(NS.pushOK) browserPush('reminder', rem.title, rem.client || 'Reminder!');
         }, msLeft);
         console.log('[CaseDesk] Reminder scheduled:', rem.title, 'in', Math.round(msLeft/60000), 'min');
-    } else if(msLeft <= 0 && msLeft > -3600000) {
-        // Just missed (within last hour) — show overdue once
-        addNotif('reminder', '🔴 Overdue: ' + rem.title, rem.client || '');
+    } else if(msLeft > 0) {
+        // Future beyond 7 days — still schedule for up to 30 days
+        if(msLeft < 30 * 24 * 3600 * 1000) {
+            setTimeout(() => {
+                if(rem.status === 'Closed') return;
+                addNotif('reminder', '⏰ ' + rem.title, rem.client ? 'Client: ' + rem.client : 'Reminder time!');
+                if(NS.pushOK) browserPush('reminder', rem.title, rem.client || 'Reminder!');
+            }, msLeft);
+        }
+    } else if(msLeft <= 0 && msLeft > -7 * 24 * 3600 * 1000) {
+        // Overdue — show notification for reminders missed within last 7 days
+        const daysMissed = Math.ceil(Math.abs(msLeft) / (1000*60*60*24));
+        const overdueMsg = daysMissed <= 1 ? '(aaj miss hua)' : `(${daysMissed} din pehle)`;
+        addNotif('reminder', '🔴 Overdue: ' + rem.title, (rem.client ? rem.client + ' — ' : '') + overdueMsg);
+        if(NS.pushOK) browserPush('reminder', '🔴 Overdue: ' + rem.title, rem.client || overdueMsg);
     }
 };
 
