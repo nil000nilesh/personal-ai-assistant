@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "318215944760",
+    "project_id": "ai-assistant-app-8e733",
+    "storage_bucket": "ai-assistant-app-8e733.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:318215944760:android:44bf8c48b0ca0675ff44cd",
+        "android_client_info": {
+          "package_name": "com.casedesk.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "318215944760-hbhr6n2kaljb4d52fuapo6ngt65a9geb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.casedesk.app",
+            "certificate_hash": "f6e89f566878e8ba7f54776a3c5aa5f7c15ab502"
+          }
+        },
+        {
+          "client_id": "318215944760-hlsn212vngamf072tk7ol2m86rtbo5ad.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqJwzM0L7b8UxdNGcwV8jcBl4pAKqEYWc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "318215944760-hlsn212vngamf072tk7ol2m86rtbo5ad.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
