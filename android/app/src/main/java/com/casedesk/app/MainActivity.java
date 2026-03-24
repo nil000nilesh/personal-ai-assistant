@@ -1,7 +1,9 @@
 package com.casedesk.app;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -37,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
 
         setupWebView();
-        
+
         webView.loadUrl("https://personal-ai-assistant-eight.vercel.app/");
     }
 
@@ -52,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
-        
+
         // Cookies management
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -89,10 +91,22 @@ public class MainActivity extends AppCompatActivity {
                     Log.e(TAG, "Error: " + error.getDescription());
                 }
             }
-            
+
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                // Let WebView handle all redirects internally
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+
+                // Google Sign-In URLs ko external Chrome browser mein open karo
+                if (url.contains("accounts.google.com") ||
+                        url.contains("oauth") ||
+                        url.contains("auth/handler") ||
+                        url.contains("identitytoolkit")) {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    startActivity(intent);
+                    return true;
+                }
+
+                // Baaki sab WebView mein hi handle karo
                 return false;
             }
         });
