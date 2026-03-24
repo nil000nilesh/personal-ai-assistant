@@ -1,20 +1,22 @@
 package com.casedesk.app;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Message;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
     private static final String TAG = "WebViewDebug";
@@ -24,7 +26,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        // Remove title bar
+        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN
@@ -33,63 +36,66 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         webView = findViewById(R.id.webview);
 
-        configureWebView(webView);
-
-        // Cookies setup
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            cookieManager.setAcceptThirdPartyCookies(webView, true);
-        }
-
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
-                WebView newWebView = new WebView(MainActivity.this);
-                configureWebView(newWebView);
-                newWebView.setWebViewClient(new WebViewClient());
-                
-                // Popup window handling
-                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                transport.setWebView(newWebView);
-                resultMsg.sendToTarget();
-                return true;
-            }
-        });
-
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                // Force sync cookies after login
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    CookieManager.getInstance().flush();
-                }
-            }
-        });
-
+        setupWebView();
+        
         webView.loadUrl("https://personal-ai-assistant-eight.vercel.app/");
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private void configureWebView(WebView wv) {
-        WebSettings settings = wv.getSettings();
+    private void setupWebView() {
+        WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setSupportMultipleWindows(true); // Popups ke liye zaroori hai
-        settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
         
+        // Cookies management
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        // Standard Chrome User Agent taaki Google use block na kare
-        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36");
+        // Modern and stable User Agent
+        String userAgent = "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36";
+        settings.setUserAgentString(userAgent);
+
+        webView.setWebChromeClient(new WebChromeClient());
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                Log.d(TAG, "Page Started: " + url);
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                Log.d(TAG, "Page Finished: " + url);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    CookieManager.getInstance().flush();
+                }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Log.e(TAG, "Error: " + error.getDescription());
+                }
+            }
+            
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // Let WebView handle all redirects internally
+                return false;
+            }
+        });
     }
 
     @Override
