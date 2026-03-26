@@ -16,7 +16,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        // This neutralizes the 'externalOverride' error by providing a fallback 
+        // to the default debug keystore if the IDE tries to use it.
+        create("externalOverride") {
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("externalOverride")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
