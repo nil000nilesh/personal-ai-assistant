@@ -276,12 +276,36 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     const btn = document.getElementById('login-btn');
     const originalHTML = btn.innerHTML;
     btn.innerText = "Signing in...";
-    try {
-        await signInWithRedirect(auth, provider);
-    } catch (error) {
-        btn.innerHTML = originalHTML;
-        console.error('Sign-in error:', error.code, error.message);
+
+    // Android WebView detection
+    const isAndroid = window.AndroidBridge !== undefined;
+
+    if (isAndroid) {
+        // Native Android Sign-In use karo
+        window.__androidSignIn = async (idToken, email) => {
+            try {
+                const credential = GoogleAuthProvider.credential(idToken);
+                await signInWithCredential(auth, credential);
+            } catch(e) {
+                btn.innerHTML = originalHTML;
+                console.error('Android sign-in error:', e);
+            }
+        };
+        window.__androidSignInFailed = (code) => {
+            btn.innerHTML = originalHTML;
+            console.error('Android sign-in failed, code:', code);
+        };
+        window.AndroidBridge.signIn();
+    } else {
+        // Browser mein normal popup
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            btn.innerHTML = originalHTML;
+            console.error('Sign-in error:', error.code);
+        }
     }
+});
 });
 
 onAuthStateChanged(auth, async (user) => {
