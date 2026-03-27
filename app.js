@@ -308,7 +308,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
         }
     }
 });
-});
 
 // ── EMAIL AUTH HELPERS ────────────────────────────────────────────
 window.switchLoginTab = function(tab) {
@@ -4152,8 +4151,7 @@ window.submitForceChangePassword = async function(firestoreDocId) {
         await updateDoc(docRef3(db, "allowed_users", firestoreDocId), { mustChangePassword: false });
         // Re-trigger auth flow — PIN screen dikhega ab
         isPinVerified = false;
-        onAuthStateChanged(auth, async () => {});  // force re-check
-        location.reload();  // simplest: page reload se fresh auth check hoga
+        location.reload();  // Page reload se fresh auth check hoga → PIN screen dikhega
     } catch(err) {
         btn.textContent = 'Naya Password Set Karein →';
         btn.disabled = false;
