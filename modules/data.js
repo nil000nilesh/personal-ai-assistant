@@ -1009,17 +1009,18 @@ if (SpeechRecognition) {
     recognition.interimResults = true;
     recognition.lang = 'hi-IN';
 
-    recognition.onstart = () => { isRecording = true; ui.micBtn.classList.add('recording'); ui.userInput.placeholder = "Listening..."; };
+    recognition.onstart = () => { isRecording = true; document.getElementById('mic-btn')?.classList.add('recording'); const inp = document.getElementById('user-input'); if(inp) inp.placeholder = "Listening..."; };
     recognition.onresult = (event) => {
+        const inp = document.getElementById('user-input');
         let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) ui.userInput.value += event.results[i][0].transcript + ' ';
+            if (event.results[i].isFinal && inp) inp.value += event.results[i][0].transcript + ' ';
             else interimTranscript += event.results[i][0].transcript;
         }
     };
-    recognition.onend = () => { isRecording = false; ui.micBtn.classList.remove('recording'); ui.userInput.placeholder = "Type a command or tap mic..."; };
-    ui.micBtn.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
-} else { ui.micBtn.style.display = 'none'; }
+    recognition.onend = () => { isRecording = false; document.getElementById('mic-btn')?.classList.remove('recording'); const inp = document.getElementById('user-input'); if(inp) inp.placeholder = "Type a command or tap mic..."; };
+    document.getElementById('mic-btn')?.addEventListener('click', () => { if (isRecording) recognition.stop(); else recognition.start(); });
+} else { const m = document.getElementById('mic-btn'); if(m) m.style.display = 'none'; }
 
 
 
