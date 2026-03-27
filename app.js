@@ -276,14 +276,11 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     const btn = document.getElementById('login-btn');
     const originalHTML = btn.innerHTML;
     btn.innerText = "Signing in...";
-    try { 
-        await signInWithPopup(auth, provider); 
-    } catch (error) { 
-        if(error.code === 'auth/popup-blocked') {
-            await signInWithRedirect(auth, provider);
-        } else {
-            btn.innerHTML = originalHTML;
-        }
+    try {
+        await signInWithRedirect(auth, provider);
+    } catch (error) {
+        btn.innerHTML = originalHTML;
+        console.error('Sign-in error:', error.code, error.message);
     }
 });
 
