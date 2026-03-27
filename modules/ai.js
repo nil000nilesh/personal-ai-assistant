@@ -825,7 +825,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
 }
 
 document.getElementById('send-btn').addEventListener('click', sendMessage);
-ui.userInput.addEventListener('keydown', (e) => {
+document.getElementById('user-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
@@ -833,9 +833,10 @@ ui.userInput.addEventListener('keydown', (e) => {
     // Shift+Enter = default behavior (newline in textarea)
 });
 // Auto-resize textarea as user types
-ui.userInput.addEventListener('input', () => {
-    ui.userInput.style.height = 'auto';
-    ui.userInput.style.height = Math.min(ui.userInput.scrollHeight, 80) + 'px';
+document.getElementById('user-input').addEventListener('input', () => {
+    const el = document.getElementById('user-input');
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
 });
 
 
@@ -1331,9 +1332,8 @@ function markPageNotifsRead(page) {
 }
 
 // Wrap switchView to clear badges on page visit + reset task filter
-const _baseSwitchViewUP = switchView;
 window.switchView = function(targetView) {
-    _baseSwitchViewUP(targetView);
+    window._switchView?.(targetView);
     markPageNotifsRead(targetView);
     if(targetView === 'tasks' && window._resetTaskFilter) window._resetTaskFilter();
 };
