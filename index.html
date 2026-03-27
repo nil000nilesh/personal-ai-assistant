@@ -54,7 +54,7 @@
 
             <div class="w-full max-w-sm relative z-10">
                 <!-- Welcome heading with accent -->
-                <div class="mb-8">
+                <div class="mb-6">
                     <div class="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1 mb-4">
                         <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
                         <span class="text-[11px] font-bold text-indigo-600 tracking-wide uppercase">Ready to connect</span>
@@ -63,25 +63,89 @@
                     <p class="text-slate-500 text-sm">Sign in to access your AI-powered dashboard</p>
                 </div>
 
-                <!-- Login button — glass card style -->
-                <div class="rounded-2xl p-1" style="background:linear-gradient(135deg,#6366f1,#3b82f6,#6366f1);background-size:200% 200%;animation:gradShift 4s ease infinite;">
-                    <button id="login-btn" class="w-full bg-white hover:bg-blue-50 text-slate-700 px-6 py-4 rounded-xl font-bold transition-all flex items-center gap-4 text-sm group" style="box-shadow:0 4px 20px rgba(99,102,241,0.15);">
-                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0" style="box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                        </div>
-                        <div class="flex-1 text-left">
-                            <div class="text-sm font-extrabold text-slate-800">Continue with Google</div>
-                            <div class="text-[10px] font-medium text-slate-400 mt-0.5">Secure one-tap sign in</div>
-                        </div>
-                        <svg class="w-5 h-5 text-indigo-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                <!-- Login method tabs -->
+                <div class="flex rounded-xl p-1 mb-5" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.12);">
+                    <button id="tab-google-login" onclick="window.switchLoginTab('google')" class="flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200" style="background:white;color:#6366f1;box-shadow:0 2px 8px rgba(99,102,241,0.15);">
+                        Google
+                    </button>
+                    <button id="tab-email-login" onclick="window.switchLoginTab('email')" class="flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200" style="color:#94a3b8;background:transparent;">
+                        Email / Password
                     </button>
                 </div>
 
-                <!-- Divider -->
-                <div class="mt-8 flex items-center gap-3 text-xs text-slate-400">
-                    <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#c7d2fe,transparent);"></div>
-                    <span class="font-semibold text-indigo-400 tracking-wider uppercase text-[10px]">Trusted & Secure</span>
-                    <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#c7d2fe,transparent);"></div>
+                <!-- Google panel -->
+                <div id="login-panel-google">
+                    <!-- Login button — glass card style -->
+                    <div class="rounded-2xl p-1" style="background:linear-gradient(135deg,#6366f1,#3b82f6,#6366f1);background-size:200% 200%;animation:gradShift 4s ease infinite;">
+                        <button id="login-btn" class="w-full bg-white hover:bg-blue-50 text-slate-700 px-6 py-4 rounded-xl font-bold transition-all flex items-center gap-4 text-sm group" style="box-shadow:0 4px 20px rgba(99,102,241,0.15);">
+                            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0" style="box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            </div>
+                            <div class="flex-1 text-left">
+                                <div class="text-sm font-extrabold text-slate-800">Continue with Google</div>
+                                <div class="text-[10px] font-medium text-slate-400 mt-0.5">Secure one-tap sign in</div>
+                            </div>
+                            <svg class="w-5 h-5 text-indigo-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                    <!-- Divider -->
+                    <div class="mt-7 flex items-center gap-3 text-xs text-slate-400">
+                        <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#c7d2fe,transparent);"></div>
+                        <span class="font-semibold text-indigo-400 tracking-wider uppercase text-[10px]">Trusted & Secure</span>
+                        <div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#c7d2fe,transparent);"></div>
+                    </div>
+                </div>
+
+                <!-- Email panel (hidden by default) -->
+                <div id="login-panel-email" class="hidden">
+                    <!-- Error message -->
+                    <div id="email-auth-error" class="hidden mb-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-xs text-red-600 font-semibold"></div>
+                    <!-- Success message -->
+                    <div id="email-auth-success" class="hidden mb-3 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 text-xs text-green-700 font-semibold"></div>
+
+                    <!-- Sign In Form -->
+                    <div id="email-signin-form">
+                        <div class="space-y-3">
+                            <input id="email-si-email" type="email" placeholder="Email address" autocomplete="email" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                            <div class="relative">
+                                <input id="email-si-password" type="password" placeholder="Password" autocomplete="current-password" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none pr-11" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                                <button type="button" onclick="window.togglePwdVisibility('email-si-password',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" tabindex="-1">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                            <button id="email-signin-btn" class="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#6366f1,#3b82f6);box-shadow:0 4px 15px rgba(99,102,241,0.35);">
+                                Sign In
+                            </button>
+                        </div>
+                        <div class="mt-5 text-center">
+                            <span class="text-xs text-slate-500">Account nahi hai? </span>
+                            <button onclick="window.switchEmailForm('signup')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Create Account</button>
+                        </div>
+                    </div>
+
+                    <!-- Sign Up Form (hidden by default) -->
+                    <div id="email-signup-form" class="hidden">
+                        <div class="space-y-3">
+                            <input id="email-su-name" type="text" placeholder="Full Name" autocomplete="name" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                            <input id="email-su-email" type="email" placeholder="Email address" autocomplete="email" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                            <div class="relative">
+                                <input id="email-su-password" type="password" placeholder="Password (min 6 characters)" autocomplete="new-password" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none pr-11" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                                <button type="button" onclick="window.togglePwdVisibility('email-su-password',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" tabindex="-1">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                            <button id="email-signup-btn" class="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#6366f1,#3b82f6);box-shadow:0 4px 15px rgba(99,102,241,0.35);">
+                                Create Account
+                            </button>
+                        </div>
+                        <div class="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-[11px] text-amber-700 font-medium leading-relaxed">
+                            Account create hone ke baad admin se approval leni hogi. Admin aapka access approve karega tab login ho payega.
+                        </div>
+                        <div class="mt-4 text-center">
+                            <span class="text-xs text-slate-500">Pehle se account hai? </span>
+                            <button onclick="window.switchEmailForm('signin')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Sign In</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Feature badges — redesigned as highlighted cards -->

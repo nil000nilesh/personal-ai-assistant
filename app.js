@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, onSnapshot, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -306,6 +306,127 @@ document.getElementById('login-btn').addEventListener('click', async () => {
         }
     }
 });
+});
+
+// ── EMAIL AUTH HELPERS ────────────────────────────────────────────
+window.switchLoginTab = function(tab) {
+    const googlePanel = document.getElementById('login-panel-google');
+    const emailPanel  = document.getElementById('login-panel-email');
+    const tabGoogle   = document.getElementById('tab-google-login');
+    const tabEmail    = document.getElementById('tab-email-login');
+    if (tab === 'google') {
+        googlePanel.classList.remove('hidden');
+        emailPanel.classList.add('hidden');
+        tabGoogle.style.cssText = 'background:white;color:#6366f1;box-shadow:0 2px 8px rgba(99,102,241,0.15);';
+        tabEmail.style.cssText  = 'color:#94a3b8;background:transparent;box-shadow:none;';
+    } else {
+        googlePanel.classList.add('hidden');
+        emailPanel.classList.remove('hidden');
+        tabEmail.style.cssText  = 'background:white;color:#6366f1;box-shadow:0 2px 8px rgba(99,102,241,0.15);';
+        tabGoogle.style.cssText = 'color:#94a3b8;background:transparent;box-shadow:none;';
+        const errEl = document.getElementById('email-auth-error');
+        const sucEl = document.getElementById('email-auth-success');
+        if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+        if (sucEl) { sucEl.classList.add('hidden'); sucEl.textContent = ''; }
+    }
+};
+
+window.switchEmailForm = function(form) {
+    const signinForm = document.getElementById('email-signin-form');
+    const signupForm = document.getElementById('email-signup-form');
+    const errEl = document.getElementById('email-auth-error');
+    const sucEl = document.getElementById('email-auth-success');
+    if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+    if (sucEl) { sucEl.classList.add('hidden'); sucEl.textContent = ''; }
+    if (form === 'signup') {
+        signinForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+    } else {
+        signupForm.classList.add('hidden');
+        signinForm.classList.remove('hidden');
+    }
+};
+
+window.togglePwdVisibility = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const hiding = input.type === 'password';
+    input.type = hiding ? 'text' : 'password';
+    btn.innerHTML = hiding
+        ? '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>'
+        : '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+};
+
+function showEmailAuthError(msg) {
+    const el = document.getElementById('email-auth-error');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    const sucEl = document.getElementById('email-auth-success');
+    if (sucEl) sucEl.classList.add('hidden');
+}
+
+function showEmailAuthSuccess(msg) {
+    const el = document.getElementById('email-auth-success');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    const errEl = document.getElementById('email-auth-error');
+    if (errEl) errEl.classList.add('hidden');
+}
+
+// Email Sign-In handler
+document.getElementById('email-signin-btn').addEventListener('click', async () => {
+    const btn      = document.getElementById('email-signin-btn');
+    const email    = document.getElementById('email-si-email').value.trim();
+    const password = document.getElementById('email-si-password').value;
+    if (!email || !password) { showEmailAuthError('Email aur password dono bharo.'); return; }
+    const orig = btn.textContent;
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged handle karega aage ka flow
+    } catch (err) {
+        btn.textContent = orig;
+        btn.disabled = false;
+        const errMap = {
+            'auth/user-not-found':     'Yeh email registered nahi hai.',
+            'auth/wrong-password':     'Password galat hai.',
+            'auth/invalid-credential': 'Email ya password galat hai.',
+            'auth/invalid-email':      'Email format sahi nahi hai.',
+            'auth/too-many-requests':  'Bahut zyada attempts. Thoda wait karo.',
+            'auth/user-disabled':      'Account disabled kar diya gaya hai.'
+        };
+        showEmailAuthError(errMap[err.code] || 'Login failed: ' + err.message);
+    }
+});
+
+// Email Sign-Up handler
+document.getElementById('email-signup-btn').addEventListener('click', async () => {
+    const btn      = document.getElementById('email-signup-btn');
+    const name     = document.getElementById('email-su-name').value.trim();
+    const email    = document.getElementById('email-su-email').value.trim();
+    const password = document.getElementById('email-su-password').value;
+    if (!name || !email || !password) { showEmailAuthError('Sabhi fields bharo.'); return; }
+    if (password.length < 6) { showEmailAuthError('Password kam se kam 6 characters ka hona chahiye.'); return; }
+    const orig = btn.textContent;
+    btn.textContent = 'Creating account...';
+    btn.disabled = true;
+    try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName: name });
+        // onAuthStateChanged fire hoga — unauthorized screen dikhegi until admin approves
+    } catch (err) {
+        btn.textContent = orig;
+        btn.disabled = false;
+        const errMap = {
+            'auth/email-already-in-use': 'Yeh email pehle se registered hai. Sign In karein.',
+            'auth/invalid-email':        'Email format sahi nahi hai.',
+            'auth/weak-password':        'Password bahut weak hai. Minimum 6 characters use karein.'
+        };
+        showEmailAuthError(errMap[err.code] || 'Account create failed: ' + err.message);
+    }
 });
 
 onAuthStateChanged(auth, async (user) => {
