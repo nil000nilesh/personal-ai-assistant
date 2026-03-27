@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithPopup, signInWithCredential, GoogleAuthProvider, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail, updatePassword, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, onSnapshot, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -16,6 +16,8 @@ let currentUserRole = "user"; // Admin sirf ADMIN_EMAIL ke liye set hoga
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+// Persistent login: auth state localStorage mein save hoga (Android WebView + browser dono)
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
@@ -430,6 +432,8 @@ document.getElementById('email-signup-btn').addEventListener('click', async () =
 });
 
 onAuthStateChanged(auth, async (user) => {
+    // Loading overlay hatao (pehli baar auth state aane par)
+    document.getElementById('auth-loading-overlay')?.remove();
     hideAllStates();
     if (user) {
         // ── ADMIN: nil000nilesh@gmail.com — always access, hardcoded ──
@@ -478,6 +482,13 @@ onAuthStateChanged(auth, async (user) => {
                 currentUserPin = userData.pin;
                 currentUserRole = "user";
                 currentUserEmail = user.email;
+
+                // Password reset ke baad force change check
+                if (userData.mustChangePassword === true) {
+                    hideAllStates();
+                    showForceChangePasswordScreen(user, snap.docs[0].id);
+                    return;
+                }
 
                 if (!isPinVerified) {
                     showPinScreen(user, { name: userData.name || user.displayName, email: user.email, role: "user" });
@@ -3963,8 +3974,9 @@ async function loadAdminUsers() {
                         <span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:6px;background:#fef3c7;color:#92400e;">🔑 PIN: ${u.pin || '—'}</span>
                     </div>
                 </div>
-                <div style="display:flex;gap:6px;flex-shrink:0;">
+                <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
                     <button onclick="editUserPin('${u.id}','${u.pin||''}','${u.name||''}','${u.email}')" style="padding:7px 12px;background:#eef2ff;border:none;border-radius:10px;color:#6366f1;font-size:11px;font-weight:700;cursor:pointer;" title="PIN Change Karein">✏️ PIN</button>
+                    ${!isAdminUser ? `<button onclick="resetUserPassword('${u.email}','${u.name||u.email}','${u.id}')" style="padding:7px 12px;background:#fff7ed;border:none;border-radius:10px;color:#ea580c;font-size:11px;font-weight:700;cursor:pointer;" title="Password Reset Email Bhejo">📧 Reset Pwd</button>` : ''}
                     ${!isAdminUser ? `<button onclick="deleteUser('${u.id}','${u.name||u.email}')" style="padding:7px 12px;background:#fef2f2;border:none;border-radius:10px;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer;" title="User Delete Karein">🗑️</button>` : '<span style="font-size:10px;color:#94a3b8;padding:7px 8px;">Protected</span>'}
                 </div>`;
             listEl.appendChild(card);
@@ -4062,6 +4074,92 @@ function showAdminMsg(text, bg, color) {
     el.textContent = text;
     setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
+
+// ── ADMIN: Password Reset ──────────────────────────────────────
+window.resetUserPassword = async function(email, userName, docId) {
+    if (!confirm(`"${userName}" (${email}) ko password reset email bhejna chahte hain?\n\nUser ko email mein link milega jisse woh naya password set kar sake.`)) return;
+    try {
+        await sendPasswordResetEmail(auth, email);
+        // Flag set karo ki login ke baad new password banana hoga
+        const { updateDoc, doc: docRef2 } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        await updateDoc(docRef2(db, "allowed_users", docId), { mustChangePassword: true });
+        showAdminMsg(`✅ "${userName}" ko password reset email bhej di! Unhe email check karne ko bolein.`, '#f0fdf4', '#15803d');
+    } catch(err) {
+        const errMap = {
+            'auth/user-not-found': `"${userName}" ne abhi tak email se account nahi banaya hai. Pehle unhe "Create Account" se account banana hoga.`,
+            'auth/invalid-email':  'Email format sahi nahi hai.',
+        };
+        showAdminMsg('❌ ' + (errMap[err.code] || err.message), '#fef2f2', '#991b1b');
+    }
+};
+
+// ── Force Change Password Screen ──────────────────────────────
+function showForceChangePasswordScreen(user, firestoreDocId) {
+    ui.login.classList.remove('hidden');
+    ui.login.classList.add('flex');
+    const rightPanel = document.querySelector('#login-screen > div:last-child');
+    if (!rightPanel) return;
+    rightPanel.innerHTML = `
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image:radial-gradient(#6366f1 1px,transparent 1px);background-size:24px 24px;"></div>
+        <div class="w-full max-w-sm relative z-10 text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center text-3xl" style="background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.3);">🔑</div>
+            <div class="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1 mb-4">
+                <span class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                <span class="text-[11px] font-bold text-indigo-600 tracking-wide uppercase">Naya Password Zaroori</span>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">Password Reset Karein</h3>
+            <p class="text-slate-500 text-sm mb-6">Admin ne aapka password reset kiya hai.<br/>Aage badhne ke liye naya password set karein.</p>
+            <div class="text-left space-y-3 mb-4">
+                <div class="relative">
+                    <input id="fcp-new-password" type="password" placeholder="Naya password (min 6 characters)" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none pr-11" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                    <button type="button" onclick="window.togglePwdVisibility('fcp-new-password',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" tabindex="-1">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                </div>
+                <div class="relative">
+                    <input id="fcp-confirm-password" type="password" placeholder="Password confirm karein" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none pr-11" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                    <button type="button" onclick="window.togglePwdVisibility('fcp-confirm-password',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" tabindex="-1">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                </div>
+                <div id="fcp-error" class="hidden bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-semibold"></div>
+            </div>
+            <button id="fcp-submit-btn" onclick="window.submitForceChangePassword('${firestoreDocId}')" class="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all" style="background:linear-gradient(135deg,#6366f1,#3b82f6);box-shadow:0 4px 15px rgba(99,102,241,0.35);">
+                Naya Password Set Karein →
+            </button>
+            <div class="mt-4 text-xs text-slate-400">
+                Logged in as: <span class="font-semibold text-slate-600">${user.email}</span>
+            </div>
+        </div>`;
+}
+
+window.submitForceChangePassword = async function(firestoreDocId) {
+    const newPwd  = document.getElementById('fcp-new-password')?.value || '';
+    const confPwd = document.getElementById('fcp-confirm-password')?.value || '';
+    const errEl   = document.getElementById('fcp-error');
+    const btn     = document.getElementById('fcp-submit-btn');
+
+    const showErr = (msg) => { if(errEl){ errEl.textContent = msg; errEl.classList.remove('hidden'); } };
+
+    if (newPwd.length < 6) { showErr('Password kam se kam 6 characters ka hona chahiye.'); return; }
+    if (newPwd !== confPwd) { showErr('Dono passwords match nahi kar rahe.'); return; }
+
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+    try {
+        await updatePassword(auth.currentUser, newPwd);
+        const { updateDoc, doc: docRef3 } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        await updateDoc(docRef3(db, "allowed_users", firestoreDocId), { mustChangePassword: false });
+        // Re-trigger auth flow — PIN screen dikhega ab
+        isPinVerified = false;
+        onAuthStateChanged(auth, async () => {});  // force re-check
+        location.reload();  // simplest: page reload se fresh auth check hoga
+    } catch(err) {
+        btn.textContent = 'Naya Password Set Karein →';
+        btn.disabled = false;
+        showErr('Error: ' + (err.message || 'Dobara try karein.'));
+    }
+};
 
 
 // ═══════════════════════════════════════════════════════════════
