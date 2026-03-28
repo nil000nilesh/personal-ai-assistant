@@ -2,4 +2,8 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- CaseDesk brand colors -->
+    <color name="brand_dark">#0f172a</color>
+    <color name="brand_indigo">#6366f1</color>
+    <color name="brand_indigo_dark">#1e1b4b</color>
 </resources>
