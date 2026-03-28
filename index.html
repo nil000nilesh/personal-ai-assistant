@@ -124,9 +124,12 @@
                                 Sign In
                             </button>
                         </div>
-                        <div class="mt-5 text-center">
-                            <span class="text-xs text-slate-500">Account nahi hai? </span>
-                            <button onclick="window.switchEmailForm('signup')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Create Account</button>
+                        <div class="mt-4 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-500">Account nahi hai? </span>
+                                <button onclick="window.switchEmailForm('signup')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Create Account</button>
+                            </div>
+                            <button onclick="window.sendForgotPassword()" class="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors">Forgot Password?</button>
                         </div>
                     </div>
 
