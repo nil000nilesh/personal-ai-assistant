@@ -1,7 +1,9 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.CaseDeskAndroid" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+<resources>
+    <!-- Night mode same dark theme use karta hai -->
+    <style name="Theme.CaseDeskAI" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/brand_dark</item>
+        <item name="android:statusBarColor">@color/brand_dark</item>
+        <item name="android:navigationBarColor">@color/brand_dark</item>
+        <item name="colorPrimary">@color/brand_indigo</item>
     </style>
 </resources>

@@ -2,13 +2,13 @@ package com.casedesk.app;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Color;
+import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -19,29 +19,26 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
-import android.graphics.Bitmap;
+import androidx.core.view.WindowCompat;
 
 public class MainActivity extends AppCompatActivity {
 
-    private WebView webView;
-    private ProgressBar progressBar;
+    private WebView      webView;
+    private ProgressBar  progressBar;
     private LinearLayout offlineLayout;
-    private static final String APP_URL = "https://personal-ai-assistant-eight.vercel.app/";
+
+    private static final String APP_URL =
+        "https://personal-ai-assistant-eight.vercel.app/";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Full screen — status bar transparent
-        getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-        );
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().setStatusBarColor(Color.parseColor("#0f172a"));
-        }
+        // Edge-to-edge display + dark status/nav bar
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         setContentView(R.layout.activity_main);
 
@@ -50,11 +47,25 @@ public class MainActivity extends AppCompatActivity {
         offlineLayout = findViewById(R.id.offline_layout);
         Button retryBtn = findViewById(R.id.retry_btn);
 
+        // Retry button
         retryBtn.setOnClickListener(v -> {
             if (isOnline()) {
                 offlineLayout.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
                 webView.loadUrl(APP_URL);
+            }
+        });
+
+        // Back button handling (modern API)
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
             }
         });
 
@@ -83,12 +94,10 @@ public class MainActivity extends AppCompatActivity {
         // Cookies — Firebase persistence ke liye
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            cm.setAcceptThirdPartyCookies(webView, true);
-            s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
+        cm.setAcceptThirdPartyCookies(webView, true);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-        // Standard mobile Chrome user agent (without WebView marker so Firebase works normally)
+        // Standard mobile Chrome user agent
         s.setUserAgentString(
             "Mozilla/5.0 (Linux; Android 13; Mobile) " +
             "AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -118,13 +127,12 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 progressBar.setVisibility(View.GONE);
-                CookieManager.getInstance().flush();  // persist cookies to disk
+                CookieManager.getInstance().flush();  // persist to disk
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request,
                                         WebResourceError error) {
-                // Only show offline screen for main frame errors (not sub-resources)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (request.isForMainFrame()) {
                         progressBar.setVisibility(View.GONE);
@@ -134,8 +142,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // All URLs stay inside WebView — email/password login works without popups
+            public boolean shouldOverrideUrlLoading(WebView view,
+                                                    WebResourceRequest request) {
+                // Sab URLs WebView mein hi handle hoti hain
                 return false;
             }
         });
@@ -150,22 +159,24 @@ public class MainActivity extends AppCompatActivity {
         ConnectivityManager cm =
             (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return false;
-        NetworkInfo ni = cm.getActiveNetworkInfo();
-        return ni != null && ni.isConnected();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network net = cm.getActiveNetwork();
+            if (net == null) return false;
+            NetworkCapabilities caps = cm.getNetworkCapabilities(net);
+            return caps != null && (
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            );
         } else {
-            super.onBackPressed();
+            android.net.NetworkInfo ni = cm.getActiveNetworkInfo();
+            return ni != null && ni.isConnected();
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        CookieManager.getInstance().flush();  // save cookies when app goes background
+        CookieManager.getInstance().flush();  // background pe jaane pe cookies save karo
     }
 }
