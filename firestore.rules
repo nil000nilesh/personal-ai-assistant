@@ -2,85 +2,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helpers ──────────────────────────────────────────────────────────
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isAdmin() {
-      return request.auth.email == 'nil000nilesh@gmail.com';
+      return request.auth != null &&
+             request.auth.token.email == "nil000nilesh@gmail.com";
     }
-
-    // Data belongs to the calling user (userId field == caller's email)
     function isOwner() {
-      return request.auth.email == resource.data.userId;
+      return request.auth != null &&
+             request.auth.token.email == resource.data.userId;
+    }
+    function savingAsOwner() {
+      return request.auth != null &&
+             request.resource.data.userId == request.auth.token.email;
     }
 
-    // New document being written belongs to the calling user
-    function isNewOwner() {
-      return request.auth.email == request.resource.data.userId;
-    }
-
-
-    // ── CHATS ─────────────────────────────────────────────────────────────
-    match /chats/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || isOwner());
-      allow create: if isSignedIn() && isNewOwner();
-      allow update, delete: if isSignedIn() && (isAdmin() || isOwner());
-    }
-
-    // ── CLIENT CASE NOTES ─────────────────────────────────────────────────
-    match /notes/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || isOwner());
-      allow create: if isSignedIn() && isNewOwner();
-      allow update, delete: if isSignedIn() && (isAdmin() || isOwner());
-    }
-
-    // ── TASKS ─────────────────────────────────────────────────────────────
-    match /tasks/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || isOwner());
-      allow create: if isSignedIn() && isNewOwner();
-      allow update, delete: if isSignedIn() && (isAdmin() || isOwner());
-    }
-
-    // ── REMINDERS ─────────────────────────────────────────────────────────
-    match /reminders/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || isOwner());
-      allow create: if isSignedIn() && isNewOwner();
-      allow update, delete: if isSignedIn() && (isAdmin() || isOwner());
-    }
-
-    // ── NOTEBOOKS ─────────────────────────────────────────────────────────
     match /notebooks/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || isOwner());
-      allow create: if isSignedIn() && isNewOwner();
-      allow update, delete: if isSignedIn() && (isAdmin() || isOwner());
+      allow read:           if isAdmin() || isOwner();
+      allow create:         if isAdmin() || savingAsOwner();
+      allow update, delete: if isAdmin() || isOwner();
+    }
+    match /notes/{docId} {
+      allow read:           if isAdmin() || isOwner();
+      allow create:         if isAdmin() || savingAsOwner();
+      allow update, delete: if isAdmin() || isOwner();
+    }
+    match /tasks/{docId} {
+      allow read:           if isAdmin() || isOwner();
+      allow create:         if isAdmin() || savingAsOwner();
+      allow update, delete: if isAdmin() || isOwner();
+    }
+    match /reminders/{docId} {
+      allow read:           if isAdmin() || isOwner();
+      allow create:         if isAdmin() || savingAsOwner();
+      allow update, delete: if isAdmin() || isOwner();
+    }
+    match /chats/{docId} {
+      allow read:           if isAdmin() || isOwner();
+      allow create:         if isAdmin() || savingAsOwner();
+      allow update, delete: if isAdmin() || isOwner();
     }
 
-    // ── VAULT ENTRIES & VAULT CONFIG ──────────────────────────────────────
-    // Encrypted passwords + vault PIN hash config (_type: 'vault_config')
-    // Each user can only access their own vault data
+    // Encrypted passwords + vault PIN hash config — same pattern as other collections
     match /vault_entries/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || isOwner());
-      allow create: if isSignedIn() && isNewOwner();
-      allow update, delete: if isSignedIn() && (isAdmin() || isOwner());
+      allow read:           if isAdmin() || isOwner();
+      allow create:         if isAdmin() || savingAsOwner();
+      allow update, delete: if isAdmin() || isOwner();
     }
 
-    // ── ALLOWED USERS (User registry) ─────────────────────────────────────
-    // Admin: full access (add/edit/delete users)
-    // User: can only read their own entry (to get PIN, name, role)
     match /allowed_users/{docId} {
-      allow read: if isSignedIn() && (isAdmin() || resource.data.email == request.auth.email);
-      allow create, update, delete: if isSignedIn() && isAdmin();
+      allow read:  if isAdmin() ||
+                      (request.auth != null &&
+                       resource.data.email == request.auth.token.email);
+      allow write: if isAdmin();
     }
 
-    // ── SYSTEM SETTINGS (API keys, config) ────────────────────────────────
-    // Admin: full access
-    // User: read-only (needs API key to function)
     match /system_settings/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isAdmin();
+      allow read:  if request.auth != null;
+      allow write: if isAdmin();
     }
 
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
