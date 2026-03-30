@@ -59,9 +59,9 @@ function refreshBadges() {
     if(tb) {
         const pendingTasks = (typeof APP.allTasks !== 'undefined' ? APP.allTasks : [])
             .filter(t => !t.deleted && t.status !== 'Done' && t.status !== 'Finished');
-        const taskBadgeCount = _seenTaskIds === null
+        const taskBadgeCount = window._seenTaskIds === null
             ? pendingTasks.length
-            : pendingTasks.filter(t => !_seenTaskIds.has(t._docId)).length;
+            : pendingTasks.filter(t => !window._seenTaskIds.has(t._docId)).length;
         if(taskBadgeCount > 0) { tb.textContent = taskBadgeCount > 9 ? '9+' : taskBadgeCount; tb.style.display='flex'; }
         else tb.style.display='none';
     }
@@ -70,9 +70,9 @@ function refreshBadges() {
     if(rb) {
         const activeRems = (typeof APP.allReminders !== 'undefined' ? APP.allReminders : [])
             .filter(r => r.status !== 'Closed' && r.status !== 'Done');
-        const remBadgeCount = _seenRemIds === null
+        const remBadgeCount = window._seenRemIds === null
             ? activeRems.length
-            : activeRems.filter(r => !_seenRemIds.has(r._docId)).length;
+            : activeRems.filter(r => !window._seenRemIds.has(r._docId)).length;
         if(remBadgeCount > 0) { rb.textContent = remBadgeCount > 9 ? '9+' : remBadgeCount; rb.style.display='flex'; }
         else rb.style.display='none';
     }
@@ -101,6 +101,10 @@ function refreshCounters() {
     if(rn) rn.textContent = activeRem;
     if(sn) sn.textContent = NS.savedToday;
 }
+
+// Expose internal functions on window so other modules (ai.js, data.js) can call them
+window.refreshBadges  = () => refreshBadges();
+window.refreshCounters = () => refreshCounters();
 
 // Cache notif-empty element ONCE — prevents null after list.innerHTML='' removes it
 const _notifEmpty = document.getElementById('notif-empty');
@@ -307,6 +311,7 @@ function renderNotifList() {
     });
     if(list.childElementCount === 0) { list.appendChild(empty); empty.style.display = 'block'; }
 }
+window.renderNotifList = () => renderNotifList();
 
 // ─── Add notification (called everywhere) ────────────────────────
 window.addNotif = function(type, title, sub) {
