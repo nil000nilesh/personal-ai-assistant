@@ -102,13 +102,19 @@ function _vShowContent() {
 }
 
 // ── Init (called on first tab click) ──────────────────────────
+// ── localStorage key for vault PIN hash (device-local, no Firestore needed) ──
+function _vLocalKey() { return '_vaultPH_' + APP.currentUserEmail; }
+
 window.initVault = async function () {
     _vResetMode = false;
     _vPinHash = null;
     _vConfigDocId = null;
+
+    // 1. Load from localStorage first (always available, no network needed)
+    _vPinHash = localStorage.getItem(_vLocalKey()) || null;
+
+    // 2. Try Firestore as secondary (for multi-device sync) — silent on failure
     try {
-        // Load vault config: query by userId only, filter _type client-side
-        // (avoids needing a composite index on userId + _type)
         const cfgQ = query(
             collection(db, 'vault_entries'),
             where('userId', '==', APP.currentUserEmail)
@@ -117,9 +123,14 @@ window.initVault = async function () {
         const cfgDoc = cfgSnap.docs.find(d => d.data()._type === 'vault_config' && !d.data().deleted);
         if (cfgDoc) {
             _vConfigDocId = cfgDoc.id;
-            _vPinHash = cfgDoc.data().vaultPinHash || null;
+            const fsHash = cfgDoc.data().vaultPinHash || null;
+            // Prefer Firestore hash if available; also sync to localStorage
+            if (fsHash) {
+                _vPinHash = fsHash;
+                localStorage.setItem(_vLocalKey(), fsHash);
+            }
         }
-    } catch (e) { console.error('[Vault] Config load error:', e); _vPinHash = null; }
+    } catch (e) { console.warn('[Vault] Firestore config load skipped:', e.code || e.message); }
 
     // Check session (already did login PIN today?)
     const ss = sessionStorage.getItem('_vaultSess2');
@@ -432,6 +443,8 @@ function _vShakeError(boxCls, errId) {
     // ── Reset trigger button ──
     document.getElementById('vault-reset-trigger-btn')?.addEventListener('click', () => {
         _vResetMode = true;
+        // Clear localStorage hash so initVault won't skip setup on next load
+        localStorage.removeItem(_vLocalKey());
         document.getElementById('vault-setup-banner-title').textContent = '🔄 STEP 2 — Naya Vault PIN Set Karein';
         _vShowPanel('login');
     });
@@ -477,23 +490,30 @@ function _vShakeError(boxCls, errId) {
                 await Promise.all(jobs);
             }
 
-            // Save new hash & key to vault_entries collection (as a special config doc)
+            // 1. Save PIN hash to localStorage immediately (primary — never fails)
             _vPinHash = hash;
             _vKey = newKey;
+            localStorage.setItem(_vLocalKey(), hash);
+
+            // 2. Try Firestore backup silently (multi-device sync) — don't block on failure
             const cfgData = { userId: APP.currentUserEmail, _type: 'vault_config', vaultPinHash: hash, updatedAt: new Date().toISOString(), deleted: false };
-            if (_vConfigDocId) {
-                await updateDoc(doc(db, 'vault_entries', _vConfigDocId), cfgData);
-            } else {
-                const cfgRef = await addDoc(collection(db, 'vault_entries'), cfgData);
-                _vConfigDocId = cfgRef.id;
-            }
+            (async () => {
+                try {
+                    if (_vConfigDocId) {
+                        await updateDoc(doc(db, 'vault_entries', _vConfigDocId), cfgData);
+                    } else {
+                        const cfgRef = await addDoc(collection(db, 'vault_entries'), cfgData);
+                        _vConfigDocId = cfgRef.id;
+                    }
+                } catch (e) { console.warn('[Vault] Firestore config save skipped:', e.code || e.message); }
+            })();
 
             _vResetMode = false;
             await _vLoadEntries();
             _vShowContent();
         } catch (e) {
             console.error('[Vault] Setup error:', e);
-            alert('PIN save nahi hua. Try again!');
+            alert('Setup mein kuch galat hua. Try again!\nError: ' + (e?.message || e));
             btn.textContent = '✅ PIN Set Karein & Vault Kholein'; btn.disabled = false;
         }
     });
