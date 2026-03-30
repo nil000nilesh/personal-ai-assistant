@@ -236,7 +236,7 @@ function loadAppListeners() {
         renderNotes();
         // If notification panel is open on Clients tab, refresh it
         if(NS.filter === 'case' && document.getElementById('notif-panel')?.classList.contains('open')) {
-            renderNotifList();
+            window.renderNotifList?.();
         }
     }, (err) => handleSnapshotError(err, loadAppListeners));
 
@@ -423,7 +423,7 @@ function loadAppListeners() {
         // Notify overdue popup system that tasks are ready
         if(window._onTasksLoaded) window._onTasksLoaded();
         // Refresh live notification counters
-        if(typeof refreshCounters === 'function') refreshCounters();
+        window.refreshCounters?.();
     }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Task search
@@ -651,7 +651,7 @@ function loadAppListeners() {
         // Notify overdue popup system that reminders are ready
         if(window._onRemindersLoaded) window._onRemindersLoaded();
         // Refresh live notification counters
-        if(typeof refreshCounters === 'function') refreshCounters();
+        window.refreshCounters?.();
     }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Reminders search

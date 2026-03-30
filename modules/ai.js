@@ -1293,8 +1293,8 @@ const PAGE_TO_NOTIF = {
 };
 
 // Track task/reminder IDs seen on last page visit — badge shows only NEW items added after
-let _seenTaskIds = null;   // null = page never visited this session
-let _seenRemIds  = null;
+window._seenTaskIds = null;   // null = page never visited this session
+window._seenRemIds  = null;
 
 // Mark notifications as read when visiting a page
 function markPageNotifsRead(page) {
@@ -1309,7 +1309,7 @@ function markPageNotifsRead(page) {
     });
     // Snapshot current IDs so badge shows 0 until new items arrive
     if(page === 'tasks') {
-        _seenTaskIds = new Set(
+        window._seenTaskIds = new Set(
             (typeof APP.allTasks !== 'undefined' ? APP.allTasks : [])
                 .filter(t => !t.deleted && t.status !== 'Done' && t.status !== 'Finished')
                 .map(t => t._docId)
@@ -1317,7 +1317,7 @@ function markPageNotifsRead(page) {
         changed = true;
     }
     if(page === 'reminders') {
-        _seenRemIds = new Set(
+        window._seenRemIds = new Set(
             (typeof APP.allReminders !== 'undefined' ? APP.allReminders : [])
                 .filter(r => r.status !== 'Closed' && r.status !== 'Done')
                 .map(r => r._docId)
@@ -1326,8 +1326,8 @@ function markPageNotifsRead(page) {
     }
     if(changed) {
         NS.unread = NS.items.filter(i => !i.read).length;
-        refreshBadges();
-        renderNotifList();
+        window.refreshBadges?.();
+        window.renderNotifList?.();
     }
 }
 
