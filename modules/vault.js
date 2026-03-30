@@ -107,19 +107,19 @@ window.initVault = async function () {
     _vPinHash = null;
     _vConfigDocId = null;
     try {
-        // Load vault config stored as a special doc inside vault_entries collection
+        // Load vault config: query by userId only, filter _type client-side
+        // (avoids needing a composite index on userId + _type)
         const cfgQ = query(
             collection(db, 'vault_entries'),
-            where('userId', '==', APP.currentUserEmail),
-            where('_type', '==', 'vault_config')
+            where('userId', '==', APP.currentUserEmail)
         );
         const cfgSnap = await getDocs(cfgQ);
-        if (!cfgSnap.empty) {
-            const cfgDoc = cfgSnap.docs[0];
+        const cfgDoc = cfgSnap.docs.find(d => d.data()._type === 'vault_config' && !d.data().deleted);
+        if (cfgDoc) {
             _vConfigDocId = cfgDoc.id;
             _vPinHash = cfgDoc.data().vaultPinHash || null;
         }
-    } catch (e) { _vPinHash = null; }
+    } catch (e) { console.error('[Vault] Config load error:', e); _vPinHash = null; }
 
     // Check session (already did login PIN today?)
     const ss = sessionStorage.getItem('_vaultSess2');
@@ -342,7 +342,12 @@ function _vShakeError(boxCls, errId) {
         const idx   = boxes.indexOf(e.target);
         const val   = e.target.value.replace(/\D/g,'');
         e.target.value = val.slice(0,1);
-        if (val && idx < boxes.length - 1) boxes[idx+1].focus();
+        if (val && idx < boxes.length - 1) {
+            boxes[idx+1].focus();
+        } else if (val && cls === '.vp-new-box' && idx === boxes.length - 1) {
+            // Auto-advance from last new-PIN box to first confirm box
+            document.querySelector('.vp-confirm-box')?.focus();
+        }
 
         // Enable/disable button
         const filled = boxes.map(b=>b.value).join('');
@@ -365,7 +370,8 @@ function _vShakeError(boxCls, errId) {
         if (e.key === 'Backspace' && !e.target.value && idx > 0) boxes[idx-1].focus();
         if (e.key === 'Enter') {
             const btnId = BTN_MAP[cls.slice(1)];
-            if (btnId) document.getElementById(btnId)?.click();
+            const btn = btnId ? document.getElementById(btnId) : null;
+            if (btn && !btn.disabled) btn.click();
         }
     });
 
@@ -385,7 +391,7 @@ function _vShakeError(boxCls, errId) {
     // ── PANEL 1: Login PIN verify ──
     document.getElementById('vault-login-verify-btn')?.addEventListener('click', async () => {
         const entered = [...document.querySelectorAll('.vp-login-box')].map(b=>b.value).join('');
-        if (entered !== APP.currentUserPin) {
+        if (entered !== String(APP.currentUserPin)) {
             _vShakeError('.vp-login-box', 'vault-login-error');
             return;
         }
@@ -432,15 +438,17 @@ function _vShakeError(boxCls, errId) {
 
     // ── PANEL 3: Setup / create new vault PIN ──
     document.getElementById('vault-setup-save-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('vault-setup-save-btn');
+        if (btn?.disabled) return;  // Guard against programmatic calls on disabled button
         const newPin  = [...document.querySelectorAll('.vp-new-box')].map(b=>b.value).join('');
         const confPin = [...document.querySelectorAll('.vp-confirm-box')].map(b=>b.value).join('');
+        if (newPin.length < 4 || confPin.length < 4) return; // Incomplete PIN
         if (newPin !== confPin) {
             document.getElementById('vault-setup-error')?.classList.remove('hidden');
             document.querySelectorAll('.vp-confirm-box').forEach(b => { b.value=''; b.classList.add('border-red-500'); setTimeout(()=>b.classList.remove('border-red-500'),700); });
             setTimeout(() => document.getElementById('vault-setup-error')?.classList.add('hidden'), 2000);
             return;
         }
-        const btn = document.getElementById('vault-setup-save-btn');
         btn.textContent = '⏳ Setting...'; btn.disabled = true;
 
         try {
