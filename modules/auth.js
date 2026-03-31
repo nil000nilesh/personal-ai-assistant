@@ -12,35 +12,11 @@ const loadAppListeners  = () => window._loadAppListeners?.();
 const setupAdminPanel   = () => window._setupAdminPanel?.();
 const switchView        = (v) => window._switchView?.(v);
 
-// Track current login type (username or email)
-let currentLoginType = 'username';
-
 export function hideAllStates() {
     ui.login.classList.add('hidden'); ui.login.classList.remove('flex');
     ui.pin.classList.add('hidden'); ui.pin.classList.remove('flex');
     ui.appLayout.classList.add('hidden'); ui.appLayout.classList.remove('flex');
 }
-
-// ── LOGIN TYPE SWITCHER (Login ID vs Email) ──────────────────────
-window.switchLoginType = function(type) {
-    currentLoginType = type;
-    const btnUsername = document.getElementById('login-type-username');
-    const btnEmail   = document.getElementById('login-type-email');
-    const input      = document.getElementById('email-si-email');
-    if (type === 'username') {
-        btnUsername.style.cssText = 'background:white;color:#6366f1;box-shadow:0 1px 4px rgba(99,102,241,0.15);';
-        btnEmail.style.cssText   = 'color:#94a3b8;background:transparent;box-shadow:none;';
-        input.type = 'text';
-        input.placeholder = 'Enter your Login ID';
-        input.autocomplete = 'username';
-    } else {
-        btnEmail.style.cssText   = 'background:white;color:#6366f1;box-shadow:0 1px 4px rgba(99,102,241,0.15);';
-        btnUsername.style.cssText = 'color:#94a3b8;background:transparent;box-shadow:none;';
-        input.type = 'email';
-        input.placeholder = 'Email address';
-        input.autocomplete = 'email';
-    }
-};
 
 // ── RESOLVE LOGIN ID TO EMAIL ────────────────────────────────────
 async function resolveLoginIdToEmail(loginId) {
@@ -177,16 +153,13 @@ document.getElementById('email-signin-btn').addEventListener('click', async () =
     btn.textContent = 'Signing in...';
     btn.disabled = true;
     try {
-        // Resolve login ID to email if needed
-        let email = loginVal;
-        if (currentLoginType === 'username' && !/\S+@\S+\.\S+/.test(loginVal)) {
-            email = await resolveLoginIdToEmail(loginVal);
-            if (!email) {
-                btn.textContent = orig;
-                btn.disabled = false;
-                showEmailAuthError('Yeh Login ID registered nahi hai. Check karein ya Email se try karein.');
-                return;
-            }
+        // Resolve login ID or email — auto-detects both formats
+        const email = await resolveLoginIdToEmail(loginVal);
+        if (!email) {
+            btn.textContent = orig;
+            btn.disabled = false;
+            showEmailAuthError('Yeh Login ID/Email registered nahi hai. Check karein.');
+            return;
         }
         await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {

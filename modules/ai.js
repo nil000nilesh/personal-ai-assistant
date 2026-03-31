@@ -1331,6 +1331,9 @@ function markPageNotifsRead(page) {
     }
 }
 
+// Expose so data.js can call it after Firestore data loads
+window.markPageNotifsRead = markPageNotifsRead;
+
 // Wrap switchView to clear badges on page visit + reset task filter
 window.switchView = function(targetView) {
     window._switchView?.(targetView);

@@ -500,6 +500,7 @@ function showOverduePopup() {
     const finishBtn = document.getElementById('overdue-finish-btn');
     const allDoneEl = document.getElementById('overdue-alldone');
     const closeBtn = document.getElementById('overdue-close-btn');
+    const headerCloseBtn = document.getElementById('overdue-header-close-btn');
     const actionBtns = skipBtn.parentElement;
 
     function renderCurrentItem() {
@@ -598,11 +599,13 @@ function showOverduePopup() {
         skipBtn.removeEventListener('click', skipHandler);
         finishBtn.removeEventListener('click', finishHandler);
         closeBtn.removeEventListener('click', closeHandler);
+        if(headerCloseBtn) headerCloseBtn.removeEventListener('click', closeHandler);
     };
 
     skipBtn.addEventListener('click', skipHandler);
     finishBtn.addEventListener('click', finishHandler);
     closeBtn.addEventListener('click', closeHandler);
+    if(headerCloseBtn) headerCloseBtn.addEventListener('click', closeHandler);
 
     // Show popup
     popup.classList.remove('hidden');
