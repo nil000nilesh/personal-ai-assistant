@@ -46,7 +46,7 @@
             </div>
         </div>
         <!-- Right panel — login form (REDESIGNED) -->
-        <div class="flex-1 flex flex-col items-center justify-center px-8 md:px-16 relative overflow-hidden" style="background:linear-gradient(165deg, #f8faff 0%, #eef2ff 40%, #e0e7ff 100%);">
+        <div class="flex-1 flex flex-col items-center justify-center px-8 md:px-16 relative overflow-y-auto py-10" style="background:linear-gradient(165deg, #f8faff 0%, #eef2ff 40%, #e0e7ff 100%);">
             <!-- Decorative background elements -->
             <div class="absolute top-0 right-0 w-72 h-72 rounded-full opacity-30" style="background:radial-gradient(circle,#c7d2fe 0%,transparent 70%);filter:blur(40px);"></div>
             <div class="absolute bottom-0 left-0 w-60 h-60 rounded-full opacity-20" style="background:radial-gradient(circle,#a5b4fc 0%,transparent 70%);filter:blur(50px);"></div>
@@ -77,16 +77,7 @@
                 <!-- PRIMARY: Login ID / Password Sign In Form -->
                 <div id="email-signin-form">
                     <div class="space-y-3">
-                        <!-- Login ID type selector -->
-                        <div class="flex rounded-lg p-0.5 mb-1" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.12);">
-                            <button id="login-type-username" onclick="window.switchLoginType('username')" class="flex-1 py-1.5 px-2 rounded-md text-[11px] font-bold transition-all duration-200" style="background:white;color:#6366f1;box-shadow:0 1px 4px rgba(99,102,241,0.15);">
-                                Login ID
-                            </button>
-                            <button id="login-type-email" onclick="window.switchLoginType('email')" class="flex-1 py-1.5 px-2 rounded-md text-[11px] font-bold transition-all duration-200" style="color:#94a3b8;background:transparent;">
-                                Email
-                            </button>
-                        </div>
-                        <input id="email-si-email" type="text" placeholder="Enter your Login ID" autocomplete="username" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
+                        <input id="email-si-email" type="text" placeholder="Login ID or Email address" autocomplete="username" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
                         <div class="relative">
                             <input id="email-si-password" type="password" placeholder="Password" autocomplete="current-password" class="w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-800 outline-none pr-11" style="background:white;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.04);" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"/>
                             <button type="button" onclick="window.togglePwdVisibility('email-si-password',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" tabindex="-1">
@@ -1028,6 +1019,10 @@
             <!-- Header -->
             <div class="bg-gradient-to-r from-red-600 via-rose-600 to-orange-500 px-6 py-5 text-white relative overflow-hidden">
                 <div class="absolute -right-6 -top-6 text-7xl opacity-10 select-none">⏰</div>
+                <!-- Always-visible close button -->
+                <button id="overdue-header-close-btn" class="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:bg-white/20 transition-all" title="Close" style="z-index:1;">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
                 <div class="flex items-center gap-3 mb-1">
                     <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl backdrop-blur-sm">🔔</div>
                     <div>

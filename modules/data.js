@@ -160,7 +160,7 @@ function loadAppListeners() {
             infoRows.push(`<div class="profile-info-row"><span class="profile-info-label">🕐 ${t('lastUpdated')}</span><span class="profile-info-val">${fmtDateN(latestUpdate.timestamp)}</span></div>`);
 
             const headerHTML = `
-                <div class="profile-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:16px 18px 14px;">
+                <div class="profile-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:16px 18px 14px;cursor:pointer;">
                     <div class="absolute -right-5 -top-5 w-20 h-20 rounded-full" style="background:rgba(255,255,255,0.08);"></div>
                     <div class="flex items-start gap-3 relative">
                         <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg flex-shrink-0" style="background:rgba(255,255,255,0.22);color:white;border:1.5px solid rgba(255,255,255,0.3);">${initials}</div>
@@ -168,10 +168,13 @@ function loadAppListeners() {
                             <div class="text-[9px] font-black uppercase tracking-widest mb-0.5" style="color:rgba(255,255,255,0.6);">👤 ${t('clientInfo')}</div>
                             <h3 class="font-black text-white text-base leading-tight" style="word-break:break-word;">${group.displayTitle}</h3>
                         </div>
-                        <button onclick="deleteClientProfile('${group.displayTitle.replace(/'/g,"\\'")}');"
-                            class="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
-                            style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
-                            title="${t('deleteBtn')}">${t('deleteBtn')}</button>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button onclick="deleteClientProfile('${group.displayTitle.replace(/'/g,"\\'")}');"
+                                class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
+                                style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
+                                title="${t('deleteBtn')}">${t('deleteBtn')}</button>
+                            <svg class="profile-chevron w-4 h-4 flex-shrink-0 transition-transform duration-200" style="color:rgba(255,255,255,0.75);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
                     </div>
                 </div>
                 <div class="profile-info-section" style="border-left:4px solid ${pal.border};">
@@ -197,10 +200,18 @@ function loadAppListeners() {
 
             const card = document.createElement('div');
             card.className = 'profile-card bg-white rounded-2xl overflow-hidden transition-all duration-200 flex flex-col';
-            card.style.cssText = `box-shadow:0 4px 20px rgba(0,0,0,0.09);border:1px solid #e2e8f0;cursor:pointer;`;
-            card.innerHTML = headerHTML + `<div class="overflow-y-auto max-h-[280px] client-updates-scroll divide-y divide-slate-50">${updatesHTML}</div>`;
+            card.style.cssText = `box-shadow:0 4px 20px rgba(0,0,0,0.09);border:1px solid #e2e8f0;`;
+            card.innerHTML = headerHTML + `<div class="profile-updates-body hidden overflow-y-auto max-h-[280px] client-updates-scroll divide-y divide-slate-50">${updatesHTML}</div>`;
+            // Click on header area: toggle collapse/expand; double-click opens focus mode
             card.addEventListener('click', (e) => {
                 if(e.target.closest('button')) return; // skip button clicks inside card
+                const body = card.querySelector('.profile-updates-body');
+                const chevron = card.querySelector('.profile-chevron');
+                body.classList.toggle('hidden');
+                if(chevron) chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            });
+            card.addEventListener('dblclick', (e) => {
+                if(e.target.closest('button')) return;
                 openFocusMode('client', group);
             });
             grid.appendChild(card);
@@ -424,6 +435,11 @@ function loadAppListeners() {
         if(window._onTasksLoaded) window._onTasksLoaded();
         // Refresh live notification counters
         window.refreshCounters?.();
+        window.refreshBadges?.();
+        // If tasks page is currently active, re-snapshot seen IDs so badge clears
+        if(document.getElementById('view-tasks')?.classList.contains('flex')) {
+            window.markPageNotifsRead?.('tasks');
+        }
     }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Task search
@@ -652,6 +668,11 @@ function loadAppListeners() {
         if(window._onRemindersLoaded) window._onRemindersLoaded();
         // Refresh live notification counters
         window.refreshCounters?.();
+        window.refreshBadges?.();
+        // If reminders page is currently active, re-snapshot seen IDs so badge clears
+        if(document.getElementById('view-reminders')?.classList.contains('flex')) {
+            window.markPageNotifsRead?.('reminders');
+        }
     }, (err) => handleSnapshotError(err, loadAppListeners));
 
     // Reminders search
@@ -881,7 +902,7 @@ function loadAppListeners() {
             const hasProfile = typeof APP.allGroupedNotes !== 'undefined' && !!APP.allGroupedNotes[group.displayName.toUpperCase()];
             const safeClientName = group.displayName.replace(/'/g,"\\'").replace(/"/g,'&quot;');
             const headerHTML = `
-                <div class="nb-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:18px 20px 14px;">
+                <div class="nb-card-header relative overflow-hidden flex-shrink-0" style="background:${pal.grad};padding:18px 20px 14px;cursor:pointer;">
                     <div class="absolute -right-5 -top-5 w-20 h-20 rounded-full" style="background:rgba(255,255,255,0.08);"></div>
                     <div class="absolute right-4 bottom-2 w-12 h-12 rounded-full" style="background:rgba(255,255,255,0.05);"></div>
                     <div class="flex items-start justify-between gap-3 relative">
@@ -894,9 +915,12 @@ function loadAppListeners() {
                             </div>
                         </div>
                         <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                            <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.9);">
-                                ${group.updates.length} ${group.updates.length > 1 ? t('updates') : t('update')}
-                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded-full" style="background:rgba(255,255,255,0.2);color:rgba(255,255,255,0.9);">
+                                    ${group.updates.length} ${group.updates.length > 1 ? t('updates') : t('update')}
+                                </span>
+                                <svg class="nb-chevron w-4 h-4 flex-shrink-0 transition-transform duration-200" style="color:rgba(255,255,255,0.75);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
                             <div class="flex items-center gap-1.5">
                                 ${hasProfile ? `<button onclick="event.stopPropagation();showClientDetailPopup('${safeClientName}');"
                                     class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
@@ -930,9 +954,16 @@ function loadAppListeners() {
                 </div>`;
             }).join('');
 
-            card.innerHTML = headerHTML + `<div class="divide-y divide-slate-50 max-h-[320px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
-            card.style.cursor = 'pointer';
+            card.innerHTML = headerHTML + `<div class="nb-updates-body hidden divide-y divide-slate-50 max-h-[320px] overflow-y-auto client-updates-scroll">${updatesHTML}</div>`;
+            // Click on header: toggle collapse/expand; double-click opens focus mode
             card.addEventListener('click', (e) => {
+                if(e.target.closest('button')) return;
+                const body = card.querySelector('.nb-updates-body');
+                const chevron = card.querySelector('.nb-chevron');
+                body.classList.toggle('hidden');
+                if(chevron) chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            });
+            card.addEventListener('dblclick', (e) => {
                 if(e.target.closest('button')) return;
                 openFocusMode('notebook', group);
             });
