@@ -1,4 +1,4 @@
-// modules/auth.js — Authentication: Google/email login, PIN screen, onAuthStateChanged
+// modules/auth.js — Authentication: Login ID/email login, Google sign-in, PIN screen, trial mode, onAuthStateChanged
 import { APP, ADMIN_EMAIL, ui } from './state.js';
 import { auth, db, provider } from './firebase.js';
 import { signInWithPopup, signInWithCredential, GoogleAuthProvider,
@@ -12,23 +12,58 @@ const loadAppListeners  = () => window._loadAppListeners?.();
 const setupAdminPanel   = () => window._setupAdminPanel?.();
 const switchView        = (v) => window._switchView?.(v);
 
+// Track current login type (username or email)
+let currentLoginType = 'username';
+
 export function hideAllStates() {
     ui.login.classList.add('hidden'); ui.login.classList.remove('flex');
     ui.pin.classList.add('hidden'); ui.pin.classList.remove('flex');
     ui.appLayout.classList.add('hidden'); ui.appLayout.classList.remove('flex');
 }
 
+// ── LOGIN TYPE SWITCHER (Login ID vs Email) ──────────────────────
+window.switchLoginType = function(type) {
+    currentLoginType = type;
+    const btnUsername = document.getElementById('login-type-username');
+    const btnEmail   = document.getElementById('login-type-email');
+    const input      = document.getElementById('email-si-email');
+    if (type === 'username') {
+        btnUsername.style.cssText = 'background:white;color:#6366f1;box-shadow:0 1px 4px rgba(99,102,241,0.15);';
+        btnEmail.style.cssText   = 'color:#94a3b8;background:transparent;box-shadow:none;';
+        input.type = 'text';
+        input.placeholder = 'Enter your Login ID';
+        input.autocomplete = 'username';
+    } else {
+        btnEmail.style.cssText   = 'background:white;color:#6366f1;box-shadow:0 1px 4px rgba(99,102,241,0.15);';
+        btnUsername.style.cssText = 'color:#94a3b8;background:transparent;box-shadow:none;';
+        input.type = 'email';
+        input.placeholder = 'Email address';
+        input.autocomplete = 'email';
+    }
+};
 
+// ── RESOLVE LOGIN ID TO EMAIL ────────────────────────────────────
+async function resolveLoginIdToEmail(loginId) {
+    // If it looks like an email, return as-is
+    if (/\S+@\S+\.\S+/.test(loginId)) return loginId;
+    // Lookup loginId in allowed_users collection
+    const snap = await getDocs(query(collection(db, "allowed_users"), where("loginId", "==", loginId.toLowerCase())));
+    if (!snap.empty) return snap.docs[0].data().email;
+    // Also check trial_users collection
+    const trialSnap = await getDocs(query(collection(db, "trial_users"), where("loginId", "==", loginId.toLowerCase())));
+    if (!trialSnap.empty) return trialSnap.docs[0].data().email;
+    return null;
+}
+
+// ── GOOGLE SIGN-IN (secondary) ───────────────────────────────────
 document.getElementById('login-btn').addEventListener('click', async () => {
     const btn = document.getElementById('login-btn');
     const originalHTML = btn.innerHTML;
     btn.innerText = "Signing in...";
 
-    // Android WebView detection
     const isAndroid = window.AndroidBridge !== undefined;
 
     if (isAndroid) {
-        // Native Android Sign-In use karo
         window.__androidSignIn = async (idToken, email) => {
             try {
                 const credential = GoogleAuthProvider.credential(idToken);
@@ -44,7 +79,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
         };
         window.AndroidBridge.signIn();
     } else {
-        // Browser mein normal popup
         try {
             await signInWithPopup(auth, provider);
         } catch (error) {
@@ -55,31 +89,12 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 
 // ── EMAIL AUTH HELPERS ────────────────────────────────────────────
-window.switchLoginTab = function(tab) {
-    const googlePanel = document.getElementById('login-panel-google');
-    const emailPanel  = document.getElementById('login-panel-email');
-    const tabGoogle   = document.getElementById('tab-google-login');
-    const tabEmail    = document.getElementById('tab-email-login');
-    if (tab === 'google') {
-        googlePanel.classList.remove('hidden');
-        emailPanel.classList.add('hidden');
-        tabGoogle.style.cssText = 'background:white;color:#6366f1;box-shadow:0 2px 8px rgba(99,102,241,0.15);';
-        tabEmail.style.cssText  = 'color:#94a3b8;background:transparent;box-shadow:none;';
-    } else {
-        googlePanel.classList.add('hidden');
-        emailPanel.classList.remove('hidden');
-        tabEmail.style.cssText  = 'background:white;color:#6366f1;box-shadow:0 2px 8px rgba(99,102,241,0.15);';
-        tabGoogle.style.cssText = 'color:#94a3b8;background:transparent;box-shadow:none;';
-        const errEl = document.getElementById('email-auth-error');
-        const sucEl = document.getElementById('email-auth-success');
-        if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
-        if (sucEl) { sucEl.classList.add('hidden'); sucEl.textContent = ''; }
-    }
-};
 
 window.switchEmailForm = function(form) {
     const signinForm = document.getElementById('email-signin-form');
     const signupForm = document.getElementById('email-signup-form');
+    const orDivider  = document.getElementById('login-or-divider');
+    const googlePanel = document.getElementById('login-panel-google');
     const errEl = document.getElementById('email-auth-error');
     const sucEl = document.getElementById('email-auth-success');
     if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
@@ -87,9 +102,15 @@ window.switchEmailForm = function(form) {
     if (form === 'signup') {
         signinForm.classList.add('hidden');
         signupForm.classList.remove('hidden');
+        // Hide Google & OR divider on signup page
+        if (orDivider) orDivider.classList.add('hidden');
+        if (googlePanel) googlePanel.classList.add('hidden');
     } else {
         signupForm.classList.add('hidden');
         signinForm.classList.remove('hidden');
+        // Show Google & OR divider on signin page
+        if (orDivider) orDivider.classList.remove('hidden');
+        if (googlePanel) googlePanel.classList.remove('hidden');
     }
 };
 
@@ -104,9 +125,18 @@ window.togglePwdVisibility = function(inputId, btn) {
 };
 
 window.sendForgotPassword = async function() {
-    const email = document.getElementById('email-si-email').value.trim();
-    if (!email) { showEmailAuthError('Pehle apna email address daalein.'); return; }
+    const loginVal = document.getElementById('email-si-email').value.trim();
+    if (!loginVal) { showEmailAuthError('Pehle apna Login ID ya Email daalein.'); return; }
     try {
+        // Resolve login ID to email if needed
+        let email = loginVal;
+        if (!/\S+@\S+\.\S+/.test(loginVal)) {
+            email = await resolveLoginIdToEmail(loginVal);
+            if (!email) {
+                showEmailAuthError('Yeh Login ID registered nahi hai.');
+                return;
+            }
+        }
         await _sendResetEmail(auth, email);
         showEmailAuthSuccess('Password reset link bhej diya! Apna email check karein aur link se naya password set karein.');
     } catch (err) {
@@ -137,25 +167,35 @@ function showEmailAuthSuccess(msg) {
     if (errEl) errEl.classList.add('hidden');
 }
 
-// Email Sign-In handler
+// Email / Login ID Sign-In handler
 document.getElementById('email-signin-btn').addEventListener('click', async () => {
     const btn      = document.getElementById('email-signin-btn');
-    const email    = document.getElementById('email-si-email').value.trim();
+    const loginVal = document.getElementById('email-si-email').value.trim();
     const password = document.getElementById('email-si-password').value;
-    if (!email || !password) { showEmailAuthError('Email aur password dono bharo.'); return; }
+    if (!loginVal || !password) { showEmailAuthError('Login ID/Email aur password dono bharo.'); return; }
     const orig = btn.textContent;
     btn.textContent = 'Signing in...';
     btn.disabled = true;
     try {
+        // Resolve login ID to email if needed
+        let email = loginVal;
+        if (currentLoginType === 'username' && !/\S+@\S+\.\S+/.test(loginVal)) {
+            email = await resolveLoginIdToEmail(loginVal);
+            if (!email) {
+                btn.textContent = orig;
+                btn.disabled = false;
+                showEmailAuthError('Yeh Login ID registered nahi hai. Check karein ya Email se try karein.');
+                return;
+            }
+        }
         await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged handle karega aage ka flow
     } catch (err) {
         btn.textContent = orig;
         btn.disabled = false;
         const errMap = {
-            'auth/user-not-found':     'Yeh email registered nahi hai.',
+            'auth/user-not-found':     'Yeh Login ID/Email registered nahi hai.',
             'auth/wrong-password':     'Password galat hai.',
-            'auth/invalid-credential': 'Email ya password galat hai.',
+            'auth/invalid-credential': 'Login ID/Email ya password galat hai.',
             'auth/invalid-email':      'Email format sahi nahi hai.',
             'auth/too-many-requests':  'Bahut zyada attempts. Thoda wait karo.',
             'auth/user-disabled':      'Account disabled kar diya gaya hai.'
@@ -164,21 +204,95 @@ document.getElementById('email-signin-btn').addEventListener('click', async () =
     }
 });
 
-// Email Sign-Up handler
+// ── LOGIN ID AVAILABILITY CHECK ──────────────────────────────────
+let loginIdCheckTimer = null;
+window.checkLoginIdAvailability = function(val) {
+    const statusEl = document.getElementById('loginid-status');
+    if (!statusEl) return;
+    val = val.trim().toLowerCase();
+    if (!val || val.length < 3) {
+        statusEl.classList.add('hidden');
+        return;
+    }
+    clearTimeout(loginIdCheckTimer);
+    loginIdCheckTimer = setTimeout(async () => {
+        statusEl.classList.remove('hidden');
+        statusEl.textContent = '...';
+        statusEl.style.color = '#94a3b8';
+        try {
+            // Check in allowed_users
+            const snap1 = await getDocs(query(collection(db, "allowed_users"), where("loginId", "==", val)));
+            // Check in trial_users
+            const snap2 = await getDocs(query(collection(db, "trial_users"), where("loginId", "==", val)));
+            if (!snap1.empty || !snap2.empty) {
+                statusEl.textContent = 'Taken';
+                statusEl.style.color = '#ef4444';
+            } else {
+                statusEl.textContent = 'Available';
+                statusEl.style.color = '#22c55e';
+            }
+        } catch(e) {
+            statusEl.classList.add('hidden');
+        }
+    }, 500);
+};
+
+// Email Sign-Up handler (with Login ID + Trial Mode)
 document.getElementById('email-signup-btn').addEventListener('click', async () => {
     const btn      = document.getElementById('email-signup-btn');
     const name     = document.getElementById('email-su-name').value.trim();
+    const loginId  = (document.getElementById('email-su-loginid')?.value || '').trim().toLowerCase();
     const email    = document.getElementById('email-su-email').value.trim();
     const password = document.getElementById('email-su-password').value;
-    if (!name || !email || !password) { showEmailAuthError('Sabhi fields bharo.'); return; }
+    if (!name || !loginId || !email || !password) { showEmailAuthError('Sabhi fields bharo — Name, Login ID, Email aur Password zaroori hai.'); return; }
+    if (loginId.length < 3) { showEmailAuthError('Login ID kam se kam 3 characters ka hona chahiye.'); return; }
+    if (!/^[a-z0-9_]+$/.test(loginId)) { showEmailAuthError('Login ID mein sirf lowercase letters, numbers aur underscore allowed hai.'); return; }
     if (password.length < 6) { showEmailAuthError('Password kam se kam 6 characters ka hona chahiye.'); return; }
     const orig = btn.textContent;
     btn.textContent = 'Creating account...';
     btn.disabled = true;
     try {
+        // Check if loginId already taken
+        const existing1 = await getDocs(query(collection(db, "allowed_users"), where("loginId", "==", loginId)));
+        const existing2 = await getDocs(query(collection(db, "trial_users"), where("loginId", "==", loginId)));
+        if (!existing1.empty || !existing2.empty) {
+            btn.textContent = orig;
+            btn.disabled = false;
+            showEmailAuthError('Yeh Login ID pehle se kisi ne le liya hai. Doosra try karein.');
+            return;
+        }
+
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: name });
-        // onAuthStateChanged fire hoga — unauthorized screen dikhegi until admin approves
+
+        // Create trial user entry — 3 days free trial
+        const now = new Date();
+        const trialEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
+        await addDoc(collection(db, "trial_users"), {
+            email: email.toLowerCase(),
+            name: name,
+            loginId: loginId,
+            signupAt: now.toISOString(),
+            trialStart: now.toISOString(),
+            trialEnd: trialEnd.toISOString(),
+            status: "trial",        // trial | active | inactive
+            approvedBy: null,
+            approvedUntil: null,
+            notifiedAdmin: false
+        });
+
+        // Notify admin — save notification in Firestore
+        await addDoc(collection(db, "admin_notifications"), {
+            type: "new_signup",
+            userEmail: email,
+            userName: name,
+            userLoginId: loginId,
+            trialEnd: trialEnd.toISOString(),
+            createdAt: now.toISOString(),
+            read: false
+        });
+
+        // onAuthStateChanged fire hoga — trial mode check karega
     } catch (err) {
         btn.textContent = orig;
         btn.disabled = false;
@@ -226,12 +340,30 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        // ── REGULAR USER: Must be added by admin WITH a PIN ────────────
+        // ── REGULAR USER: Check allowed_users OR trial_users ────────────
         try {
+            // First check allowed_users (admin-approved users)
             const snap = await getDocs(query(collection(db, "allowed_users"), where("email", "==", user.email)));
 
             if (!snap.empty) {
                 const userData = snap.docs[0].data();
+
+                // Check if user has time-limited access
+                if (userData.accessUntil) {
+                    const accessEnd = new Date(userData.accessUntil);
+                    if (accessEnd < new Date()) {
+                        hideAllStates();
+                        showAccessExpiredScreen(user, userData);
+                        return;
+                    }
+                }
+
+                // Check if user is marked inactive
+                if (userData.status === 'inactive') {
+                    hideAllStates();
+                    showAccessExpiredScreen(user, userData);
+                    return;
+                }
 
                 if (!userData.pin || userData.pin.trim().length !== 4) {
                     hideAllStates();
@@ -243,7 +375,6 @@ onAuthStateChanged(auth, async (user) => {
                 APP.currentUserRole = "user";
                 APP.currentUserEmail = user.email;
 
-                // Password reset ke baad force change check
                 if (userData.mustChangePassword === true) {
                     hideAllStates();
                     showForceChangePasswordScreen(user, snap.docs[0].id);
@@ -255,15 +386,84 @@ onAuthStateChanged(auth, async (user) => {
                 } else {
                     checkAndLoadApp();
                 }
-            } else {
-                hideAllStates();
-                showUnauthorizedScreen(user);
+                return;
             }
+
+            // Then check trial_users (new signups with 3-day trial)
+            const trialSnap = await getDocs(query(collection(db, "trial_users"), where("email", "==", user.email)));
+
+            if (!trialSnap.empty) {
+                const trialData = trialSnap.docs[0].data();
+                const trialEnd = new Date(trialData.trialEnd);
+                const now = new Date();
+
+                // Check if admin has approved this user (moved to active)
+                if (trialData.status === 'active' && trialData.approvedUntil) {
+                    const approvedEnd = new Date(trialData.approvedUntil);
+                    if (approvedEnd < now) {
+                        // Approved period bhi khatam — inactive
+                        await updateDoc(doc(db, "trial_users", trialSnap.docs[0].id), { status: 'inactive' });
+                        hideAllStates();
+                        showAccessExpiredScreen(user, trialData);
+                        return;
+                    }
+                    // Still within approved period — allow access
+                    APP.currentUserPin = trialData.pin || "0000";
+                    APP.currentUserRole = "user";
+                    APP.currentUserEmail = user.email;
+                    if (trialData.pin && trialData.pin.length === 4) {
+                        if (!APP.isPinVerified) {
+                            showPinScreen(user, { name: trialData.name || user.displayName, email: user.email, role: "user" });
+                        } else {
+                            checkAndLoadApp();
+                        }
+                    } else {
+                        // No PIN yet — direct access during trial/approved period
+                        APP.isPinVerified = true;
+                        checkAndLoadApp();
+                    }
+                    return;
+                }
+
+                if (trialData.status === 'inactive') {
+                    hideAllStates();
+                    showAccessExpiredScreen(user, trialData);
+                    return;
+                }
+
+                // Trial period check
+                if (now <= trialEnd) {
+                    // Trial active — grant access without PIN
+                    APP.currentUserPin = "0000";
+                    APP.currentUserRole = "user";
+                    APP.currentUserEmail = user.email;
+                    APP.isPinVerified = true;
+
+                    // Mark admin notification if not done
+                    if (!trialData.notifiedAdmin) {
+                        await updateDoc(doc(db, "trial_users", trialSnap.docs[0].id), { notifiedAdmin: true });
+                    }
+                    // Update last login
+                    await updateDoc(doc(db, "trial_users", trialSnap.docs[0].id), { lastLogin: now.toISOString() });
+
+                    // Show trial banner info then load app
+                    showTrialBanner(trialEnd);
+                    checkAndLoadApp();
+                } else {
+                    // Trial expired — mark inactive
+                    await updateDoc(doc(db, "trial_users", trialSnap.docs[0].id), { status: 'inactive' });
+                    hideAllStates();
+                    showTrialExpiredScreen(user, trialData);
+                }
+                return;
+            }
+
+            // Not in allowed_users or trial_users
+            hideAllStates();
+            showUnauthorizedScreen(user);
+
         } catch(err) {
-            // Firestore rules permission denied — user allowed_users read blocked
-            // Firestore rules mein allowed_users read allow karein (niche instructions)
             console.error("Auth check error:", err);
-            // Agar permission denied hai to unauthorized screen dikhao
             if(err.code === 'permission-denied') {
                 hideAllStates();
                 showUnauthorizedScreen(user);
@@ -342,6 +542,89 @@ function showUnauthorizedScreen(user) {
             <p class="text-slate-400 text-xs mb-6">Admin se apna email add karwane ke baad dobara try karein.</p>
             <button onclick="window._doLogout&&window._doLogout()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 px-6 py-3 rounded-xl font-bold transition-all text-sm border border-red-200">
                 ← Back to Login
+            </button>
+        </div>`;
+}
+
+// ── TRIAL BANNER — shows remaining trial days ─────────────────────
+function showTrialBanner(trialEnd) {
+    const now = new Date();
+    const remaining = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+    const bannerHtml = `
+        <div id="trial-banner" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#f59e0b,#f97316);color:white;text-align:center;padding:6px 16px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span>FREE Trial — ${remaining} din baaki hai!</span>
+            <span style="font-size:10px;opacity:0.85;">Trial khatam hone ke baad admin se approval leni hogi.</span>
+        </div>`;
+    // Remove existing banner if any
+    document.getElementById('trial-banner')?.remove();
+    document.body.insertAdjacentHTML('afterbegin', bannerHtml);
+    // Adjust app layout top
+    setTimeout(() => {
+        const banner = document.getElementById('trial-banner');
+        if (banner) {
+            document.body.style.paddingTop = banner.offsetHeight + 'px';
+        }
+    }, 100);
+}
+
+// ── TRIAL EXPIRED SCREEN ──────────────────────────────────────────
+function showTrialExpiredScreen(user, trialData) {
+    ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
+    const rightPanel = document.querySelector('#login-screen > div:last-child');
+    if (!rightPanel) return;
+    rightPanel.innerHTML = `
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image:radial-gradient(#6366f1 1px,transparent 1px);background-size:24px 24px;"></div>
+        <div class="w-full max-w-sm relative z-10 text-center">
+            <div class="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center text-3xl" style="background:rgba(245,158,11,0.1);border:2px solid rgba(245,158,11,0.3);">⏰</div>
+            <div class="inline-flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-full px-3 py-1 mb-5">
+                <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+                <span class="text-[11px] font-bold text-orange-700 tracking-wide uppercase">Trial Expired</span>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">Trial Period Khatam</h3>
+            <p class="text-slate-500 text-sm mb-6">Aapka 3 din ka free trial khatam ho gaya hai.<br/>Aage use karne ke liye admin se approval lein.</p>
+            <div class="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6 text-left">
+                <div class="text-xs font-black text-orange-700 uppercase tracking-wide mb-2">Account Info:</div>
+                <div class="space-y-1 text-sm text-slate-700">
+                    <div><span class="font-semibold">Name:</span> ${trialData.name || user.displayName || 'User'}</div>
+                    <div><span class="font-semibold">Login ID:</span> ${trialData.loginId || '—'}</div>
+                    <div><span class="font-semibold">Email:</span> ${user.email}</div>
+                    <div><span class="font-semibold">Trial End:</span> ${new Date(trialData.trialEnd).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                </div>
+            </div>
+            <p class="text-slate-400 text-xs mb-6">Admin (Nilesh ji) se contact karein subscription ke liye.</p>
+            <button onclick="window._doLogout&&window._doLogout()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all text-sm">
+                Logout
+            </button>
+        </div>`;
+}
+
+// ── ACCESS EXPIRED SCREEN (for admin-approved users whose time ended) ──
+function showAccessExpiredScreen(user, userData) {
+    ui.login.classList.remove('hidden'); ui.login.classList.add('flex');
+    const rightPanel = document.querySelector('#login-screen > div:last-child');
+    if (!rightPanel) return;
+    const expDate = userData.accessUntil || userData.approvedUntil || '';
+    rightPanel.innerHTML = `
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image:radial-gradient(#6366f1 1px,transparent 1px);background-size:24px 24px;"></div>
+        <div class="w-full max-w-sm relative z-10 text-center">
+            <div class="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center text-3xl" style="background:rgba(239,68,68,0.1);border:2px solid rgba(239,68,68,0.3);">🔒</div>
+            <div class="inline-flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-3 py-1 mb-5">
+                <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                <span class="text-[11px] font-bold text-red-700 tracking-wide uppercase">Access Expired</span>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">Subscription Khatam</h3>
+            <p class="text-slate-500 text-sm mb-6">Aapki access period khatam ho gayi hai.<br/>Aage use karne ke liye admin se renew karwayein.</p>
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-left">
+                <div class="text-xs font-black text-red-700 uppercase tracking-wide mb-2">Account:</div>
+                <div class="space-y-1 text-sm text-slate-700">
+                    <div><span class="font-semibold">Name:</span> ${userData.name || user.displayName || 'User'}</div>
+                    <div><span class="font-semibold">Email:</span> ${user.email}</div>
+                    ${expDate ? `<div><span class="font-semibold">Expired:</span> ${new Date(expDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>` : ''}
+                </div>
+            </div>
+            <p class="text-slate-400 text-xs mb-6">Admin se subscription renew karwane ke baad dobara login karein.</p>
+            <button onclick="window._doLogout&&window._doLogout()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all text-sm">
+                Logout
             </button>
         </div>`;
 }
@@ -476,6 +759,9 @@ const doLogout = () => {
     window.overduePopupShown = false;
     window._overdueTasksReady = false;
     window._overdueRemReady = false;
+    // Remove trial banner if present
+    document.getElementById('trial-banner')?.remove();
+    document.body.style.paddingTop = '0';
     // Clear PIN boxes
     document.querySelectorAll('.pin-box').forEach(b => { b.value = ''; b.classList.remove('filled','error'); });
     document.getElementById('pin-input').value = '';
