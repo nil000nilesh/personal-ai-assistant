@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
@@ -25,3 +26,13 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ CaseDesk AI server running at http://localhost:${PORT}`);
 });
+
+// ── Telegram Bot (optional) ──────────────────────────────────────
+// TELEGRAM_BOT_TOKEN set hai to bot automatically start hoga
+if (process.env.TELEGRAM_BOT_TOKEN) {
+    try {
+        require('./telegram-bot');
+    } catch (err) {
+        console.error('⚠️  Telegram Bot start nahi hua:', err.message);
+    }
+}
