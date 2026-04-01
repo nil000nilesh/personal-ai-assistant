@@ -8,6 +8,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const OpenAI = require('openai');
+const cron = require('node-cron');
 
 // ── Firebase Admin Init ──────────────────────────────────────────
 let serviceAccount;
@@ -316,7 +317,7 @@ bot.onText(/\/link (.+)/, async (msg, match) => {
 
 bot.onText(/\/help/, async (msg) => {
     await bot.sendMessage(msg.chat.id,
-        `🤖 *CaseDesk AI Bot — Help*\n\n*Commands:*\n/start — Bot start karo\n/link email — Account link karo\n/status — Pending tasks aur reminders dekhna\n/help — Yeh message\n/unlink — Account unlink karo\n\n*Use kaise karein:*\n• Client case bhejo → Auto save ✅\n• Task mention karo → Auto create ✅\n• Deadline batao → Reminder set ✅\n• Kuch bhi pucho → AI jawab dega ✅\n\n*Examples:*\n_"Ramesh Patel ka KCC pending hai, NOC lena hai"_\n_"Aaj ke pending tasks kya hain?"_\n_"15 March ko Sharma ji ke saath meeting hai"_\n_"Mohan ka case status kya hai?"_`,
+        `🤖 *CaseDesk AI Bot — Help*\n\n*Commands:*\n/start — Bot start karo\n/link email — Account link karo\n/status — Pending tasks aur reminders dekhna\n/search query — Firebase mein search karo\n/help — Yeh message\n/unlink — Account unlink karo\n\n*Use kaise karein:*\n• Client case bhejo → Auto save ✅\n• Task mention karo → Auto create ✅\n• Deadline batao → Reminder set ✅ + auto notify\n• Kuch bhi pucho → AI jawab dega ✅\n\n*Auto Notifications:*\n🔔 Reminders due hone pe automatic alert\n🌅 Subah 9 baje daily digest (pending tasks + aaj ke reminders)\n\n*Examples:*\n_"Ramesh Patel ka KCC pending hai, NOC lena hai"_\n_"Aaj ke pending tasks kya hain?"_\n_"15 March ko Sharma ji ke saath meeting hai"_\n/search Ramesh — Ramesh se related sab kuch`,
         { parse_mode: 'Markdown' }
     );
 });
@@ -442,5 +443,285 @@ bot.on('message', async (msg) => {
 bot.on('polling_error', (error) => {
     console.error('Telegram polling error:', error.message);
 });
+
+// ── /search Command — explicit Firebase search ───────────────────
+bot.onText(/\/search (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const query = match[1].trim();
+
+    const email = await getLinkedEmail(chatId).catch(() => null);
+    if (!email) {
+        return bot.sendMessage(chatId, '❌ Pehle account link karo:\n`/link aapki@email.com`', { parse_mode: 'Markdown' });
+    }
+
+    await bot.sendChatAction(chatId, 'typing');
+
+    try {
+        // Firebase mein saare collections search karo
+        const [notesSnap, tasksSnap, remindersSnap, notebooksSnap] = await Promise.all([
+            db.collection('notes').where('userId', '==', email).get().catch(() => ({ docs: [] })),
+            db.collection('tasks').where('userId', '==', email).get().catch(() => ({ docs: [] })),
+            db.collection('reminders').where('userId', '==', email).get().catch(() => ({ docs: [] })),
+            db.collection('notebooks').where('userId', '==', email).get().catch(() => ({ docs: [] }))
+        ]);
+
+        const q = query.toLowerCase();
+
+        // Text match karo — client naam, content, title mein
+        const matchDoc = (data) => {
+            const searchableText = [
+                data.client, data.title, data.content,
+                data.mobile, data.account, data.address, data.status
+            ].filter(Boolean).join(' ').toLowerCase();
+            return searchableText.includes(q);
+        };
+
+        const matchedCases     = notesSnap.docs.map(d => d.data()).filter(d => !d.deleted && matchDoc(d));
+        const matchedTasks     = tasksSnap.docs.map(d => d.data()).filter(d => !d.deleted && matchDoc(d));
+        const matchedReminders = remindersSnap.docs.map(d => d.data()).filter(d => !d.deleted && matchDoc(d));
+        const matchedNotebooks = notebooksSnap.docs.map(d => d.data()).filter(d => !d.deleted && matchDoc(d));
+
+        const total = matchedCases.length + matchedTasks.length + matchedReminders.length + matchedNotebooks.length;
+
+        if (total === 0) {
+            return bot.sendMessage(chatId, `🔍 *"${query}"* ke liye koi result nahi mila.\n\nDusra keyword try karo ya client ka pura naam likho.`, { parse_mode: 'Markdown' });
+        }
+
+        let text = `🔍 *Search: "${query}"* — ${total} result(s)\n\n`;
+
+        if (matchedCases.length > 0) {
+            text += `📋 *Client Cases (${matchedCases.length}):*\n`;
+            matchedCases.slice(0, 3).forEach(c => {
+                text += `• *${c.client || 'Unknown'}* | Status: ${c.status || '-'}`;
+                if (c.mobile) text += ` | 📞 ${c.mobile}`;
+                if (c.account) text += `\n  A/C: ${c.account}`;
+                text += '\n';
+            });
+            if (matchedCases.length > 3) text += `  _...aur ${matchedCases.length - 3} cases_\n`;
+            text += '\n';
+        }
+
+        if (matchedTasks.length > 0) {
+            text += `✅ *Tasks (${matchedTasks.length}):*\n`;
+            matchedTasks.slice(0, 4).forEach(t => {
+                const due = t.dueDate ? ` | 📅 ${new Date(t.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : '';
+                text += `• [${t.status || 'Pending'}] ${t.title}${due}\n`;
+            });
+            text += '\n';
+        }
+
+        if (matchedReminders.length > 0) {
+            text += `⏰ *Reminders (${matchedReminders.length}):*\n`;
+            matchedReminders.slice(0, 4).forEach(r => {
+                const time = r.time && r.time !== 'Manual' ? ` | 📅 ${new Date(r.time).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : '';
+                text += `• [${r.status || 'Active'}] ${r.title}${time}\n`;
+            });
+            text += '\n';
+        }
+
+        if (matchedNotebooks.length > 0) {
+            text += `📓 *Notebooks (${matchedNotebooks.length}):*\n`;
+            matchedNotebooks.slice(0, 3).forEach(n => {
+                text += `• ${n.client || 'General'}: ${(n.content || '').substring(0, 80)}...\n`;
+            });
+        }
+
+        await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' })
+            .catch(() => bot.sendMessage(chatId, text));
+
+    } catch (error) {
+        console.error('Search error:', error);
+        await bot.sendMessage(chatId, '❌ Search nahi ho saka. Dobara try karo.');
+    }
+});
+
+// ── Schedulers ───────────────────────────────────────────────────
+
+// Saare linked users ka chatId → email mapping fetch karo
+async function getAllLinkedUsers() {
+    const snap = await db.collection('telegram_users').get();
+    return snap.docs.map(d => d.data());
+}
+
+// Due/overdue reminders check karo aur notify karo (har 5 minute mein)
+async function checkDueReminders() {
+    try {
+        const users = await getAllLinkedUsers();
+        if (users.length === 0) return;
+
+        const now = new Date();
+
+        for (const user of users) {
+            const { telegramChatId, email } = user;
+            if (!telegramChatId || !email) continue;
+
+            // Due reminders: time <= now, status Active, telegramNotified nahi hua
+            const snap = await db.collection('reminders')
+                .where('userId', '==', email)
+                .where('status', '==', 'Active')
+                .where('telegramNotified', '==', false)
+                .get()
+                .catch(() => ({ docs: [] }));
+
+            for (const docSnap of snap.docs) {
+                const r = docSnap.data();
+                if (r.deleted) continue;
+                if (!r.time || r.time === 'Manual' || r.time === 'जल्द') continue;
+
+                const reminderTime = new Date(r.time);
+                if (isNaN(reminderTime.getTime())) continue;
+
+                // Due ya overdue hai?
+                if (reminderTime <= now) {
+                    const overdue = reminderTime < now;
+                    const diffMin = Math.round((now - reminderTime) / 60000);
+                    const overdueText = overdue && diffMin > 60
+                        ? ` _(${Math.round(diffMin / 60)} ghante overdue)_`
+                        : overdue && diffMin > 0
+                        ? ` _(${diffMin} min overdue)_`
+                        : '';
+
+                    const msg = `⏰ *Reminder Alert!*${overdueText}\n\n📌 *${r.title}*${r.client ? `\n👤 Client: ${r.client}` : ''}\n\nAb tak complete nahi hua? /status se check karo.`;
+
+                    try {
+                        await bot.sendMessage(telegramChatId, msg, { parse_mode: 'Markdown' });
+                        // Mark as notified so duplicate na aaye
+                        await docSnap.ref.update({ telegramNotified: true });
+                    } catch (sendErr) {
+                        console.error(`Reminder notify error (${email}):`, sendErr.message);
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error('checkDueReminders error:', err.message);
+    }
+}
+
+// Daily digest: subah 9 baje pending tasks + aaj ke reminders
+async function sendDailyDigest() {
+    try {
+        const users = await getAllLinkedUsers();
+        if (users.length === 0) return;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        for (const user of users) {
+            const { telegramChatId, email } = user;
+            if (!telegramChatId || !email) continue;
+
+            try {
+                const [tasksSnap, remindersSnap] = await Promise.all([
+                    db.collection('tasks').where('userId', '==', email).where('status', '==', 'Pending').get().catch(() => ({ docs: [] })),
+                    db.collection('reminders').where('userId', '==', email).where('status', '==', 'Active').get().catch(() => ({ docs: [] }))
+                ]);
+
+                const pendingTasks = tasksSnap.docs.map(d => d.data()).filter(t => !t.deleted);
+
+                // Aaj due reminders
+                const todayReminders = remindersSnap.docs.map(d => d.data()).filter(r => {
+                    if (r.deleted || !r.time || r.time === 'Manual' || r.time === 'जल्द') return false;
+                    const rt = new Date(r.time);
+                    return !isNaN(rt.getTime()) && rt >= today && rt < tomorrow;
+                });
+
+                // Overdue reminders
+                const overdueReminders = remindersSnap.docs.map(d => d.data()).filter(r => {
+                    if (r.deleted || !r.time || r.time === 'Manual' || r.time === 'जल्द') return false;
+                    const rt = new Date(r.time);
+                    return !isNaN(rt.getTime()) && rt < today;
+                });
+
+                // Kuch bhi na ho toh digest nahi bhejna
+                if (pendingTasks.length === 0 && todayReminders.length === 0 && overdueReminders.length === 0) continue;
+
+                const dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long' });
+                let text = `🌅 *Good Morning! Daily Digest*\n📅 ${dateStr}\n\n`;
+
+                if (overdueReminders.length > 0) {
+                    text += `🚨 *Overdue Reminders (${overdueReminders.length}):*\n`;
+                    overdueReminders.slice(0, 5).forEach(r => {
+                        const daysAgo = Math.floor((new Date() - new Date(r.time)) / 86400000);
+                        text += `• ⚠️ ${r.title}${r.client ? ` — ${r.client}` : ''} _(${daysAgo}d overdue)_\n`;
+                    });
+                    text += '\n';
+                }
+
+                if (todayReminders.length > 0) {
+                    text += `⏰ *Aaj ke Reminders (${todayReminders.length}):*\n`;
+                    todayReminders.forEach(r => {
+                        const time = new Date(r.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                        text += `• 🔔 ${r.title}${r.client ? ` — ${r.client}` : ''} | ${time}\n`;
+                    });
+                    text += '\n';
+                }
+
+                if (pendingTasks.length > 0) {
+                    // Urgent/overdue tasks pehle
+                    const urgentTasks = pendingTasks.filter(t => {
+                        if (!t.dueDate) return false;
+                        return new Date(t.dueDate) < new Date();
+                    });
+                    const normalTasks = pendingTasks.filter(t => !urgentTasks.includes(t));
+
+                    text += `✅ *Pending Tasks (${pendingTasks.length}):*\n`;
+                    urgentTasks.slice(0, 3).forEach(t => {
+                        text += `• 🔴 ${t.title}${t.client ? ` — ${t.client}` : ''} _(overdue)_\n`;
+                    });
+                    normalTasks.slice(0, 5).forEach(t => {
+                        text += `• ${t.priority === 'Urgent' ? '🟠' : '🟡'} ${t.title}${t.client ? ` — ${t.client}` : ''}\n`;
+                    });
+                    if (pendingTasks.length > 8) text += `  _...aur ${pendingTasks.length - 8} aur tasks_\n`;
+                }
+
+                text += `\n_CaseDesk AI — Aaj ka din productive ho! 💪_`;
+
+                await bot.sendMessage(telegramChatId, text, { parse_mode: 'Markdown' })
+                    .catch(() => bot.sendMessage(telegramChatId, text));
+
+            } catch (userErr) {
+                console.error(`Daily digest error (${email}):`, userErr.message);
+            }
+        }
+    } catch (err) {
+        console.error('sendDailyDigest error:', err.message);
+    }
+}
+
+// Reminder check: har 5 minute mein (IST timezone)
+cron.schedule('*/5 * * * *', checkDueReminders, { timezone: 'Asia/Kolkata' });
+
+// Daily digest: subah 9 baje IST
+cron.schedule('0 9 * * *', sendDailyDigest, { timezone: 'Asia/Kolkata' });
+
+// Naye reminder documents mein telegramNotified:false set karo agar field missing hai
+// (existing reminders ke liye one-time migration)
+async function initReminderNotifiedFlag() {
+    try {
+        const snap = await db.collection('reminders').where('status', '==', 'Active').get();
+        const batch = db.batch();
+        let count = 0;
+        snap.docs.forEach(d => {
+            if (d.data().telegramNotified === undefined) {
+                batch.update(d.ref, { telegramNotified: false });
+                count++;
+            }
+        });
+        if (count > 0) {
+            await batch.commit();
+            console.log(`✅ ${count} reminders mein telegramNotified:false set kiya`);
+        }
+    } catch (err) {
+        console.error('initReminderNotifiedFlag error:', err.message);
+    }
+}
+
+// Startup pe migration run karo
+initReminderNotifiedFlag();
+
+console.log('⏰ Schedulers active: reminder check (har 5 min) + daily digest (9 AM IST)');
 
 module.exports = bot;
