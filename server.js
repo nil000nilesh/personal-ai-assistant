@@ -5,6 +5,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(express.json()); // Telegram webhook ke liye JSON body parsing
+
 // Serve static files from the current directory
 app.use(express.static(path.join(__dirname), {
     setHeaders: (res, filePath) => {
@@ -31,7 +33,12 @@ app.listen(PORT, () => {
 // TELEGRAM_BOT_TOKEN set hai to bot automatically start hoga
 if (process.env.TELEGRAM_BOT_TOKEN) {
     try {
-        require('./telegram-bot');
+        const { getWebhookHandler, WEBHOOK_URL } = require('./telegram-bot');
+        if (WEBHOOK_URL) {
+            // Webhook mode: Express route se Telegram updates receive karo
+            app.post('/telegram-webhook', getWebhookHandler());
+            console.log('✅ Telegram webhook route registered: POST /telegram-webhook');
+        }
     } catch (err) {
         console.error('⚠️  Telegram Bot start nahi hua:', err.message);
     }

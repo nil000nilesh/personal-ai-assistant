@@ -42,17 +42,19 @@ if (!BOT_TOKEN) {
     process.exit(1);
 }
 
-let bot;
-const WEBHOOK_URL = process.env.WEBHOOK_URL; // e.g. https://yourapp.onrender.com/telegram-webhook
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+// Webhook mode: Express ke saath integrate — apna server start NAHI karta
+// Polling mode: local dev ke liye
+const bot = WEBHOOK_URL
+    ? new TelegramBot(BOT_TOKEN, { webHook: false })
+    : new TelegramBot(BOT_TOKEN, { polling: true });
 
 if (WEBHOOK_URL) {
-    // Webhook mode — production (Render, Railway, VPS with domain)
-    bot = new TelegramBot(BOT_TOKEN, { webHook: { port: process.env.PORT || 3000 } });
-    bot.setWebHook(`${WEBHOOK_URL}/telegram-webhook`);
-    console.log(`✅ Telegram Bot webhook mode: ${WEBHOOK_URL}/telegram-webhook`);
+    bot.setWebHook(`${WEBHOOK_URL}/telegram-webhook`)
+        .then(() => console.log(`✅ Telegram Bot webhook set: ${WEBHOOK_URL}/telegram-webhook`))
+        .catch(err => console.error('❌ Webhook set failed:', err.message));
 } else {
-    // Polling mode — local development ya VPS without domain
-    bot = new TelegramBot(BOT_TOKEN, { polling: true });
     console.log('✅ Telegram Bot polling mode mein chal raha hai...');
 }
 
@@ -724,4 +726,12 @@ initReminderNotifiedFlag();
 
 console.log('⏰ Schedulers active: reminder check (har 5 min) + daily digest (9 AM IST)');
 
-module.exports = bot;
+// Express webhook handler — server.js isse use karta hai
+function getWebhookHandler() {
+    return (req, res) => {
+        bot.processUpdate(req.body);
+        res.sendStatus(200);
+    };
+}
+
+module.exports = { bot, getWebhookHandler, WEBHOOK_URL };
