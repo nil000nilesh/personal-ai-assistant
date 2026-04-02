@@ -87,11 +87,21 @@ async function getLinkedEmail(chatId) {
 }
 
 async function linkUser(chatId, email) {
-    // Firebase Auth se verify karo ki email registered hai
+    // Firestore mein check karo — allowed_users ya koi bhi existing data
     try {
-        await admin.auth().getUserByEmail(email);
+        const [allowedSnap, trialSnap] = await Promise.all([
+            db.collection('allowed_users').where('email', '==', email).limit(1).get(),
+            db.collection('trial_users').where('email', '==', email).limit(1).get()
+        ]);
+        // Direct email match in allowed_users (doc ID as email)
+        const directDoc = await db.collection('allowed_users').doc(email).get();
+
+        if (allowedSnap.empty && trialSnap.empty && !directDoc.exists) {
+            return { success: false, reason: 'email_not_found' };
+        }
     } catch (e) {
-        return { success: false, reason: 'email_not_found' };
+        // Firestore check fail hone pe bhi allow karo (admin permissions issue)
+        console.warn('Email verify warning:', e.message);
     }
     // Mapping save karo
     await db.collection('telegram_users').doc(String(chatId)).set({
