@@ -1,30 +1,97 @@
+/* ═══════════════════════════════════════════════════
+   CASEDESK AI — DESIGN TOKEN SYSTEM v2
+═══════════════════════════════════════════════════ */
+:root {
+  --c-primary:        #6366f1;
+  --c-primary-dark:   #4f46e5;
+  --c-primary-light:  #eef2ff;
+  --c-primary-border: #c7d2fe;
+  --c-blue:           #3b82f6;
+  --c-purple:         #8b5cf6;
+  --c-success:        #10b981;
+  --c-warning:        #f59e0b;
+  --c-danger:         #ef4444;
+
+  --surface-app:      #f0f4ff;
+  --surface-card:     #ffffff;
+  --surface-sidebar:  #0f172a;
+  --surface-input:    #f8fafc;
+
+  --text-primary:     #0f172a;
+  --text-secondary:   #475569;
+  --text-muted:       #94a3b8;
+
+  --border-default:   #e2e8f0;
+  --border-focus:     #6366f1;
+
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
+
+  --shadow-card:       0 2px 12px rgba(99,102,241,0.07), 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-card-hover: 0 8px 32px rgba(99,102,241,0.14), 0 2px 8px rgba(0,0,0,0.07);
+  --shadow-toast:      0 8px 32px rgba(0,0,0,0.22);
+  --shadow-fab:        0 8px 32px rgba(79,70,229,0.45);
+
+  --ease-out:    cubic-bezier(0.4,0,0.2,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+  --dur-fast:    120ms;
+  --dur-base:    200ms;
+  --dur-slow:    300ms;
+}
+
 body {
     font-family: 'Inter', sans-serif;
-    padding-bottom: constant(safe-area-inset-bottom); /* iOS 11.0 */
-    padding-bottom: env(safe-area-inset-bottom);      /* iOS 11.2+ / modern WebView */
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Bottom nav — safe area inset for iPhone home indicator */
 nav.md\:hidden {
     padding-bottom: constant(safe-area-inset-bottom);
     padding-bottom: env(safe-area-inset-bottom);
-    height: calc(65px + constant(safe-area-inset-bottom));
-    height: calc(65px + env(safe-area-inset-bottom));
+    height: calc(64px + constant(safe-area-inset-bottom));
+    height: calc(64px + env(safe-area-inset-bottom));
+    /* Frosted glass floating nav */
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(99,102,241,0.08);
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.06), 0 -1px 0 rgba(99,102,241,0.05);
+    border-radius: 24px 24px 0 0;
 }
+
 .devanagari { font-family: 'Noto Sans Devanagari', sans-serif; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-.tab-btn.active { color: #60a5fa; font-weight: 700; }
-.tab-btn-mob { color: #94a3b8; transition: color 0.2s; }
+/* ── SIDEBAR TAB BUTTONS ── */
+.tab-btn.active { color: #a5b4fc; font-weight: 700; }
+.tab-btn-mob { color: #94a3b8; transition: color 0.2s, background 0.2s; }
 .tab-btn-mob.active {
-    color: #4f46e5;
+    color: var(--c-primary-dark);
     font-weight: 800;
 }
-.tab-btn-mob.active svg { stroke: #4f46e5; }
+.tab-btn-mob.active svg { stroke: var(--c-primary-dark); }
 .tab-btn-mob svg { transition: stroke 0.2s; }
+
+/* Bottom nav active indicator dot */
+.tab-btn-mob { position: relative; }
+.tab-btn-mob.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 3px;
+    background: var(--c-primary);
+    border-radius: 99px;
+}
 
 @keyframes pulse-ring {
     0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
@@ -70,8 +137,37 @@ nav.md\:hidden {
 #sidebar.expanded .logout-text { display: inline; }
 #sidebar .tab-btn { justify-content: center; }
 #sidebar.expanded .tab-btn { justify-content: flex-start; }
-#sidebar .tab-btn.active { border-left: 3px solid #60a5fa; background: rgba(255,255,255,0.08); }
-#sidebar .tab-btn:not(.active) { border-left: 3px solid transparent; }
+
+/* Sidebar — Pill Active State */
+#sidebar .tab-btn.active {
+    background: rgba(99,102,241,0.18);
+    color: #a5b4fc;
+    border-left: none !important;
+    border-radius: 10px;
+    margin: 0 8px;
+    width: calc(100% - 16px);
+    position: relative;
+}
+#sidebar .tab-btn.active::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: linear-gradient(180deg, #6366f1, #3b82f6);
+    border-radius: 0 3px 3px 0;
+}
+#sidebar .tab-btn:not(.active) {
+    border-left: none !important;
+    border-radius: 10px;
+    margin: 0 8px;
+    width: calc(100% - 16px);
+}
+#sidebar .tab-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.07);
+}
 
 /* Tooltip on collapsed */
 #sidebar:not(.expanded) .nav-item { position: relative; }
@@ -111,17 +207,73 @@ nav.md\:hidden {
         radial-gradient(ellipse at 80% 80%, rgba(59,130,246,0.06) 0%, transparent 55%),
         radial-gradient(ellipse at 60% 10%, rgba(139,92,246,0.05) 0%, transparent 40%);
 }
+
 /* Toolbar glass effect */
 .toolbar-glass {
-    background: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.88);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(99,102,241,0.08);
 }
-/* Content cards subtle shadow upgrade */
-#notebook-grid > *, #notes-grid > *, #tasks-list > *, #reminders-list > * {
-    box-shadow: 0 2px 12px rgba(99,102,241,0.07), 0 1px 3px rgba(0,0,0,0.05);
+
+/* ── CARD HOVER ANIMATION ── */
+.card-hover {
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover) !important;
+}
+
+/* Card fade-in on mount */
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.card-enter { animation: cardFadeIn 0.22s var(--ease-out) both; }
+
+/* ── SKELETON LOADER ── */
+@keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e8edf5 50%, #f1f5f9 75%);
+    background-size: 600px 100%;
+    animation: shimmer 1.5s ease infinite;
+    border-radius: 8px;
+}
+.skeleton-card {
+    background: white;
+    border-radius: 20px;
+    border: 1px solid #e8edf5;
+    padding: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+}
+
+/* ── STATUS BADGE / CHIP SYSTEM ── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 99px;
+    white-space: nowrap;
+    letter-spacing: 0.1px;
+}
+/* Chip aliases */
+.chip { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; white-space:nowrap; }
+.chip-pending  { background:#fff7ed; color:#c2410c; }
+.chip-done     { background:#f0fdf4; color:#15803d; }
+.chip-overdue  { background:#fef2f2; color:#b91c1c; }
+.chip-active   { background:#eff6ff; color:#1d4ed8; }
+.chip-closed   { background:#f8fafc; color:#64748b; }
+.chip-urgent   { background:#fff1f2; color:#e11d48; }
+
+/* ── ANIMATIONS ── */
 @keyframes fabPulse {
     0%   { transform: scale(1); opacity: 0.8; }
     50%  { transform: scale(1.18); opacity: 0.3; }
@@ -150,11 +302,7 @@ nav.md\:hidden {
 #activity-feed::-webkit-scrollbar { width: 3px; }
 #activity-feed::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
 
-
-/* ═══ RIGHT SIDE LIVE UPDATE PANEL — REMOVED ═══ */
-
 /* ═══ NOTIFICATION SYSTEM CSS ═══ */
-/* Bell badge on sidebar icons */
 .nav-badge {
     position: absolute; top: 5px; right: 5px;
     min-width: 17px; height: 17px;
@@ -184,7 +332,7 @@ nav.md\:hidden {
 }
 #notif-overlay.open { display: block; }
 
-/* Toast */
+/* Toast — Modern dark style */
 #toast-wrap {
     position: fixed; top: 18px; right: 18px; z-index: 9999;
     display: flex; flex-direction: column; gap: 8px;
@@ -192,17 +340,19 @@ nav.md\:hidden {
 }
 .toast {
     display: flex; align-items: flex-start; gap: 10px;
-    background: #1e293b; color: #fff;
-    border-radius: 14px; padding: 11px 14px;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+    background: #1a1f2e; color: #fff;
+    border-radius: 14px; padding: 12px 14px;
+    box-shadow: var(--shadow-toast);
     pointer-events: all;
     animation: toastIn .3s ease;
-    border-left: 4px solid #6366f1;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-left: 3px solid var(--c-primary);
 }
 .toast.t-task     { border-left-color: #f59e0b; }
 .toast.t-reminder { border-left-color: #ef4444; }
 .toast.t-notebook { border-left-color: #6366f1; }
 .toast.t-case     { border-left-color: #0891b2; }
+.toast.t-error    { border-left-color: #ef4444; }
 @keyframes toastIn  { from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
 @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(50px)} }
 
@@ -210,9 +360,9 @@ nav.md\:hidden {
 .nitem { display:flex; gap:10px; align-items:flex-start;
     padding:10px; margin-bottom:5px; border-radius:12px;
     cursor:pointer; transition:all .15s; border:1px solid transparent; }
-.nitem:hover { transform:translateX(-2px); }
+.nitem:hover { transform:translateX(-2px); background:#f8fafc !important; }
 .nitem.unread { background:#eef2ff; border-color:#c7d2fe; }
-.nitem.read   { background:#fafafa; opacity:.75; }
+.nitem.read   { background:#fafafa; opacity:.8; }
 .nitem .nicon { width:32px; height:32px; border-radius:9px;
     display:flex; align-items:center; justify-content:center;
     font-size:15px; flex-shrink:0; }
@@ -234,13 +384,10 @@ nav.md\:hidden {
     border-top:1px solid #fde68a; flex-shrink:0;
     display:flex; align-items:center; gap:8px; }
 
-/* ═══ RIGHT SIDE UPDATE PANEL — REMOVED ═══ */
-
 /* ═══════════════════════════════════════════════════
    BEAUTIFUL PIN SCREEN — OTP Style
 ═══════════════════════════════════════════════════ */
 
-/* Animated blobs in background */
 .pin-blob {
     position: absolute; border-radius: 50%;
     filter: blur(80px); pointer-events: none; opacity: 0.18;
@@ -255,7 +402,6 @@ nav.md\:hidden {
     66%       { transform: translate(-10px,20px) scale(0.97); }
 }
 
-/* Main PIN card */
 .pin-card {
     background: rgba(15, 20, 50, 0.75);
     backdrop-filter: blur(24px);
@@ -271,7 +417,6 @@ nav.md\:hidden {
     to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* OTP-style PIN boxes */
 .pin-box {
     width: 56px; height: 64px;
     border: 2px solid rgba(255,255,255,0.12);
@@ -309,7 +454,6 @@ nav.md\:hidden {
     80%    { transform: translateX(4px); }
 }
 
-/* Unlock button */
 .pin-unlock-btn {
     width: 100%;
     padding: 13px 20px;
@@ -339,7 +483,6 @@ nav.md\:hidden {
     box-shadow: none;
 }
 
-/* Notification mini widget on PIN screen */
 .pin-notif-widget {
     position: absolute;
     top: 20px; right: 20px; z-index: 20;
@@ -422,9 +565,8 @@ nav.md\:hidden {
     .pin-notif-widget { right: 8px; top: 8px; min-width: 160px; max-width: 200px; padding: 10px 12px; }
 }
 
-/* ══ MOBILE RESPONSIVE — Chat panel & FAB ══ */
+/* ══ MOBILE RESPONSIVE ══ */
 @media (max-width: 767px) {
-    /* Chat panel on mobile: full width, above bottom nav (safe-area aware) */
     #chat-panel {
         border-radius: 16px !important;
         left: 8px !important;
@@ -432,27 +574,17 @@ nav.md\:hidden {
         width: auto !important;
         bottom: calc(78px + env(safe-area-inset-bottom)) !important;
     }
-
-    /* FAB above bottom nav (safe-area aware) */
     #chat-fab {
         bottom: calc(76px + env(safe-area-inset-bottom)) !important;
         right: 16px !important;
     }
-
-    /* Toolbar wrapping on mobile */
     #view-notes .toolbar-glass .flex.gap-2.flex-wrap,
     #view-tasks .toolbar-glass .flex.gap-2.flex-wrap,
     #view-reminders .toolbar-glass .flex.gap-2.flex-wrap,
     #view-notebook .toolbar-glass .flex.gap-2.flex-wrap {
         gap: 8px;
     }
-
-    /* Bottom nav labels smaller */
-    nav.md\:hidden button span:last-child {
-        font-size: 9px;
-    }
-
-    /* Mobile header padding */
+    nav.md\:hidden button span:last-child { font-size: 9px; }
     #view-notes .toolbar-glass,
     #view-tasks .toolbar-glass,
     #view-reminders .toolbar-glass,
@@ -500,9 +632,7 @@ nav.md\:hidden {
     transition: transform 0.2s ease;
     color: #94a3b8;
 }
-.custom-select-btn.active .custom-select-arrow {
-    color: #6366f1;
-}
+.custom-select-btn.active .custom-select-arrow { color: #6366f1; }
 .custom-select-dropdown {
     position: absolute;
     top: calc(100% + 6px);
@@ -534,19 +664,9 @@ nav.md\:hidden {
     border-bottom: 1px solid #f1f5f9;
 }
 .custom-select-option:last-child { border-bottom: none; }
-.custom-select-option:hover {
-    background: #eef2ff;
-    color: #4338ca;
-}
-.custom-select-option.selected {
-    background: #f0f4ff;
-    color: #4338ca;
-    font-weight: 800;
-}
-.custom-select-option.selected::before {
-    content: '✓ ';
-    color: #6366f1;
-}
+.custom-select-option:hover { background: #eef2ff; color: #4338ca; }
+.custom-select-option.selected { background: #f0f4ff; color: #4338ca; font-weight: 800; }
+.custom-select-option.selected::before { content: '✓ '; color: #6366f1; }
 
 /* ══════════════════════════════════════════════════
    CLEAR CHAT BUTTON TOOLTIP
@@ -572,7 +692,7 @@ nav.md\:hidden {
 }
 #clear-chat-btn:hover::after { opacity: 1; }
 
-/* ── PROFILE CARD — Resume/Form Style ── */
+/* ── PROFILE CARD ── */
 .profile-card { transition: box-shadow 0.2s, transform 0.2s; }
 .profile-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.14) !important; transform: translateY(-2px); }
 
@@ -580,7 +700,6 @@ nav.md\:hidden {
     background: #f8fafc;
     padding: 10px 16px;
     border-bottom: 1px solid #f1f5f9;
-    margin-left: 0;
 }
 .profile-info-row {
     display: flex;
@@ -597,6 +716,9 @@ nav.md\:hidden {
     min-width: 100px;
     flex-shrink: 0;
     font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 .profile-info-val {
     color: #334155;
@@ -623,3 +745,35 @@ nav.md\:hidden {
     letter-spacing: 0.5px;
 }
 .lang-toggle-btn:hover { background: #6366f1; color: white; border-color: #6366f1; }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+.empty-state-icon {
+    width: 64px; height: 64px;
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+}
+.empty-state-title {
+    font-size: 14px; font-weight: 700;
+    color: #475569; margin-bottom: 6px;
+}
+.empty-state-sub {
+    font-size: 12px; color: #94a3b8;
+    max-width: 240px; line-height: 1.5;
+}
+
+/* ── VIEW TITLE ICON PILL ── */
+.view-title-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}

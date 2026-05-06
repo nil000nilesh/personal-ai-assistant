@@ -67,9 +67,10 @@ export function addActivity(icon, text, color) {
     const placeholder = feed.querySelector('[style*="italic"]');
     if(placeholder) placeholder.remove();
     const item = document.createElement('div');
-    item.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 0;border-bottom:1px solid #f1f5f9;';
-    item.innerHTML = '<span style="font-size:12px;flex-shrink:0;">' + icon + '</span>' +
-        '<span style="color:' + (color||'#475569') + ';flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + text + '</span>' +
+    item.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:11px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04);';
+    item.innerHTML =
+        '<span style="width:22px;height:22px;border-radius:7px;background:rgba(99,102,241,0.08);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">' + icon + '</span>' +
+        '<span style="color:' + (color||'#475569') + ';flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">' + text + '</span>' +
         '<span style="color:#94a3b8;font-size:9px;flex-shrink:0;">' + now + '</span>';
     feed.insertBefore(item, feed.firstChild);
     while(feed.children.length > 8) feed.removeChild(feed.lastChild);
