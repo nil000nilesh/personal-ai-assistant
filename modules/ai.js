@@ -546,6 +546,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"${overdueContext}`.
                         time: args.reminder_date || "Manual",
                         client: args.client_name || "सामान्य",
                         type: args.type || "followup",
+                        recurring: args.recurring || 'none',
                         timestamp: now,
                         userId: APP.currentUserEmail
                     };
