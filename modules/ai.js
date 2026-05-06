@@ -54,7 +54,7 @@ async function sendMessage() {
 
         // Summarise saved data for AI context
         function summarize(arr, fields) {
-            return arr.slice(-30).map(item =>
+            return arr.slice(-50).map(item =>
                 fields.map(f => `${f}: ${item[f] || ''}`).join(' | ')
             ).join('\n');
         }
@@ -72,6 +72,17 @@ ${summarize(tasksData, ['title','status','client','timestamp'])}
 === REMINDERS (last 30) ===
 ${summarize(remindersData, ['title','time','client','timestamp'])}
         `.trim();
+
+        // Overdue awareness for agent
+        const now2 = new Date();
+        const todayMidnight = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
+        const overdueTasks = tasksData.filter(t => !t.deleted && t.status !== 'Done' && t.status !== 'Finished' && t.dueDate && new Date(t.dueDate) < todayMidnight);
+        const overdueRems = remindersData.filter(r => !r.deleted && r.status !== 'Closed' && r.time && !['Manual','जल्द'].includes(r.time) && new Date(r.time) < now2);
+        const overdueContext = (overdueTasks.length || overdueRems.length) ? `
+
+=== OVERDUE ITEMS — PROACTIVELY MENTION IF RELEVANT ===
+OVERDUE TASKS: ${overdueTasks.map(t => `${t.title} (${t.client||'–'}, due ${t.dueDate})`).join(', ') || 'None'}
+OVERDUE REMINDERS: ${overdueRems.map(r => `${r.title} (${r.client||'–'}, was due ${r.time})`).join(', ') || 'None'}` : '';
 
         // ── 2. SYSTEM PROMPT — Smart update, no repetition ──────────────
         const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -320,7 +331,7 @@ update.collection = "tasks" / "reminders" / "notes" / "notebooks"
 update.fields = only include fields that changed
 task.dueDate = ISO 8601 format (e.g. "2026-03-15T00:00:00")
 task.priority = "Urgent" or "" (empty for normal)
-reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
+reminder.time = ISO 8601 format or "Manual" or "जल्द"${overdueContext}`.trim();
 
         // ── 3. CALL OPENAI GPT-4o ───────────────────────────────────
         const messages = [
@@ -426,7 +437,8 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                             title: { type: "string" },
                             client_name: { type: "string" },
                             reminder_date: { type: "string", description: "ISO 8601 date string" },
-                            type: { type: "string", enum: ["document", "deadline", "followup", "inspection"] }
+                            type: { type: "string", enum: ["document", "deadline", "followup", "inspection"] },
+                            recurring: { type: "string", description: "Recurring pattern: 'none' (default), 'daily', 'weekly', 'monthly'. Use 'weekly' for 'har Monday', 'monthly' for 'har mahine'" }
                         },
                         required: ["title", "client_name", "reminder_date"]
                     }
@@ -810,9 +822,21 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
 
     } catch (err) {
         loadingDiv.remove();
-        const errMsg = `❌ त्रुटि: ${err.message}`;
+        const errMsg = (err.message || '').toLowerCase();
+        let userErrMsg;
+        if (errMsg.includes('401') || errMsg.includes('invalid api key') || errMsg.includes('incorrect api key')) {
+            userErrMsg = '❌ OpenAI API Key galat hai ya expire ho gayi. Settings mein check karein.';
+        } else if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('rate limit')) {
+            userErrMsg = '⚠️ OpenAI quota khatam ho gaya. Thoda wait karein ya plan upgrade karein.';
+        } else if (errMsg.includes('network') || errMsg.includes('fetch') || errMsg.includes('failed to fetch')) {
+            userErrMsg = '📡 Network error — internet connection check karein.';
+        } else if (errMsg.includes('500') || errMsg.includes('503') || errMsg.includes('server')) {
+            userErrMsg = '🔧 OpenAI server error — thodi der mein dobara try karein.';
+        } else {
+            userErrMsg = `❌ Error: ${err.message || 'Unknown error occurred'}`;
+        }
         await addDoc(collection(db, "chats"), {
-            role: "assistant", content: errMsg, timestamp: new Date().toISOString(),
+            role: "assistant", content: userErrMsg, timestamp: new Date().toISOString(),
             userId: APP.currentUserEmail
         });
     } finally {

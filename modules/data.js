@@ -169,6 +169,10 @@ function loadAppListeners() {
                             <h3 class="font-black text-white text-base leading-tight" style="word-break:break-word;">${group.displayTitle}</h3>
                         </div>
                         <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button onclick="window.openEditNoteModal('${group.displayTitle.replace(/'/g,"\\'")}');"
+                                class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
+                                style="background:rgba(99,102,241,0.25);color:rgba(200,210,255,0.95);border:1px solid rgba(150,170,255,0.3);"
+                                title="Edit Profile">Edit</button>
                             <button onclick="deleteClientProfile('${group.displayTitle.replace(/'/g,"\\'")}');"
                                 class="text-[9px] font-black px-2 py-0.5 rounded-full cursor-pointer transition-all hover:scale-105"
                                 style="background:rgba(255,0,0,0.25);color:rgba(255,200,200,0.95);border:1px solid rgba(255,100,100,0.3);"
@@ -245,6 +249,7 @@ function loadAppListeners() {
             g.updates.push(note);
         });
         renderNotes();
+        window.renderDashboard?.();
         // If notification panel is open on Clients tab, refresh it
         if(NS.filter === 'case' && document.getElementById('notif-panel')?.classList.contains('open')) {
             window.renderNotifList?.();
@@ -380,10 +385,30 @@ function loadAppListeners() {
                         </div>
                     </div>
                     <div class="flex-shrink-0 mt-0.5">${statusBadge}</div>
+                </div>
+                <div class="px-4 pb-3 flex gap-2 border-t border-slate-50 pt-2">
+                    <button class="task-edit-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all" data-idx="${idx}">✏️ Edit</button>
+                    <button class="task-del-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all" data-idx="${idx}">🗑 Delete</button>
+                    ${window.isBulkMode && window.isBulkMode() ? `<label class="ml-auto flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer"><input type="checkbox" class="bulk-cb rounded" data-docid="${task._docId}" ${window.isSelected && window.isSelected(task._docId) ? 'checked' : ''}/> Select</label>` : ''}
                 </div>`;
             div.addEventListener('click', (e) => {
                 if(e.target.closest('.task-check-btn')) return;
                 openFocusMode('task', task);
+            });
+            div.querySelector('.task-edit-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const t = filtered[parseInt(e.target.dataset.idx)];
+                if(t && window.openAddTaskModal) window.openAddTaskModal(t);
+            });
+            div.querySelector('.task-del-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const t = filtered[parseInt(e.target.dataset.idx)];
+                if(t && window.confirmDeleteTask) window.confirmDeleteTask(t._docId, t.title);
+            });
+            div.querySelector('.bulk-cb')?.addEventListener('change', (e) => {
+                e.stopPropagation();
+                const docId = e.target.dataset.docid;
+                if(docId && window.toggleItemSelection) window.toggleItemSelection(docId);
             });
             list.appendChild(div);
         });
@@ -427,6 +452,7 @@ function loadAppListeners() {
         // Client-side sort: timestamp desc (newest first)
         APP.allTasks.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderTasks();
+        window.renderDashboard?.();
         // Update notif panel task counter
         const pendingForNotif = APP.allTasks.filter(t => t.status !== 'Done' && t.status !== 'Finished').length;
         const tn = document.getElementById('np-task-num');
@@ -589,6 +615,8 @@ function loadAppListeners() {
                 ${!isClosed ? `<div class="flex gap-2 mt-0.5">
                     <button class="rem-close-btn flex-1 text-[10px] font-black py-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white transition-all" data-docid="${rem._docId}">Close</button>
                     ${isOverdue ? `<button class="rem-snooze-btn text-[10px] font-black py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-white transition-all" data-docid="${rem._docId}">Snooze 1d</button>` : ''}
+                    <button class="rem-edit-btn text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all" data-docid="${rem._docId}">✏️ Edit</button>
+                    <button class="rem-del-btn text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all" data-docid="${rem._docId}">🗑 Delete</button>
                 </div>` : `<div class="text-[10px] font-bold text-emerald-600">Closed ${rem.finishedAt ? new Date(rem.finishedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : ''}</div>`}`;
             div.style.cursor = 'pointer';
             div.addEventListener('click', (e) => {
@@ -637,6 +665,22 @@ function loadAppListeners() {
                     }
                 });
             }
+            // Reminder edit button handler
+            const remEditBtn = div.querySelector('.rem-edit-btn');
+            if(remEditBtn) {
+                remEditBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(window.openEditReminderModal) window.openEditReminderModal(rem);
+                });
+            }
+            // Reminder delete button handler
+            const remDelBtn = div.querySelector('.rem-del-btn');
+            if(remDelBtn) {
+                remDelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(window.confirmDeleteReminder) window.confirmDeleteReminder(rem._docId, rem.title);
+                });
+            }
             list.appendChild(div);
         });
         if(window.lucide) lucide.createIcons();
@@ -658,6 +702,7 @@ function loadAppListeners() {
         // Client-side sort: timestamp desc
         APP.allReminders.sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
         renderReminders();
+        window.renderDashboard?.();
         // Schedule browser push for all upcoming reminders on load
         APP.allReminders.forEach(rem => { window.scheduleReminder?.(rem); });
         // Update reminder count in notif panel
