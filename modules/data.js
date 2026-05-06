@@ -263,6 +263,7 @@ function loadAppListeners() {
     let taskSearchQuery = '';
     let taskSortOrder = 'new';
 
+    window.renderTasks = renderTasks;
     function renderTasks() {
         const list = document.getElementById('tasks-list');
         const empty = document.getElementById('task-empty');
@@ -489,6 +490,7 @@ function loadAppListeners() {
         return isNaN(d) ? null : d;
     }
 
+    window.renderReminders = renderReminders;
     function renderReminders() {
         const list = document.getElementById('reminders-list');
         const empty = document.getElementById('rem-empty');

@@ -551,8 +551,8 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             }
 
             // Re-render UI after tool calls
-            if(toolSummary.tasks > 0 && typeof renderTasks === 'function') renderTasks();
-            if(toolSummary.reminders > 0 && typeof renderReminders === 'function') renderReminders();
+            if(toolSummary.tasks > 0) window.renderTasks?.();
+            if(toolSummary.reminders > 0) window.renderReminders?.();
         }
 
         // ── 4b. GET FINAL TEXT RESPONSE ────────────────────────────
@@ -655,7 +655,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             savePromises.push(taskDocRef);
             // Optimistic local push — onSnapshot will sync shortly
             APP.allTasks.unshift({ ...taskObj, _docId: '_pending_' + now });
-            if(typeof renderTasks === 'function') renderTasks();
+            window.renderTasks?.();
             if(window.addActivity) addActivity('✅', 'Task created: ' + aiResponse.task.title.substring(0,30), '#d97706');
             addNotif('task', '✅ New Task — ' + aiResponse.task.title.substring(0,45), 'Client: ' + (aiResponse.task.client || 'General'));
             if(window.registerUpdate) registerUpdate('task', aiResponse.task.client || '');
@@ -671,10 +671,10 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
             };
             savePromises.push(addDoc(collection(db, "reminders"), remObj));
             APP.allReminders.unshift({ ...remObj, _docId: '_pending_' + now });
-            if(typeof renderReminders === 'function') renderReminders();
+            window.renderReminders?.();
             if(window.addActivity) addActivity('⏰', 'Reminder set: ' + aiResponse.reminder.title.substring(0,30), '#dc2626');
             addNotif('reminder', '⏰ Reminder set — ' + aiResponse.reminder.title.substring(0,40), '📅 ' + (aiResponse.reminder.time || 'जल्द'));
-            scheduleReminder(remObj);
+            window.scheduleReminder?.(remObj);
             if(window.registerUpdate) registerUpdate('reminder', aiResponse.reminder.client || '');
         }
 
@@ -698,7 +698,7 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                 addNotif('task', '✅ New Task — ' + t.title.substring(0,45), 'Client: ' + (t.client || 'General'));
                 if(window.registerUpdate) registerUpdate('task', t.client || '');
             });
-            if(typeof renderTasks === 'function') renderTasks();
+            window.renderTasks?.();
         }
 
         // ── MULTIPLE REMINDERS ARRAY HANDLER ─────────────────────────────
@@ -716,10 +716,10 @@ reminder.time = ISO 8601 format or "Manual" or "जल्द"`.trim();
                 APP.allReminders.unshift({ ...remObj, _docId: '_pending_' + now + '_' + idx });
                 if(window.addActivity) addActivity('⏰', 'Reminder set: ' + r.title.substring(0,30), '#dc2626');
                 addNotif('reminder', '⏰ Reminder set — ' + r.title.substring(0,40), '📅 ' + (r.time || 'Manual'));
-                if(typeof scheduleReminder === 'function') scheduleReminder(remObj);
+                window.scheduleReminder?.(remObj);
                 if(window.registerUpdate) registerUpdate('reminder', r.client || '');
             });
-            if(typeof renderReminders === 'function') renderReminders();
+            window.renderReminders?.();
         }
 
         // ── UPDATE HANDLER — Update existing tasks/reminders/notes/notebooks ─
@@ -1236,7 +1236,7 @@ window.openFocusMode = function(type, data) {
             data.status = 'Closed';
             data.finishedAt = finishedAt;
             closeFocusMode();
-            renderReminders();
+            window.renderReminders?.();
             try { await updateDoc(doc(db, 'reminders', data._docId), { status: 'Closed', finishedAt }); } catch(e) {}
         });
     }
@@ -1249,7 +1249,7 @@ window.openFocusMode = function(type, data) {
             const newTime = tomorrow.toISOString();
             data.time = newTime;
             closeFocusMode();
-            renderReminders();
+            window.renderReminders?.();
             try {
                 await updateDoc(doc(db, 'reminders', data._docId), { time: newTime });
                 if(window.scheduleReminder) scheduleReminder(data);
