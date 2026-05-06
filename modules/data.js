@@ -334,54 +334,52 @@ function loadAppListeners() {
             const timeStr = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
             let priorityBadge = '';
-            if(isUrgent && !isFinished) priorityBadge = '<span class="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">🚨 URGENT</span>';
+            if(isUrgent && !isFinished) priorityBadge = '<span class="chip chip-urgent">URGENT</span>';
 
             let dueBadge = '';
             if(task.dueDate) {
                 const due = new Date(task.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-                dueBadge = `<span class="text-[10px] font-bold ${isOverdue ? 'text-red-600 bg-red-50' : 'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-full">📅 ${due}</span>`;
+                dueBadge = `<span class="chip ${isOverdue ? 'chip-overdue' : 'chip-active'}">${due}</span>`;
             }
 
             let statusBadge = '';
             if(isFinished)
-                statusBadge = '<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">🏆 Finished</span>';
+                statusBadge = '<span class="chip chip-done">Finished</span>';
             else if(isDone)
-                statusBadge = '<span class="text-[10px] font-black text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">✅ Done</span>';
+                statusBadge = '<span class="chip chip-done">Done</span>';
             else if(isOverdue)
-                statusBadge = '<span class="text-[10px] font-black text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full animate-pulse">🔴 Overdue</span>';
+                statusBadge = '<span class="chip chip-overdue" style="animation:pulse 1.5s infinite">Overdue</span>';
             else
-                statusBadge = '<span class="text-[10px] font-black text-orange-700 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full">⏳ Pending</span>';
+                statusBadge = '<span class="chip chip-pending">Pending</span>';
 
             // Finished date
             let finishedBadge = '';
             if(isFinished && task.finishedAt) {
                 const fd = new Date(task.finishedAt);
-                finishedBadge = `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">🏁 ${fd.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>`;
+                finishedBadge = `<span class="chip chip-done">${fd.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span>`;
             }
 
             const div = document.createElement('div');
-            div.className = `bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isFinished ? 'opacity-70 border-emerald-200 bg-emerald-50/30' : isDone ? 'opacity-60 border-slate-100' : isOverdue ? 'border-red-200' : 'border-slate-100 hover:border-blue-200'}`;
+            div.className = `card-hover card-enter bg-white rounded-2xl border cursor-pointer ${isFinished ? 'opacity-70 border-emerald-200' : isDone ? 'opacity-60 border-slate-100' : isOverdue ? 'border-red-200' : 'border-slate-100'}`;
+            div.style.boxShadow = 'var(--shadow-card)';
             div.innerHTML = `
-                <div class="p-4 flex items-start gap-4">
-                    <!-- Checkbox -->
-                    ${isFinished ? `<div class="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500 border-2 border-emerald-500 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                    </div>` : `<button class="task-check-btn mt-1 flex-shrink-0 w-6 h-6 rounded-full border-2 ${isDone ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-blue-400'} flex items-center justify-center transition-all" data-idx="${idx}">
-                        ${isDone ? '<svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
+                <div class="p-4 flex items-start gap-3">
+                    ${isFinished ? `<div class="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-500 border-2 border-emerald-500 flex items-center justify-center">
+                        <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    </div>` : `<button class="task-check-btn mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 ${isDone ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-indigo-400'} flex items-center justify-center transition-all" data-idx="${idx}">
+                        ${isDone ? '<svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : ''}
                     </button>`}
-                    <!-- Content -->
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-slate-800 text-base leading-snug devanagari ${isFinished ? 'line-through text-slate-400' : isDone ? 'line-through text-slate-400' : ''}">${task.title}</p>
-                        <div class="flex flex-wrap gap-2 mt-2 items-center">
-                            ${task.client ? `<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">👤 ${task.client}</span>` : ''}
+                        <p class="font-semibold text-slate-800 text-sm leading-snug devanagari ${isFinished || isDone ? 'line-through text-slate-400' : ''}">${task.title}</p>
+                        <div class="flex flex-wrap gap-1.5 mt-2 items-center">
+                            ${task.client ? `<span class="chip chip-active">${task.client}</span>` : ''}
                             ${dueBadge}
                             ${priorityBadge}
                             ${finishedBadge}
-                            <span class="text-[10px] text-slate-400 font-semibold ml-auto">🕐 ${dateStr} ${timeStr}</span>
+                            <span class="text-[10px] text-slate-400 font-medium ml-auto">${dateStr}</span>
                         </div>
                     </div>
-                    <!-- Status badge -->
-                    <div class="flex-shrink-0">${statusBadge}</div>
+                    <div class="flex-shrink-0 mt-0.5">${statusBadge}</div>
                 </div>`;
             div.addEventListener('click', (e) => {
                 if(e.target.closest('.task-check-btn')) return;
@@ -410,6 +408,7 @@ function loadAppListeners() {
                 }
             });
         });
+        if(window.lucide) lucide.createIcons();
     }
 
     // ── TASKS ────────────────────────────────────────────────────────────
@@ -542,55 +541,55 @@ function loadAppListeners() {
             const isToday   = !isClosed && remDate && remDate.toDateString() === now.toDateString();
             const isManual  = !remDate;
 
-            let cardColor, dotColor, timeLabel;
-            if(isClosed)        { cardColor = 'from-emerald-50 to-green-50 border-emerald-200'; dotColor = 'bg-emerald-500'; timeLabel = '🏁 Closed'; }
-            else if(isOverdue)  { cardColor = 'from-red-50 to-red-100 border-red-200'; dotColor = 'bg-red-500'; timeLabel = '🔴 Overdue'; }
-            else if(isToday)    { cardColor = 'from-orange-50 to-amber-50 border-amber-200'; dotColor = 'bg-amber-500'; timeLabel = '🟠 Today'; }
-            else if(isManual)   { cardColor = 'from-slate-50 to-slate-100 border-slate-200'; dotColor = 'bg-slate-400'; timeLabel = '📌 Manual'; }
-            else                { cardColor = 'from-blue-50 to-indigo-50 border-blue-200'; dotColor = 'bg-blue-500'; timeLabel = '🟢 Upcoming'; }
+            let cardBg, borderColor, statusChip, dotColor;
+            if(isClosed)        { cardBg='from-emerald-50/80 to-green-50/60'; borderColor='border-emerald-200'; statusChip='<span class="chip chip-closed">Closed</span>'; dotColor='bg-emerald-400'; }
+            else if(isOverdue)  { cardBg='from-red-50 to-rose-50/60'; borderColor='border-red-200'; statusChip='<span class="chip chip-overdue">Overdue</span>'; dotColor='bg-red-500'; }
+            else if(isToday)    { cardBg='from-amber-50 to-orange-50/60'; borderColor='border-amber-200'; statusChip='<span class="chip chip-pending">Today</span>'; dotColor='bg-amber-500'; }
+            else if(isManual)   { cardBg='from-slate-50 to-slate-100/60'; borderColor='border-slate-200'; statusChip='<span class="chip chip-closed">Manual</span>'; dotColor='bg-slate-400'; }
+            else                { cardBg='from-blue-50/80 to-indigo-50/60'; borderColor='border-blue-200'; statusChip='<span class="chip chip-active">Upcoming</span>'; dotColor='bg-blue-500'; }
 
             let formattedTime = rem.time;
             if(remDate) {
                 formattedTime = remDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
                 if(remDate.getHours() || remDate.getMinutes())
-                    formattedTime += ' — ' + remDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+                    formattedTime += ' · ' + remDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
             }
 
             // Days countdown
             let countdownBadge = '';
             if(isClosed && rem.finishedAt) {
                 const fd = new Date(rem.finishedAt);
-                countdownBadge = `<span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">🏁 ${fd.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
+                countdownBadge = `<span class="chip chip-done">${fd.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
             } else if(remDate && !isOverdue) {
                 const diff = Math.ceil((remDate - now) / (1000*60*60*24));
                 countdownBadge = diff === 0
-                    ? '<span class="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full animate-pulse">Today!</span>'
-                    : `<span class="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">in ${diff}d</span>`;
+                    ? '<span class="chip chip-pending" style="animation:pulse 1.5s infinite">Today!</span>'
+                    : `<span class="chip chip-active">in ${diff}d</span>`;
             } else if(isOverdue) {
                 const diff = Math.ceil((now - remDate) / (1000*60*60*24));
-                countdownBadge = `<span class="text-[10px] font-black text-red-700 bg-red-100 px-2 py-0.5 rounded-full">${diff}d ago</span>`;
+                countdownBadge = `<span class="chip chip-overdue">${diff}d ago</span>`;
             }
 
             const div = document.createElement('div');
-            div.className = `bg-gradient-to-br ${cardColor} border p-5 rounded-2xl shadow-sm flex flex-col gap-3 relative overflow-hidden hover:shadow-md transition-all ${isClosed ? 'opacity-70' : ''}`;
+            div.className = `card-hover card-enter bg-gradient-to-br ${cardBg} border ${borderColor} p-4 rounded-2xl flex flex-col gap-2.5 relative overflow-hidden cursor-pointer ${isClosed ? 'opacity-70' : ''}`;
+            div.style.boxShadow = 'var(--shadow-card)';
             div.innerHTML = `
-                <div class="absolute -right-3 -top-3 text-5xl opacity-[0.07] select-none">${isClosed ? '🏁' : '⏰'}</div>
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full ${dotColor} ${isOverdue||isToday ? 'animate-pulse' : ''}"></span>
-                        <span class="text-xs font-black text-slate-600 uppercase tracking-wide">${timeLabel}</span>
+                        <span class="w-2 h-2 rounded-full flex-shrink-0 ${dotColor} ${isOverdue||isToday ? 'animate-pulse' : ''}"></span>
+                        ${statusChip}
                     </div>
                     ${countdownBadge}
                 </div>
-                <p class="font-bold ${isClosed ? 'text-slate-400 line-through' : 'text-slate-800'} text-base leading-snug devanagari">${rem.title}</p>
-                <div class="flex flex-wrap gap-2 items-center mt-1">
-                    <span class="text-[11px] font-bold text-slate-500 bg-white/60 px-2 py-0.5 rounded-lg">⏰ Deadline: ${formattedTime}</span>
-                    ${rem.client ? `<span class="text-[10px] font-bold text-blue-600 bg-white/60 px-2 py-0.5 rounded-lg">👤 ${rem.client}</span>` : ''}
+                <p class="font-semibold text-sm ${isClosed ? 'text-slate-400 line-through' : 'text-slate-800'} leading-snug devanagari">${rem.title}</p>
+                <div class="flex flex-wrap gap-1.5 items-center">
+                    <span class="text-[10px] font-semibold text-slate-500 bg-white/70 px-2 py-0.5 rounded-lg">${formattedTime}</span>
+                    ${rem.client ? `<span class="chip chip-active">${rem.client}</span>` : ''}
                 </div>
-                ${!isClosed ? `<div class="flex gap-2 mt-1">
-                    <button class="rem-close-btn flex-1 text-[11px] font-black py-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white transition-all" data-docid="${rem._docId}">✅ Close Reminder</button>
-                    ${isOverdue ? `<button class="rem-snooze-btn text-[11px] font-black py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-white transition-all" data-docid="${rem._docId}">⏩ Snooze 1 Day</button>` : ''}
-                </div>` : `<div class="text-[10px] font-bold text-emerald-600 mt-1">🏁 Closed ${rem.finishedAt ? new Date(rem.finishedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : ''}</div>`}`;
+                ${!isClosed ? `<div class="flex gap-2 mt-0.5">
+                    <button class="rem-close-btn flex-1 text-[10px] font-black py-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white transition-all" data-docid="${rem._docId}">Close</button>
+                    ${isOverdue ? `<button class="rem-snooze-btn text-[10px] font-black py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-white transition-all" data-docid="${rem._docId}">Snooze 1d</button>` : ''}
+                </div>` : `<div class="text-[10px] font-bold text-emerald-600">Closed ${rem.finishedAt ? new Date(rem.finishedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : ''}</div>`}`;
             div.style.cursor = 'pointer';
             div.addEventListener('click', (e) => {
                 if(e.target.closest('button')) return;
@@ -640,6 +639,7 @@ function loadAppListeners() {
             }
             list.appendChild(div);
         });
+        if(window.lucide) lucide.createIcons();
     }
 
     // ── REMINDERS ────────────────────────────────────────────────────────
