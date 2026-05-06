@@ -9,6 +9,12 @@ import { init as initAdmin } from './modules/admin.js';
 import './modules/auth.js';    // onAuthStateChanged, login/PIN handlers
 import './modules/ai.js';      // sendMessage, speech recognition
 import './modules/vault.js';   // password vault UI
+import './modules/export.js';
+import { initSearch } from './modules/search.js';
+import { initManualCRUD } from './modules/manual-crud.js';
+import { initBulkOps } from './modules/bulk-ops.js';
+import { initDashboard } from './modules/dashboard.js';
+import { initAgent } from './modules/agent.js';
 
 // ── Fill UI element references (used lazily by all modules) ──────────
 Object.assign(ui, {
@@ -31,7 +37,7 @@ Object.assign(ui, {
 });
 
 // ── View switching ────────────────────────────────────────────────────
-const views = ['notebook', 'notes', 'tasks', 'reminders', 'vault'];
+const views = ['dashboard', 'notebook', 'notes', 'tasks', 'reminders', 'vault'];
 
 export function switchView(targetView) {
     views.forEach(v => {
@@ -72,3 +78,8 @@ window._setupAdminPanel  = () => initAdmin();
 // ── Initialize modules ───────────────────────────────────────────────
 initChatPanel();
 initNotifications();
+initSearch();
+initManualCRUD();
+initBulkOps();
+initDashboard();
+initAgent();
